@@ -1,0 +1,77 @@
+.single-image-uploader {
+  width: 100%;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.add-reference-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--vscode-font-family);
+}
+
+.add-reference-button:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.add-reference-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.single-image-preview {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.single-image-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.remove-image {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  width: 28px;
+  height: 28px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.9;
+}
+
+.remove-image:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.remove-image:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

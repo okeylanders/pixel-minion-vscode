@@ -24,6 +24,7 @@ const extensionConfig = {
       '@services': path.resolve(__dirname, 'src/infrastructure/api/services'),
       '@secrets': path.resolve(__dirname, 'src/infrastructure/secrets'),
       '@ai': path.resolve(__dirname, 'src/infrastructure/ai'),
+      '@providers': path.resolve(__dirname, 'src/infrastructure/ai/providers'),
       '@logging': path.resolve(__dirname, 'src/infrastructure/logging')
     }
   },
@@ -65,6 +66,7 @@ const webviewConfig = {
       '@services': path.resolve(__dirname, 'src/infrastructure/api/services'),
       '@secrets': path.resolve(__dirname, 'src/infrastructure/secrets'),
       '@ai': path.resolve(__dirname, 'src/infrastructure/ai'),
+      '@providers': path.resolve(__dirname, 'src/infrastructure/ai/providers'),
       '@components': path.resolve(__dirname, 'src/presentation/webview/components'),
       '@hooks': path.resolve(__dirname, 'src/presentation/webview/hooks'),
       '@utils': path.resolve(__dirname, 'src/presentation/webview/utils')

@@ -1,0 +1,37 @@
+/**
+ * Aspect Ratio Selector Styles
+ *
+ * VSCode-themed dropdown for selecting aspect ratios.
+ */
+
+.aspect-ratio-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.aspect-ratio-selector label {
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-descriptionForeground);
+}
+
+.aspect-ratio-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-dropdown-foreground);
+  background-color: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.aspect-ratio-select:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.aspect-ratio-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -11,3 +11,5 @@ export * from './ai';
 export * from './status';
 export * from './ui';
 export * from './tokenUsage';
+export * from './imageGeneration';
+export * from './svgGeneration';

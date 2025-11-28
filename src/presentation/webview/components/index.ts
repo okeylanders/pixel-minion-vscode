@@ -9,3 +9,9 @@ export * from './views';
 
 // Shared components
 export * from './shared';
+
+// Image components
+export * from './image';
+
+// SVG components
+export * from './svg';

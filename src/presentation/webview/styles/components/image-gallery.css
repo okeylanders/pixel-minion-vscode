@@ -1,0 +1,30 @@
+.image-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-gallery-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.image-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* When there's only one image, don't let it stretch full width */
+.image-gallery-grid:has(> :only-child) {
+  grid-template-columns: minmax(200px, 300px);
+}
+
+/* Responsive: smaller cards on narrow panels */
+@media (max-width: 400px) {
+  .image-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}

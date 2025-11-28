@@ -4,12 +4,18 @@ This file provides guidance for AI agents working on this VSCode extension codeb
 
 ## Project Overview
 
-This is a VSCode extension template using:
+**Pixel Minion** is a VSCode extension for AI-powered image and SVG generation using OpenRouter:
+
+- **Image Generation Tab** - Text-to-image and image-to-image via OpenRouter image models (Gemini, GPT-5, FLUX)
+- **SVG Generation Tab** - Generate vector graphics as code using text models (Gemini Pro, Claude Opus)
+
+Tech stack:
 - **TypeScript** for type safety
 - **React 18** for webview UI
 - **Webpack** for bundling (dual entry: extension + webview)
 - **Jest** for testing
 - **Clean Architecture** with layered organization
+- **OpenRouter API** for AI model access
 
 ## Architecture Quick Reference
 
@@ -38,6 +44,7 @@ import { MessageType } from '@messages';           // Message types
 import { SecretStorageService } from '@secrets';   // Secret storage
 import { AIOrchestrator } from '@ai';              // AI infrastructure
 import { LoggingService } from '@logging';         // Logging service
+import { OPENROUTER_CONFIG } from '@providers';    // Provider configs
 import { HelloWorldHandler } from '@handlers/domain/HelloWorldHandler';
 import { Button } from '@components/common';       // React components
 import { useSettings } from '@hooks/domain/useSettings';
@@ -111,7 +118,7 @@ export type UseMyReturn = MyState & MyActions & { persistedState: MyPersistence 
 - **Exception**: `console` is only acceptable in `extension.ts` activation before `LoggingService` is created (fallback if extension fails to load)
 - **Inject LoggingService** via constructor for all handlers and services
 - **Log levels**: Use `debug` for development details, `info` for general events, `warn` for potential issues, `error` for failures
-- All logs appear in VSCode's Output panel under "Extension Template"
+- All logs appear in VSCode's Output panel under "Pixel Minion"
 
 ## Build Commands
 
@@ -129,9 +136,28 @@ npm run lint     # Check code style
 3. **Components**: Ensure proper CSS variable usage for theming
 4. **Tests**: Add/update tests for new functionality
 
+## Provider Interface Pattern
+
+Model selection uses a provider interface for extensibility:
+
+```typescript
+// src/shared/types/providers.ts
+interface ProviderConfig {
+  id: string;
+  displayName: string;
+  baseUrl: string;
+  models: Record<GenerationType, ModelDefinition[]>;  // 'image' | 'svg'
+}
+
+// Usage: OPENROUTER_CONFIG.models.image for Image tab dropdown
+// Usage: OPENROUTER_CONFIG.models.svg for SVG tab dropdown
+```
+
 ## Architecture Decision Records
 
-See `docs/adr/` for architectural decisions. When making significant changes, consider documenting the decision in a new ADR.
+See `docs/adr/` for architectural decisions. Key ADRs:
+
+- **ADR-001**: Pixel Minion Architecture - Two-tab design, provider interface, message types
 
 ## Resources
 

@@ -153,7 +153,7 @@ describe('LoggingService', () => {
 
       const { service: newService, disposable } = LoggingService.create();
 
-      expect(vscode.window.createOutputChannel).toHaveBeenCalledWith('Extension Template');
+      expect(vscode.window.createOutputChannel).toHaveBeenCalledWith('Pixel Minion');
       expect(newService).toBeInstanceOf(LoggingService);
       expect(disposable).toBe(mockCreatedChannel);
     });

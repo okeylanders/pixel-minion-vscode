@@ -1,0 +1,37 @@
+/**
+ * Model Selector Styles
+ *
+ * VSCode-themed dropdown for selecting AI models.
+ */
+
+.model-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.model-selector label {
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-descriptionForeground);
+}
+
+.model-select {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-dropdown-foreground);
+  background-color: var(--vscode-dropdown-background);
+  border: 1px solid var(--vscode-dropdown-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.model-select:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.model-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

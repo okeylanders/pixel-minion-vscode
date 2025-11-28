@@ -1,0 +1,52 @@
+.continue-chat-input {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: var(--vscode-sideBar-background);
+  border-top: 1px solid var(--vscode-panel-border);
+  position: sticky;
+  bottom: 0;
+}
+
+.continue-chat-input-field {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 2px;
+  font-size: 13px;
+  outline: none;
+}
+
+.continue-chat-input-field:focus {
+  border-color: var(--vscode-focusBorder);
+}
+
+.continue-chat-input-field:disabled {
+  opacity: 0.6;
+}
+
+.continue-chat-input-field::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.continue-chat-submit {
+  padding: 8px 16px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.continue-chat-submit:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.continue-chat-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

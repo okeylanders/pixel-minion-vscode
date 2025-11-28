@@ -33,8 +33,8 @@ export class OpenRouterClient implements AIClient {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
-        'HTTP-Referer': 'https://github.com/vscode-extension-template',
-        'X-Title': 'VSCode Extension Template',
+        'HTTP-Referer': 'https://github.com/pixel-minion-vscode',
+        'X-Title': 'Pixel Minion',
       },
       body: JSON.stringify({
         model: this.model,

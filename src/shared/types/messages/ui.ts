@@ -1,6 +1,6 @@
 import { MessageEnvelope } from './base';
 
-export type TabId = 'helloWorld' | 'tab2' | 'settings';
+export type TabId = 'image' | 'svg' | 'settings';
 
 export interface TabChangedPayload {
   tabId: TabId;

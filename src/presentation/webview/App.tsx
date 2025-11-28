@@ -21,18 +21,22 @@ import {
   SettingsView,
   Tab2View,
   Tab,
+  ImageGenerationView,
+  SVGGenerationView,
 } from './components';
 import {
   useHelloWorld,
   useSettings,
   usePersistence,
   useMessageRouter,
+  useImageGeneration,
+  useSVGGeneration,
 } from './hooks';
 
 // Define available tabs
 const TABS: Tab[] = [
-  { id: 'helloWorld', label: 'Hello World' },
-  { id: 'tab2', label: 'Tab 2' },
+  { id: 'image', label: 'Image Generation' },
+  { id: 'svg', label: 'SVG Generation' },
 ];
 
 export function App(): JSX.Element {
@@ -44,7 +48,7 @@ export function App(): JSX.Element {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<TabId>(
-    (persistedState.activeTab as TabId) || 'helloWorld'
+    (persistedState.activeTab as TabId) || 'image'
   );
 
   // Settings overlay state (triggered from title bar gear icon)
@@ -53,6 +57,8 @@ export function App(): JSX.Element {
   // Initialize domain hooks with persisted state
   const helloWorld = useHelloWorld(persistedState.helloWorld);
   const settings = useSettings(persistedState.settings);
+  const imageGeneration = useImageGeneration(persistedState.imageGeneration);
+  const svgGeneration = useSVGGeneration(persistedState.svgGeneration);
 
   // Listen for OPEN_SETTINGS_OVERLAY message from extension
   useEffect(() => {
@@ -67,11 +73,15 @@ export function App(): JSX.Element {
       activeTab,
       helloWorld: helloWorld.persistedState,
       settings: settings.persistedState,
+      imageGeneration: imageGeneration.persistedState,
+      svgGeneration: svgGeneration.persistedState,
     });
   }, [
     activeTab,
     helloWorld.persistedState,
     settings.persistedState,
+    imageGeneration.persistedState,
+    svgGeneration.persistedState,
     saveState,
   ]);
 
@@ -92,12 +102,12 @@ export function App(): JSX.Element {
       />
 
       <ViewContainer>
-        <TabPanel id="helloWorld" activeTab={activeTab}>
-          <HelloWorldView helloWorld={helloWorld} />
+        <TabPanel id="image" activeTab={activeTab}>
+          <ImageGenerationView />
         </TabPanel>
 
-        <TabPanel id="tab2" activeTab={activeTab}>
-          <Tab2View />
+        <TabPanel id="svg" activeTab={activeTab}>
+          <SVGGenerationView />
         </TabPanel>
       </ViewContainer>
 

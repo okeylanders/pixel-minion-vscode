@@ -1,13 +1,13 @@
 {
-  "name": "vscode-extension-template",
-  "displayName": "VSCode Extension Template",
-  "description": "A well-architected VSCode extension template with AI integration",
+  "name": "pixel-minion",
+  "displayName": "Pixel Minion",
+  "description": "AI-powered image and SVG generation inside VSCode",
   "version": "0.1.0",
   "license": "SEE LICENSE IN LICENSE",
   "publisher": "your-publisher-name",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/vscode-extension-template.git"
+    "url": "https://github.com/your-username/pixel-minion-vscode.git"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -22,7 +22,7 @@
       "activitybar": [
         {
           "id": "template-extension",
-          "title": "Extension Template",
+          "title": "Pixel Minion",
           "icon": "assets/icon.svg"
         }
       ]
@@ -39,12 +39,12 @@
     "commands": [
       {
         "command": "templateExtension.openSettings",
-        "title": "Extension Template: Settings",
+        "title": "Pixel Minion: Settings",
         "icon": "$(gear)"
       },
       {
         "command": "templateExtension.showOutput",
-        "title": "Extension Template: Show Output",
+        "title": "Pixel Minion: Show Output",
         "icon": "$(output)"
       }
     ],
@@ -63,7 +63,7 @@
       ]
     },
     "configuration": {
-      "title": "Extension Template",
+      "title": "Pixel Minion",
       "properties": {
         "templateExtension.maxConversationTurns": {
           "type": "number",
@@ -74,6 +74,27 @@
           "type": "string",
           "default": "anthropic/claude-sonnet-4",
           "description": "OpenRouter model ID to use for AI features"
+        },
+        "pixelMinion.outputDirectory": {
+          "type": "string",
+          "default": "pixel-minion",
+          "description": "Directory (relative to workspace root) where generated images and SVGs are saved"
+        },
+        "pixelMinion.defaultImageModel": {
+          "type": "string",
+          "default": "google/gemini-2.5-flash-image",
+          "description": "Default model for image generation"
+        },
+        "pixelMinion.defaultSVGModel": {
+          "type": "string",
+          "default": "google/gemini-3-pro-preview",
+          "description": "Default model for SVG generation"
+        },
+        "pixelMinion.defaultAspectRatio": {
+          "type": "string",
+          "default": "1:1",
+          "enum": ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3"],
+          "description": "Default aspect ratio for generated images"
         }
       }
     }

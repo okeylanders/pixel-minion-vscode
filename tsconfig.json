@@ -23,6 +23,7 @@
       "@secrets": ["src/infrastructure/secrets"],
       "@ai": ["src/infrastructure/ai"],
       "@ai/*": ["src/infrastructure/ai/*"],
+      "@providers/*": ["src/infrastructure/ai/providers/*"],
       "@logging": ["src/infrastructure/logging"]
     }
   },

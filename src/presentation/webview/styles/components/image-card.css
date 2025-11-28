@@ -1,0 +1,40 @@
+.image-card {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.image-card-image-container {
+  position: relative;
+  width: 100%;
+  padding-top: 100%; /* Square aspect ratio container */
+  background: var(--vscode-editor-inactiveSelectionBackground);
+}
+
+.image-card-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.image-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  gap: 8px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.image-card-prompt {
+  flex: 1;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

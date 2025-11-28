@@ -3,7 +3,7 @@
  *
  * Pattern: Singleton wrapper for VSCode's OutputChannel API
  * Benefits:
- * - All logs go to VSCode's Output panel (View > Output > "Extension Template")
+ * - All logs go to VSCode's Output panel (View > Output > "Pixel Minion")
  * - Consistent log formatting with timestamps and levels
  * - Constructor-injectable for testability
  * - No console.log pollution
@@ -15,7 +15,7 @@ import * as vscode from 'vscode';
 export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 
 export class LoggingService {
-  private static readonly CHANNEL_NAME = 'Extension Template';
+  private static readonly CHANNEL_NAME = 'Pixel Minion';
 
   constructor(private readonly outputChannel: vscode.OutputChannel) {}
 

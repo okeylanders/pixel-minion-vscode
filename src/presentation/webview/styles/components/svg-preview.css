@@ -1,0 +1,51 @@
+.svg-preview {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.svg-preview-empty {
+  background: var(--vscode-editor-inactiveSelectionBackground);
+  color: var(--vscode-descriptionForeground);
+  font-size: 14px;
+}
+
+.svg-preview[data-aspect="1:1"] .svg-preview-content {
+  aspect-ratio: 1 / 1;
+}
+
+.svg-preview[data-aspect="16:9"] .svg-preview-content {
+  aspect-ratio: 16 / 9;
+}
+
+.svg-preview[data-aspect="9:16"] .svg-preview-content {
+  aspect-ratio: 9 / 16;
+}
+
+.svg-preview[data-aspect="4:3"] .svg-preview-content {
+  aspect-ratio: 4 / 3;
+}
+
+.svg-preview[data-aspect="3:4"] .svg-preview-content {
+  aspect-ratio: 3 / 4;
+}
+
+.svg-preview-content {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svg-preview-content svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+}

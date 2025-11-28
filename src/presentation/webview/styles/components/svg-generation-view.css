@@ -1,0 +1,61 @@
+/**
+ * SVGGenerationView styles
+ */
+
+.svg-generation-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.svg-generation-header {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.svg-generation-header > * {
+  flex: 1;
+  min-width: 150px;
+}
+
+.svg-generation-prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.svg-generation-error {
+  padding: 8px 12px;
+  background: var(--vscode-inputValidation-errorBackground);
+  border: 1px solid var(--vscode-inputValidation-errorBorder);
+  color: var(--vscode-inputValidation-errorForeground);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.svg-generation-result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.svg-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.svg-result-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.svg-result-actions {
+  display: flex;
+  gap: 8px;
+}

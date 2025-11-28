@@ -6,6 +6,8 @@
  */
 import { useEffect, useCallback } from 'react';
 import { useVSCodeApi } from './useVSCodeApi';
+import type { ImageGenerationPersistence } from './domain/useImageGeneration';
+import type { SVGGenerationPersistence } from './domain/useSVGGeneration';
 
 export interface PersistenceState {
   helloWorld?: {
@@ -16,6 +18,8 @@ export interface PersistenceState {
     maxConversationTurns: number;
     openRouterModel: string;
   };
+  imageGeneration?: ImageGenerationPersistence;
+  svgGeneration?: SVGGenerationPersistence;
   activeTab?: string;
 }
 

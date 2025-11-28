@@ -21,3 +21,19 @@ export type {
   TokenTrackingPersistence,
   UseTokenTrackingReturn,
 } from './useTokenTracking';
+
+export { useImageGeneration } from './useImageGeneration';
+export type {
+  ImageGenerationState,
+  ImageGenerationActions,
+  ImageGenerationPersistence,
+  UseImageGenerationReturn,
+} from './useImageGeneration';
+
+export { useSVGGeneration } from './useSVGGeneration';
+export type {
+  SVGGenerationState,
+  SVGGenerationActions,
+  SVGGenerationPersistence,
+  UseSVGGenerationReturn,
+} from './useSVGGeneration';

@@ -107,7 +107,7 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
-  <title>VSCode Extension Template</title>
+  <title>Pixel Minion</title>
 </head>
 <body>
   <div id="root"></div>

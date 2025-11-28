@@ -36,15 +36,35 @@ export enum MessageType {
   // Token usage
   TOKEN_USAGE_UPDATE = 'TOKEN_USAGE_UPDATE',
   RESET_TOKEN_USAGE = 'RESET_TOKEN_USAGE',
+
+  // Image Generation
+  IMAGE_GENERATION_REQUEST = 'IMAGE_GENERATION_REQUEST',
+  IMAGE_GENERATION_RESPONSE = 'IMAGE_GENERATION_RESPONSE',
+  IMAGE_GENERATION_CONTINUE = 'IMAGE_GENERATION_CONTINUE',
+  IMAGE_GENERATION_CLEAR = 'IMAGE_GENERATION_CLEAR',
+  IMAGE_SAVE_REQUEST = 'IMAGE_SAVE_REQUEST',
+  IMAGE_SAVE_RESULT = 'IMAGE_SAVE_RESULT',
+
+  // SVG Generation
+  SVG_GENERATION_REQUEST = 'SVG_GENERATION_REQUEST',
+  SVG_GENERATION_RESPONSE = 'SVG_GENERATION_RESPONSE',
+  SVG_GENERATION_CONTINUE = 'SVG_GENERATION_CONTINUE',
+  SVG_GENERATION_CLEAR = 'SVG_GENERATION_CLEAR',
+  SVG_SAVE_REQUEST = 'SVG_SAVE_REQUEST',
+  SVG_SAVE_RESULT = 'SVG_SAVE_RESULT',
 }
 
 export type MessageSource =
   | 'extension.helloWorld'
   | 'extension.settings'
   | 'extension.ai'
+  | 'extension.imageGeneration'
+  | 'extension.svgGeneration'
   | 'webview.helloWorld'
   | 'webview.settings'
-  | 'webview.ai';
+  | 'webview.ai'
+  | 'webview.imageGeneration'
+  | 'webview.svgGeneration';
 
 /**
  * Message Envelope - wraps all messages with metadata

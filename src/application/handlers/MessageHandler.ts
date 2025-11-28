@@ -16,12 +16,18 @@ import {
   UpdateSettingPayload,
   SaveApiKeyPayload,
   AIConversationRequestPayload,
+  ImageGenerationRequestPayload,
+  ImageGenerationContinuePayload,
+  ImageSaveRequestPayload,
+  SVGGenerationRequestPayload,
+  SVGGenerationContinuePayload,
+  SVGSaveRequestPayload,
   TokenUsage,
   TokenUsageUpdatePayload,
   createEnvelope,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
-import { HelloWorldHandler, SettingsHandler, AIHandler } from './domain';
+import { HelloWorldHandler, SettingsHandler, AIHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 
@@ -30,6 +36,8 @@ export class MessageHandler {
   private readonly helloWorldHandler: HelloWorldHandler;
   private readonly settingsHandler: SettingsHandler;
   private readonly aiHandler: AIHandler;
+  private readonly imageGenerationHandler: ImageGenerationHandler;
+  private readonly svgGenerationHandler: SVGGenerationHandler;
 
   // Token usage accumulator - tracks total usage across the session
   private tokenTotals: TokenUsage = {
@@ -54,6 +62,16 @@ export class MessageHandler {
       secretStorage,
       logger,
       (usage) => this.applyTokenUsage(usage)
+    );
+    this.imageGenerationHandler = new ImageGenerationHandler(
+      postMessage,
+      secretStorage,
+      logger
+    );
+    this.svgGenerationHandler = new SVGGenerationHandler(
+      postMessage,
+      secretStorage,
+      logger
     );
 
     // Register routes
@@ -170,6 +188,58 @@ export class MessageHandler {
     this.router.register(
       MessageType.RESET_TOKEN_USAGE,
       () => this.resetTokenUsage()
+    );
+
+    // Image Generation domain
+    this.router.register(
+      MessageType.IMAGE_GENERATION_REQUEST,
+      (msg) => this.imageGenerationHandler.handleGenerationRequest(
+        msg as MessageEnvelope<ImageGenerationRequestPayload>
+      )
+    );
+    this.router.register(
+      MessageType.IMAGE_GENERATION_CONTINUE,
+      (msg) => this.imageGenerationHandler.handleContinueRequest(
+        msg as MessageEnvelope<ImageGenerationContinuePayload>
+      )
+    );
+    this.router.register(
+      MessageType.IMAGE_GENERATION_CLEAR,
+      (msg) => this.imageGenerationHandler.handleClearConversation(
+        msg as MessageEnvelope<{ conversationId: string }>
+      )
+    );
+    this.router.register(
+      MessageType.IMAGE_SAVE_REQUEST,
+      (msg) => this.imageGenerationHandler.handleSaveRequest(
+        msg as MessageEnvelope<ImageSaveRequestPayload>
+      )
+    );
+
+    // SVG Generation domain
+    this.router.register(
+      MessageType.SVG_GENERATION_REQUEST,
+      (msg) => this.svgGenerationHandler.handleGenerationRequest(
+        msg as MessageEnvelope<SVGGenerationRequestPayload>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_GENERATION_CONTINUE,
+      (msg) => this.svgGenerationHandler.handleContinueRequest(
+        msg as MessageEnvelope<SVGGenerationContinuePayload>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_GENERATION_CLEAR,
+      (msg) => this.svgGenerationHandler.handleClearConversation(
+        msg as MessageEnvelope<{ conversationId: string }>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_SAVE_REQUEST,
+      (msg) => this.svgGenerationHandler.handleSaveRequest(
+        msg as MessageEnvelope<SVGSaveRequestPayload>
+      )
     );
   }
 

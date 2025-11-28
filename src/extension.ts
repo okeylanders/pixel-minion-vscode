@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
   // Log activation with version from package.json
   const extensionInfo = context.extension.packageJSON as { version: string };
   loggingService.separator('Extension Activated');
-  loggingService.info('VSCode Extension Template is now active');
+  loggingService.info('Pixel Minion is now active');
   loggingService.info(`>> v${extensionInfo.version} <<`);
   loggingService.info(`Extension URI: ${context.extensionUri.fsPath}`);
 
@@ -57,7 +57,7 @@ export function activate(context: vscode.ExtensionContext): void {
     'templateExtension.helloWorld',
     () => {
       loggingService.info('Hello command executed');
-      vscode.window.showInformationMessage('Hello from VSCode Extension Template!');
+      vscode.window.showInformationMessage('Hello from Pixel Minion!');
     }
   );
 
@@ -101,5 +101,5 @@ export function activate(context: vscode.ExtensionContext): void {
  * Clean up any resources here.
  */
 export function deactivate(): void {
-  logger?.info('VSCode Extension Template is now deactivated');
+  logger?.info('Pixel Minion is now deactivated');
 }
