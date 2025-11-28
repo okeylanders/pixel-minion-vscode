@@ -66,7 +66,98 @@ const ASPECT_RATIO_DIMENSIONS: Record<AspectRatio, { width: number; height: numb
 };
 ```
 
-### 4. OpenRouter API Patterns
+### 4. Provider Interface & Model Enumeration
+
+Each provider implements a common interface that includes curated model lists per generation type. This powers the dropdowns and enables future provider extensibility.
+
+```typescript
+// src/shared/types/providers.ts
+
+export type GenerationType = 'image' | 'svg';
+
+export interface ModelDefinition {
+  id: string;           // e.g., 'google/gemini-2.5-flash-image'
+  displayName: string;  // e.g., 'Gemini 2.5 Flash Image'
+  description?: string;
+  inputCost?: number;   // $ per 1M tokens
+  outputCost?: number;
+}
+
+export interface ProviderConfig {
+  id: string;
+  displayName: string;
+  baseUrl: string;
+  models: Record<GenerationType, ModelDefinition[]>;
+  supportsImageInput: boolean;
+  supportsImageOutput: boolean;
+}
+
+// Provider implementations return their config
+export interface AIProvider {
+  getConfig(): ProviderConfig;
+  createClient(apiKey: string, model: string): AIClient;
+}
+```
+
+#### OpenRouter Provider Implementation
+
+```typescript
+// src/infrastructure/ai/providers/OpenRouterProvider.ts
+
+export const OPENROUTER_CONFIG: ProviderConfig = {
+  id: 'openrouter',
+  displayName: 'OpenRouter',
+  baseUrl: 'https://openrouter.ai/api/v1',
+  supportsImageInput: true,
+  supportsImageOutput: true,
+  models: {
+    image: [
+      { id: 'google/gemini-2.5-flash-image', displayName: 'Gemini 2.5 Flash Image', inputCost: 0.30, outputCost: 2.50 },
+      { id: 'google/gemini-2.5-flash-image-preview', displayName: 'Gemini 2.5 Flash Preview', inputCost: 0.30, outputCost: 2.50 },
+      { id: 'google/gemini-3-pro-image-preview', displayName: 'Gemini 3 Pro Image', inputCost: 2.00, outputCost: 12.00 },
+      { id: 'openai/gpt-5-image-mini', displayName: 'GPT-5 Image Mini', inputCost: 2.50, outputCost: 2.00 },
+      { id: 'openai/gpt-5-image', displayName: 'GPT-5 Image', inputCost: 10.00, outputCost: 10.00 },
+      { id: 'black-forest-labs/flux.2-pro', displayName: 'FLUX.2 Pro', inputCost: 3.66, outputCost: 3.66 },
+      { id: 'black-forest-labs/flux.2-flex', displayName: 'FLUX.2 Flex', inputCost: 14.64, outputCost: 14.64 },
+    ],
+    svg: [
+      { id: 'google/gemini-3-pro-preview', displayName: 'Gemini Pro 3.0', inputCost: 1.25, outputCost: 10.00 },
+      { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
+    ],
+  },
+};
+```
+
+#### Usage in Components
+
+```typescript
+// In ModelSelector.tsx
+import { OPENROUTER_CONFIG } from '@providers/OpenRouterProvider';
+
+const imageModels = OPENROUTER_CONFIG.models.image;  // For Image Generation tab dropdown
+const svgModels = OPENROUTER_CONFIG.models.svg;      // For SVG Generation tab dropdown
+```
+
+#### Future Extensibility
+
+When adding new providers (e.g., custom endpoint):
+
+```typescript
+// Future: CustomProvider - allows user to point to arbitrary URL + auth
+const CUSTOM_CONFIG: ProviderConfig = {
+  id: 'custom',
+  displayName: 'Custom Endpoint',
+  baseUrl: '', // User-configured via settings
+  models: {
+    image: [], // User-configured or discovered via API
+    svg: [],
+  },
+  supportsImageInput: true,  // User-configured
+  supportsImageOutput: true,
+};
+```
+
+### 5. OpenRouter API Patterns
 
 #### Image Input (for image-to-image / reference images)
 
@@ -126,7 +217,7 @@ interface ImageGenerationResponse {
 }
 ```
 
-### 5. UI Layout
+### 6. UI Layout
 
 #### Image Generation Tab
 ```
@@ -190,7 +281,7 @@ interface ImageGenerationResponse {
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 6. Message Types
+### 7. Message Types
 
 New message types to add to `MessageType` enum:
 
@@ -212,7 +303,7 @@ SVG_SAVE_REQUEST = 'SVG_SAVE_REQUEST',
 SVG_SAVE_RESULT = 'SVG_SAVE_RESULT',
 ```
 
-### 7. Payload Interfaces
+### 8. Payload Interfaces
 
 ```typescript
 // Image Generation
@@ -267,7 +358,7 @@ interface SaveResultPayload {
 }
 ```
 
-### 8. Handler Structure
+### 9. Handler Structure
 
 Create two domain handlers:
 
@@ -281,7 +372,7 @@ src/application/handlers/domain/
 
 **SVGGenerationHandler**: Uses existing `AIOrchestrator` with SVG-focused system prompt, parses SVG from response, handles save requests.
 
-### 9. Component Structure
+### 10. Component Structure
 
 ```
 src/presentation/webview/components/
@@ -305,7 +396,7 @@ src/presentation/webview/components/
     └── SaveButton.tsx             # Reusable save button
 ```
 
-### 10. Hook Structure
+### 11. Hook Structure
 
 ```
 src/presentation/webview/hooks/domain/
@@ -318,7 +409,7 @@ Following tripartite pattern:
 - **Actions**: setPrompt, setModel, setAspectRatio, addReferenceImage, removeReferenceImage, generate, continueChat, clearConversation, saveImage
 - **Persistence**: Last used model, aspect ratio preferences
 
-### 11. Settings
+### 12. Settings
 
 Add to `package.json` contributes.configuration:
 
@@ -348,7 +439,7 @@ Add to `package.json` contributes.configuration:
 }
 ```
 
-### 12. SVG System Prompt
+### 13. SVG System Prompt
 
 ```
 You are an expert SVG artist. Generate clean, well-structured SVG code based on user descriptions.
@@ -365,7 +456,7 @@ Rules:
 When user asks for refinements, output the complete updated SVG (not just changes).
 ```
 
-### 13. Conversation State Management
+### 14. Conversation State Management
 
 **Image Tab:**
 - New prompt via top input: Clears conversation, starts fresh
@@ -383,7 +474,7 @@ When user asks for refinements, output the complete updated SVG (not just change
 - Only stores ONE thread per tab (not full history)
 - Cleared when user starts a new generation via top prompt
 
-### 14. Token Usage Tracking
+### 15. Token Usage Tracking
 
 Leverage existing token tracking infrastructure:
 
@@ -392,7 +483,7 @@ Leverage existing token tracking infrastructure:
 - Image generation responses also include token usage - accumulate same way
 - Display in status bar or settings view (existing pattern)
 
-### 15. File Save Logic
+### 16. File Save Logic
 
 ```typescript
 async function saveGeneratedFile(type: 'image' | 'svg', data: string, filename: string): Promise<string> {
@@ -420,13 +511,15 @@ async function saveGeneratedFile(type: 'image' | 'svg', data: string, filename: 
 }
 ```
 
-### 16. Implementation Phases
+### 17. Implementation Phases
 
 #### Phase 1: Foundation
 - [ ] Rename extension from template to "Pixel Minion"
 - [ ] Update package.json (name, displayName, settings)
+- [ ] Create provider interface types (`src/shared/types/providers.ts`)
+- [ ] Create OpenRouter provider config with curated model lists
 - [ ] Add new message types and payload interfaces
-- [ ] Create model configuration constants
+- [ ] Add `@providers` path alias to tsconfig
 
 #### Phase 2: Image Generation Tab
 - [ ] Create ImageGenerationHandler
