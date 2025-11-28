@@ -1,0 +1,308 @@
+/**
+ * Global Styles
+ *
+ * Base styles using VSCode CSS variables for seamless theme integration.
+ * Works automatically with light, dark, and high-contrast themes.
+ */
+
+@import './variables.css';
+@import './components/button.css';
+@import './components/input.css';
+@import './components/tabs.css';
+@import './components/markdown.css';
+
+/* Reset and base */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+}
+
+.app-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--spacing-md);
+}
+
+/* Utility classes */
+.text-muted {
+  color: var(--vscode-descriptionForeground);
+}
+
+.text-error {
+  color: var(--vscode-errorForeground);
+}
+
+.text-success {
+  color: var(--vscode-notificationsInfoIcon-foreground);
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm {
+  gap: var(--spacing-sm);
+}
+
+.gap-md {
+  gap: var(--spacing-md);
+}
+
+.mt-sm {
+  margin-top: var(--spacing-sm);
+}
+
+.mt-md {
+  margin-top: var(--spacing-md);
+}
+
+.mb-sm {
+  margin-bottom: var(--spacing-sm);
+}
+
+.mb-md {
+  margin-bottom: var(--spacing-md);
+}
+
+.w-full {
+  width: 100%;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background-color: var(--vscode-editorWidget-border);
+  margin: var(--spacing-md) 0;
+}
+
+/* Card */
+.card {
+  padding: var(--spacing-md);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: var(--border-radius);
+}
+
+/* Settings Overlay - Full view panel */
+.settings-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--vscode-editor-background);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-overlay-content {
+  flex: 1;
+  padding: var(--spacing-md);
+  overflow-y: auto;
+}
+
+.settings-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+  background-color: var(--vscode-editor-background);
+  flex-shrink: 0;
+}
+
+.settings-overlay-header h2 {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--vscode-font-size);
+}
+
+.settings-close-button {
+  background: none;
+  border: none;
+  color: var(--vscode-foreground);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--border-radius);
+  transition: background-color 0.15s;
+}
+
+.settings-close-button:hover {
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+/* Loading Indicator */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  color: var(--vscode-descriptionForeground);
+}
+
+.loading-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.loading-spinner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.loading-text {
+  flex: 1;
+  text-align: center;
+}
+
+.loading-cancel-button {
+  background: none;
+  border: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+}
+
+.loading-cancel-button:hover {
+  background-color: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
+}
+
+/* Spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--vscode-progressBar-background);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.spinner-small {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Progress Bar */
+.progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--vscode-progressBar-background);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-image: linear-gradient(
+    90deg,
+    var(--vscode-charts-blue, #0078d4) 0%,
+    var(--vscode-charts-green, #107c10) 100%
+  );
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+}
+
+.progress-label {
+  font-size: 0.75rem;
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
+}
+
+/* Ticker Animation */
+.ticker-container {
+  overflow: hidden;
+  width: 100%;
+}
+
+.guide-ticker {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+  white-space: nowrap;
+  animation: ticker 15s linear infinite;
+}
+
+.guide-ticker.empty {
+  animation-play-state: paused;
+  opacity: 0;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}

@@ -1,0 +1,54 @@
+/**
+ * Tab Styles
+ *
+ * VSCode-themed tabs for view switching.
+ */
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+  background-color: var(--vscode-editor-background);
+}
+
+.tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-tab-inactiveForeground);
+  background-color: var(--vscode-tab-inactiveBackground, transparent);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.tab:hover {
+  color: var(--vscode-tab-activeForeground);
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.tab:focus {
+  outline: none;
+}
+
+.tab.active {
+  color: var(--vscode-tab-activeForeground);
+  background-color: var(--vscode-tab-activeBackground, transparent);
+  border-bottom-color: var(--vscode-focusBorder);
+}
+
+/* Tab content container */
+.tab-content {
+  flex: 1;
+  overflow: auto;
+  padding: var(--spacing-md);
+}
+
+.tab-panel {
+  height: 100%;
+}
+
+.tab-panel[hidden] {
+  display: none;
+}

@@ -1,0 +1,111 @@
+/**
+ * Markdown Styles
+ *
+ * Styles for rendered markdown content.
+ */
+
+.markdown {
+  line-height: 1.6;
+  color: var(--vscode-foreground);
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown h1 { font-size: 1.5em; }
+.markdown h2 { font-size: 1.3em; }
+.markdown h3 { font-size: 1.15em; }
+.markdown h4 { font-size: 1em; }
+
+.markdown p {
+  margin-bottom: var(--spacing-md);
+}
+
+.markdown a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+
+.markdown a:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+.markdown code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+  background-color: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
+  border-radius: var(--radius-sm);
+}
+
+.markdown pre {
+  margin: var(--spacing-md) 0;
+  padding: var(--spacing-md);
+  background-color: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  padding: 0;
+  background-color: transparent;
+}
+
+.markdown ul,
+.markdown ol {
+  margin-bottom: var(--spacing-md);
+  padding-left: var(--spacing-lg);
+}
+
+.markdown li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.markdown blockquote {
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-md);
+  border-left: 3px solid var(--vscode-textBlockQuote-border, var(--vscode-editorWidget-border));
+  color: var(--vscode-textBlockQuote-foreground, var(--vscode-descriptionForeground));
+}
+
+.markdown hr {
+  margin: var(--spacing-lg) 0;
+  border: none;
+  border-top: 1px solid var(--vscode-editorWidget-border);
+}
+
+.markdown table {
+  width: 100%;
+  margin: var(--spacing-md) 0;
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--vscode-editorWidget-border);
+  text-align: left;
+}
+
+.markdown th {
+  background-color: var(--vscode-editorWidget-background);
+  font-weight: 600;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown em {
+  font-style: italic;
+}
