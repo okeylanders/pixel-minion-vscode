@@ -184,11 +184,13 @@ export class ImageGenerationHandler {
     }
 
     // Reuse the generation request handler by creating a request payload
+    // Use the last seed for consistency when refining images
     const requestPayload: ImageGenerationRequestPayload = {
       prompt,
       model: conversation.model,
       aspectRatio: conversation.aspectRatio as any,
       conversationId,
+      seed: conversation.lastSeed,
     };
 
     await this.handleGenerationRequest({
