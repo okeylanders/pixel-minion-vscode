@@ -122,12 +122,6 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         </Button>
       </div>
 
-      {/* Loading indicator */}
-      <LoadingIndicator
-        isLoading={isLoading}
-        defaultMessage="Generating image..."
-      />
-
       {/* Error display */}
       {error && (
         <div className="image-generation-error">
@@ -141,6 +135,12 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         onSaveImage={handleSaveImage}
         savingImageIds={savingIds}
         savedImageIds={savedIds}
+      />
+
+      {/* Loading indicator - appears at bottom where new content will show */}
+      <LoadingIndicator
+        isLoading={isLoading}
+        defaultMessage="Generating image..."
       />
 
       {/* Continue chat input (only show when we have a conversation) */}

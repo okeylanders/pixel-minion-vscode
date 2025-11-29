@@ -102,12 +102,6 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         </Button>
       </div>
 
-      {/* Loading indicator */}
-      <LoadingIndicator
-        isLoading={isLoading}
-        defaultMessage="Generating SVG..."
-      />
-
       {/* Error display */}
       {error && (
         <div className="svg-generation-error">
@@ -128,6 +122,12 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
           <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
         </div>
       )}
+
+      {/* Loading indicator - appears at bottom where new content will show */}
+      <LoadingIndicator
+        isLoading={isLoading}
+        defaultMessage="Generating SVG..."
+      />
 
       {/* Continue chat input */}
       {conversationId && svgCode && (
