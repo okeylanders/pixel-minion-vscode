@@ -15,6 +15,7 @@ import { SingleImageUploader } from '../svg/SingleImageUploader';
 import { SVGPreview } from '../svg/SVGPreview';
 import { SVGCodeView } from '../svg/SVGCodeView';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
@@ -100,6 +101,12 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
           {isLoading ? 'Generating...' : 'Generate'}
         </Button>
       </div>
+
+      {/* Loading indicator */}
+      <LoadingIndicator
+        isLoading={isLoading}
+        defaultMessage="Generating SVG..."
+      />
 
       {/* Error display */}
       {error && (

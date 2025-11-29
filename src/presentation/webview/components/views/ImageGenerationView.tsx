@@ -14,6 +14,7 @@ import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { ImageUploader } from '../image/ImageUploader';
 import { ImageGallery } from '../image/ImageGallery';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
+import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
@@ -108,6 +109,12 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           {isLoading ? 'Generating...' : 'Generate'}
         </Button>
       </div>
+
+      {/* Loading indicator */}
+      <LoadingIndicator
+        isLoading={isLoading}
+        defaultMessage="Generating image..."
+      />
 
       {/* Error display */}
       {error && (
