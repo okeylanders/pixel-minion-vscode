@@ -1,7 +1,11 @@
 /**
- * ImageGenerationHandler - Handles image generation requests via OpenRouter
+ * ImageGenerationHandler - Handles image generation requests
  *
- * Pattern: Domain handler for AI image generation with conversation state management
+ * Pattern: Domain handler that delegates to infrastructure layer
+ * Responsibilities:
+ * - Route messages to appropriate operations
+ * - Transform between presentation and infrastructure types
+ * - Handle file save operations (VSCode-specific)
  */
 import * as vscode from 'vscode';
 import {
@@ -14,38 +18,22 @@ import {
   ImageSaveRequestPayload,
   ImageSaveResultPayload,
   GeneratedImage,
-  ASPECT_RATIO_DIMENSIONS,
   StatusPayload,
 } from '@messages';
 import { LoggingService } from '@logging';
-import { SecretStorageService } from '@secrets';
-
-interface ConversationMessage {
-  role: 'user' | 'assistant';
-  content: Array<{
-    type: 'text' | 'image_url';
-    text?: string;
-    image_url?: { url: string };
-  }>;
-  images?: Array<{ image_url: { url: string } }>;
-}
-
-interface ConversationState {
-  id: string;
-  messages: ConversationMessage[];
-  model: string;
-  aspectRatio: string;
-  turnNumber: number;
-  lastSeed?: number;  // Track last used seed for the conversation
-}
+import {
+  ImageGenerationClient,
+  ImageConversationManager,
+  RehydrationTurn,
+} from '@ai';
 
 export class ImageGenerationHandler {
   private readonly configSection = 'pixelMinion';
-  private readonly conversations = new Map<string, ConversationState>();
 
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
-    private readonly secretStorage: SecretStorageService,
+    private readonly imageClient: ImageGenerationClient,
+    private readonly conversationManager: ImageConversationManager,
     private readonly logger: LoggingService
   ) {
     this.logger.debug('ImageGenerationHandler initialized');
@@ -77,61 +65,38 @@ export class ImageGenerationHandler {
     ));
 
     try {
-      // Get API key
-      const apiKey = await this.secretStorage.getApiKey();
-      if (!apiKey) {
+      // Check if client is configured
+      if (!(await this.imageClient.isConfigured())) {
         throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
       }
 
       // Get or create conversation
-      const activeConversationId = conversationId ?? this.createConversation(model, aspectRatio);
-      const conversation = this.conversations.get(activeConversationId);
-      if (!conversation) {
-        throw new Error(`Conversation ${activeConversationId} not found`);
-      }
+      const conversation = this.conversationManager.getOrCreate(conversationId, model, aspectRatio);
 
-      // Build user message with prompt and optional reference images
-      const content: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [
-        { type: 'text', text: prompt }
-      ];
-
-      // Add reference images if provided
-      if (referenceImages && referenceImages.length > 0) {
-        for (const imageData of referenceImages) {
-          content.push({
-            type: 'image_url',
-            image_url: { url: imageData }
-          });
-        }
-      }
-
-      const userMessage: ConversationMessage = {
-        role: 'user',
-        content
-      };
-
-      conversation.messages.push(userMessage);
+      // Add user message with prompt and optional reference images
+      this.conversationManager.addUserMessage(conversation.id, prompt, referenceImages);
       conversation.lastSeed = seed;
 
-      // Call OpenRouter API
-      const images = await this.callOpenRouter(apiKey, conversation, seed);
+      // Call image generation API
+      const result = await this.imageClient.generateImages({
+        messages: conversation.messages,
+        model: conversation.model,
+        aspectRatio: conversation.aspectRatio,
+        seed,
+      });
 
-      // Create assistant message with the generated images
-      const assistantMessage: ConversationMessage = {
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Generated images' }],
-        images: images.map(img => ({ image_url: { url: img.data } }))
-      };
+      // Add assistant response to conversation
+      this.conversationManager.addAssistantResponse(conversation.id, result);
 
-      conversation.messages.push(assistantMessage);
-      conversation.turnNumber++;
+      // Transform to presentation format
+      const images = this.transformToGeneratedImages(result, conversation.id, conversation.turnNumber, prompt, seed);
 
       // Send response
       this.postMessage(createEnvelope<ImageGenerationResponsePayload>(
         MessageType.IMAGE_GENERATION_RESPONSE,
         'extension.imageGeneration',
         {
-          conversationId: activeConversationId,
+          conversationId: conversation.id,
           images,
           turnNumber: conversation.turnNumber,
         },
@@ -168,12 +133,16 @@ export class ImageGenerationHandler {
     const { prompt, conversationId, history, model, aspectRatio } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
-    let conversation = this.conversations.get(conversationId);
+    let conversation = this.conversationManager.get(conversationId);
 
     // If conversation not found but history provided, re-hydrate from history
     if (!conversation && history && history.length > 0 && model && aspectRatio) {
       this.logger.info(`Conversation ${conversationId} not found, re-hydrating from ${history.length} turns`);
-      conversation = this.rehydrateConversation(conversationId, model, aspectRatio, history);
+      const rehydrationHistory: RehydrationTurn[] = history.map(h => ({
+        prompt: h.prompt,
+        images: h.images,
+      }));
+      conversation = this.conversationManager.rehydrate(conversationId, model, aspectRatio, rehydrationHistory);
     }
 
     if (!conversation) {
@@ -190,7 +159,7 @@ export class ImageGenerationHandler {
       return;
     }
 
-    // Reuse the generation request handler by creating a request payload
+    // Reuse the generation request handler
     // Use the last seed for consistency when refining images
     const requestPayload: ImageGenerationRequestPayload = {
       prompt,
@@ -207,70 +176,12 @@ export class ImageGenerationHandler {
   }
 
   /**
-   * Re-hydrate a conversation from webview history after extension restart
-   */
-  private rehydrateConversation(
-    conversationId: string,
-    model: string,
-    aspectRatio: string,
-    history: Array<{ prompt: string; images: Array<{ data: string; seed: number }> }>
-  ): ConversationState {
-    const conversation: ConversationState = {
-      id: conversationId,
-      messages: [],
-      model,
-      aspectRatio,
-      turnNumber: 0,
-    };
-
-    // Rebuild messages from history
-    for (const turn of history) {
-      // Add user message with prompt and reference to previous images
-      const userContent: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [
-        { type: 'text', text: turn.prompt }
-      ];
-
-      // Include images from this turn as context for the model
-      for (const img of turn.images) {
-        userContent.push({
-          type: 'image_url',
-          image_url: { url: img.data }
-        });
-      }
-
-      conversation.messages.push({
-        role: 'user',
-        content: userContent
-      });
-
-      // Add assistant response placeholder with images
-      conversation.messages.push({
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Generated images' }],
-        images: turn.images.map(img => ({ image_url: { url: img.data } }))
-      });
-
-      conversation.turnNumber++;
-
-      // Track the last seed used
-      if (turn.images.length > 0) {
-        conversation.lastSeed = turn.images[0].seed;
-      }
-    }
-
-    this.conversations.set(conversationId, conversation);
-    this.logger.debug(`Re-hydrated conversation ${conversationId} with ${conversation.turnNumber} turns`);
-
-    return conversation;
-  }
-
-  /**
    * Handle conversation clear request
    */
   handleClearConversation(message: MessageEnvelope<{ conversationId: string }>): void {
     const { conversationId } = message.payload;
     this.logger.info(`Clearing image generation conversation: ${conversationId}`);
-    this.conversations.delete(conversationId);
+    this.conversationManager.clear(conversationId);
   }
 
   /**
@@ -314,93 +225,23 @@ export class ImageGenerationHandler {
   }
 
   /**
-   * Create a new conversation
+   * Transform infrastructure result to presentation format
    */
-  private createConversation(model: string, aspectRatio: string): string {
-    const id = `img-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    this.conversations.set(id, {
-      id,
-      messages: [],
-      model,
-      aspectRatio,
-      turnNumber: 0,
-    });
-    this.logger.debug(`Created conversation: ${id}`);
-    return id;
-  }
-
-  /**
-   * Call OpenRouter API for image generation
-   */
-  private async callOpenRouter(apiKey: string, conversation: ConversationState, seed: number): Promise<GeneratedImage[]> {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://github.com/pixel-minion-vscode',
-        'X-Title': 'Pixel Minion',
-      },
-      body: JSON.stringify({
-        model: conversation.model,
-        messages: conversation.messages,
-        modalities: ['image', 'text'],
-        seed,
-        image_config: { aspect_ratio: conversation.aspectRatio },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`OpenRouter API error: ${response.status} ${errorText}`);
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    this.logger.debug('OpenRouter response received');
-
-    // Extract images from response
-    const images: GeneratedImage[] = [];
-    const choice = result.choices?.[0];
-    if (!choice?.message?.images) {
-      throw new Error('No images returned from API');
-    }
-
-    // Get the prompt from the last user message
-    const lastUserMessage = conversation.messages.filter(m => m.role === 'user').pop();
-    const prompt = lastUserMessage?.content.find(c => c.type === 'text')?.text ?? 'Unknown prompt';
-
-    for (const [index, image] of choice.message.images.entries()) {
-      const imageUrl = image.image_url?.url;
-      if (!imageUrl) {
-        this.logger.warn(`Image ${index} missing URL`);
-        continue;
-      }
-
-      // Extract base64 data and mime type from data URL
-      const match = imageUrl.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (!match) {
-        this.logger.warn(`Image ${index} is not a valid data URL`);
-        continue;
-      }
-
-      const [, mimeType, base64Data] = match;
-
-      images.push({
-        id: `${conversation.id}-${conversation.turnNumber}-${index}`,
-        data: imageUrl, // Keep full data URL for webview display
-        mimeType,
-        prompt,
-        timestamp: Date.now(),
-        seed,
-      });
-    }
-
-    if (images.length === 0) {
-      throw new Error('Failed to parse images from API response');
-    }
-
-    return images;
+  private transformToGeneratedImages(
+    result: { images: Array<{ data: string; mimeType: string }>; seed: number },
+    conversationId: string,
+    turnNumber: number,
+    prompt: string,
+    seed: number
+  ): GeneratedImage[] {
+    return result.images.map((img, index) => ({
+      id: `${conversationId}-${turnNumber}-${index}`,
+      data: img.data,
+      mimeType: img.mimeType,
+      prompt,
+      timestamp: Date.now(),
+      seed,
+    }));
   }
 
   /**
