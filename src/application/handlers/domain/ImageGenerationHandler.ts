@@ -216,7 +216,7 @@ export class ImageGenerationHandler {
     this.logger.info(`Saving image: ${suggestedFilename}`);
 
     try {
-      const filePath = await this.saveImage(data, mimeType, suggestedFilename);
+      const fileUri = await this.saveImage(data, mimeType, suggestedFilename);
 
       this.postMessage(createEnvelope<ImageSaveResultPayload>(
         MessageType.IMAGE_SAVE_RESULT,
@@ -224,12 +224,15 @@ export class ImageGenerationHandler {
         {
           success: true,
           imageId,
-          filePath,
+          filePath: fileUri.fsPath,
         },
         message.correlationId
       ));
 
-      this.logger.info(`Image saved successfully: ${filePath}`);
+      // Open the saved image in VSCode's preview
+      await vscode.commands.executeCommand('vscode.open', fileUri);
+
+      this.logger.info(`Image saved and opened: ${fileUri.fsPath}`);
     } catch (error) {
       this.logger.error('Image save failed', error);
       this.postMessage(createEnvelope<ImageSaveResultPayload>(
@@ -336,9 +339,9 @@ export class ImageGenerationHandler {
   }
 
   /**
-   * Save image to workspace
+   * Save image to workspace and return the file URI
    */
-  private async saveImage(dataUrl: string, mimeType: string, suggestedFilename: string): Promise<string> {
+  private async saveImage(dataUrl: string, mimeType: string, suggestedFilename: string): Promise<vscode.Uri> {
     // Get workspace folder
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -385,6 +388,6 @@ export class ImageGenerationHandler {
     // Write file
     await vscode.workspace.fs.writeFile(fileUri, buffer);
 
-    return fileUri.fsPath;
+    return fileUri;
   }
 }
