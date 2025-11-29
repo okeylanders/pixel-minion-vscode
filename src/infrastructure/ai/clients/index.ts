@@ -2,11 +2,13 @@
 export type {
   TextClient,
   TextMessage,
+  TextMessageContent,
   TextCompletionOptions,
   TextCompletionResult,
   TokenUsage,
 } from './TextClient';
 export { OpenRouterTextClient } from './OpenRouterTextClient';
+export { OpenRouterDynamicTextClient } from './OpenRouterDynamicTextClient';
 
 // Image generation client
 export type {

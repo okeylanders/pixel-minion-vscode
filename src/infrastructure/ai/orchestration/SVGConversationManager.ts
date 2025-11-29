@@ -1,0 +1,166 @@
+/**
+ * SVGConversationManager - Manages SVG generation conversation state
+ *
+ * Responsibilities:
+ * - Store and retrieve conversation state
+ * - Build messages for text completion API calls
+ * - Manage SVG system prompt with aspect ratio configuration
+ */
+import { TextMessage } from '../clients/TextClient';
+import { LoggingService } from '@logging';
+import { AspectRatio, ASPECT_RATIO_DIMENSIONS } from '@messages';
+
+/**
+ * State for a single SVG generation conversation
+ */
+export interface SVGConversationState {
+  id: string;
+  messages: TextMessage[];
+  model: string;
+  aspectRatio: AspectRatio;
+  turnNumber: number;
+}
+
+/**
+ * SVG system prompt - instructs the AI to generate clean SVG code
+ */
+const SVG_SYSTEM_PROMPT = `You are an expert SVG artist. Generate clean, well-structured SVG code based on user descriptions.
+
+Rules:
+1. Output ONLY valid SVG code - no explanations unless asked
+2. Use viewBox for scalability
+3. Prefer semantic grouping with <g> elements
+4. Use meaningful id attributes for key elements
+5. Keep code clean and readable with proper indentation
+6. For the requested aspect ratio, set appropriate viewBox dimensions
+7. If a reference image is provided, use it as inspiration for style/composition
+
+When user asks for refinements, output the complete updated SVG (not just changes).`;
+
+export class SVGConversationManager {
+  private readonly conversations = new Map<string, SVGConversationState>();
+
+  constructor(private readonly logger: LoggingService) {}
+
+  /**
+   * Create a new conversation with system prompt configured for aspect ratio
+   */
+  create(model: string, aspectRatio: AspectRatio): SVGConversationState {
+    const id = `svg-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    // Get dimensions for the aspect ratio
+    const dimensions = ASPECT_RATIO_DIMENSIONS[aspectRatio];
+    const systemPrompt = `${SVG_SYSTEM_PROMPT}\n\nFor this conversation, use viewBox="0 0 ${dimensions.width} ${dimensions.height}" for the ${aspectRatio} aspect ratio.`;
+
+    const conversation: SVGConversationState = {
+      id,
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt
+        }
+      ],
+      model,
+      aspectRatio,
+      turnNumber: 0,
+    };
+
+    this.conversations.set(id, conversation);
+    this.logger.debug(`Created SVG conversation: ${id} with aspect ratio ${aspectRatio}`);
+    return conversation;
+  }
+
+  /**
+   * Get an existing conversation
+   */
+  get(id: string): SVGConversationState | undefined {
+    return this.conversations.get(id);
+  }
+
+  /**
+   * Get or create a conversation
+   */
+  getOrCreate(
+    id: string | undefined,
+    model: string,
+    aspectRatio: AspectRatio
+  ): SVGConversationState {
+    if (id) {
+      const existing = this.conversations.get(id);
+      if (existing) {
+        return existing;
+      }
+    }
+    return this.create(model, aspectRatio);
+  }
+
+  /**
+   * Add a user message to a conversation
+   * Supports both simple text and multimodal messages with reference images
+   */
+  addUserMessage(
+    conversationId: string,
+    prompt: string,
+    referenceImage?: string
+  ): void {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+
+    // Build message content - multimodal if reference image provided
+    let content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
+
+    if (referenceImage) {
+      // Multimodal message with text and image
+      content = [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: referenceImage } }
+      ];
+    } else {
+      // Simple text message
+      content = prompt;
+    }
+
+    conversation.messages.push({
+      role: 'user',
+      content
+    });
+  }
+
+  /**
+   * Add an assistant response with the generated SVG code
+   */
+  addAssistantResponse(
+    conversationId: string,
+    svgCode: string
+  ): void {
+    const conversation = this.conversations.get(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+
+    conversation.messages.push({
+      role: 'assistant',
+      content: svgCode
+    });
+
+    conversation.turnNumber++;
+  }
+
+  /**
+   * Clear a conversation
+   */
+  clear(conversationId: string): void {
+    this.conversations.delete(conversationId);
+    this.logger.debug(`Cleared SVG conversation: ${conversationId}`);
+  }
+
+  /**
+   * Clear all conversations
+   */
+  clearAll(): void {
+    this.conversations.clear();
+    this.logger.debug('Cleared all SVG conversations');
+  }
+}

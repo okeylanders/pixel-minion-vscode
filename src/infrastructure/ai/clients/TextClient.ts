@@ -7,9 +7,18 @@
  * Reference: Improved from docs/example-repo/src/infrastructure/api/OpenRouterClient.ts
  */
 
+/**
+ * Multimodal content for messages (supports text and images)
+ */
+export interface TextMessageContent {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: { url: string };
+}
+
 export interface TextMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | TextMessageContent[];  // Simple or multimodal
 }
 
 export interface TextCompletionOptions {

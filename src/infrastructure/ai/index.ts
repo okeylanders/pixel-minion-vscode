@@ -11,11 +11,12 @@
 export type {
   TextClient,
   TextMessage,
+  TextMessageContent,
   TextCompletionOptions,
   TextCompletionResult,
   TokenUsage,
 } from './clients';
-export { OpenRouterTextClient } from './clients';
+export { OpenRouterTextClient, OpenRouterDynamicTextClient } from './clients';
 
 // Image generation client
 export type {
@@ -44,6 +45,14 @@ export type {
   RehydrationTurn,
   ImageGenerationOptions,
   ImageTurnResult,
+} from './orchestration';
+
+// SVG orchestration
+export { SVGConversationManager, SVGOrchestrator } from './orchestration';
+export type {
+  SVGConversationState,
+  SVGGenerationOptions,
+  SVGTurnResult,
 } from './orchestration';
 
 // Tools

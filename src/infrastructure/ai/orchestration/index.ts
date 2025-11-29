@@ -9,3 +9,9 @@ export { ImageConversationManager } from './ImageConversationManager';
 export type { ImageConversationState, RehydrationTurn } from './ImageConversationManager';
 export { ImageOrchestrator } from './ImageOrchestrator';
 export type { ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrator';
+
+// SVG orchestration
+export { SVGConversationManager } from './SVGConversationManager';
+export type { SVGConversationState } from './SVGConversationManager';
+export { SVGOrchestrator } from './SVGOrchestrator';
+export type { SVGGenerationOptions, SVGTurnResult } from './SVGOrchestrator';

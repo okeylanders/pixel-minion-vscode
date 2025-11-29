@@ -30,7 +30,7 @@ import { MessageRouter } from './MessageRouter';
 import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OpenRouterImageClient, ImageOrchestrator } from '@ai';
+import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator } from '@ai';
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -72,9 +72,13 @@ export class MessageHandler {
       imageOrchestrator,
       logger
     );
+
+    // Create SVG generation orchestrator and inject dynamic text client
+    const svgOrchestrator = new SVGOrchestrator(logger);
+    svgOrchestrator.setClient(new OpenRouterDynamicTextClient(secretStorage, logger));
     this.svgGenerationHandler = new SVGGenerationHandler(
       postMessage,
-      secretStorage,
+      svgOrchestrator,
       logger
     );
 

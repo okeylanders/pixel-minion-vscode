@@ -1,43 +1,65 @@
 /**
- * OpenRouterTextClient - Implementation of TextClient for OpenRouter API
+ * OpenRouterDynamicTextClient - TextClient that uses SecretStorageService and supports dynamic models
  *
- * OpenRouter provides access to multiple AI models through a unified API.
- * https://openrouter.ai/docs
- *
- * Reference: docs/example-repo/src/infrastructure/api/OpenRouterClient.ts
+ * This client allows the model to be set per-request (via setModel) rather than at construction time.
+ * This is useful for SVG generation where different models can be selected from the UI.
  */
 import { TextClient, TextMessage, TextCompletionOptions, TextCompletionResult } from './TextClient';
+import { SecretStorageService } from '@secrets';
+import { LoggingService } from '@logging';
 
-export class OpenRouterTextClient implements TextClient {
+export class OpenRouterDynamicTextClient implements TextClient {
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
+  private currentModel: string;
 
   constructor(
-    private readonly apiKey: string,
-    private readonly model: string = 'anthropic/claude-sonnet-4'
-  ) {}
+    private readonly secretStorage: SecretStorageService,
+    private readonly logger: LoggingService,
+    defaultModel: string = 'anthropic/claude-sonnet-4'
+  ) {
+    this.currentModel = defaultModel;
+  }
+
+  /**
+   * Set the model to use for subsequent requests
+   */
+  setModel(model: string): void {
+    this.currentModel = model;
+    this.logger.debug(`OpenRouterDynamicTextClient model set to: ${model}`);
+  }
 
   getModel(): string {
-    return this.model;
+    return this.currentModel;
   }
 
   async isConfigured(): Promise<boolean> {
-    return this.apiKey !== undefined && this.apiKey.length > 0;
+    return this.secretStorage.hasApiKey();
   }
 
   async createCompletion(
     messages: TextMessage[],
     options?: TextCompletionOptions
   ): Promise<TextCompletionResult> {
+    const apiKey = await this.secretStorage.getApiKey();
+    if (!apiKey) {
+      throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
+    }
+
+    this.logger.debug('Calling OpenRouter text completion', {
+      model: this.currentModel,
+      messageCount: messages.length,
+    });
+
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'https://github.com/pixel-minion-vscode',
         'X-Title': 'Pixel Minion',
       },
       body: JSON.stringify({
-        model: this.model,
+        model: this.currentModel,
         // Content can be either string or multimodal array - pass as-is
         messages: messages.map(m => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.7,
@@ -48,6 +70,7 @@ export class OpenRouterTextClient implements TextClient {
 
     if (!response.ok) {
       const errorText = await response.text();
+      this.logger.error(`OpenRouter API error: ${response.status} ${errorText}`);
       throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
     }
 
