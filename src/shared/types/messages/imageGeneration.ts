@@ -23,9 +23,30 @@ export interface ImageGenerationRequestPayload {
   seed?: number;               // optional seed for reproducibility (auto-generated if not provided)
 }
 
+/**
+ * History turn for re-hydration (lightweight: prompts + image refs)
+ */
+export interface ConversationHistoryTurn {
+  prompt: string;
+  images: Array<{
+    data: string;      // base64 data URL
+    seed: number;
+  }>;
+}
+
 export interface ImageGenerationContinuePayload {
   prompt: string;
   conversationId: string;
+  /**
+   * Conversation history for re-hydration.
+   * Always sent - handler uses it to rebuild conversation if lost (e.g., extension restart).
+   */
+  history?: ConversationHistoryTurn[];
+  /**
+   * Model and aspect ratio needed for re-hydration
+   */
+  model?: string;
+  aspectRatio?: AspectRatio;
 }
 
 export interface GeneratedImage {

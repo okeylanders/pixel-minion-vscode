@@ -13,6 +13,7 @@ import {
   AspectRatio,
   GeneratedImage,
   ConversationTurn,
+  ConversationHistoryTurn,
   ImageGenerationResponsePayload,
   ImageSaveResultPayload,
 } from '@messages';
@@ -194,6 +195,15 @@ export function useImageGeneration(
       setError(null);
       setPendingPrompt(chatPrompt);  // Track prompt for history
 
+      // Build history for self-contained request (enables re-hydration after extension restart)
+      const history: ConversationHistoryTurn[] = conversationHistory.map(turn => ({
+        prompt: turn.prompt,
+        images: turn.images.map(img => ({
+          data: img.data,
+          seed: img.seed,
+        })),
+      }));
+
       vscode.postMessage(
         createEnvelope(
           MessageType.IMAGE_GENERATION_CONTINUE,
@@ -201,11 +211,14 @@ export function useImageGeneration(
           {
             prompt: chatPrompt,
             conversationId,
+            history,
+            model,
+            aspectRatio,
           }
         )
       );
     },
-    [conversationId, vscode]
+    [conversationId, conversationHistory, model, aspectRatio, vscode]
   );
 
   const clearConversation = useCallback(() => {

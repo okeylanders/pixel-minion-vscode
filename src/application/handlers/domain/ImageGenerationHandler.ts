@@ -165,12 +165,19 @@ export class ImageGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<ImageGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
-    const conversation = this.conversations.get(conversationId);
+    let conversation = this.conversations.get(conversationId);
+
+    // If conversation not found but history provided, re-hydrate from history
+    if (!conversation && history && history.length > 0 && model && aspectRatio) {
+      this.logger.info(`Conversation ${conversationId} not found, re-hydrating from ${history.length} turns`);
+      conversation = this.rehydrateConversation(conversationId, model, aspectRatio, history);
+    }
+
     if (!conversation) {
-      this.logger.error(`Conversation ${conversationId} not found`);
+      this.logger.error(`Conversation ${conversationId} not found and no history provided`);
       this.postMessage(createEnvelope(
         MessageType.ERROR,
         'extension.imageGeneration',
@@ -197,6 +204,64 @@ export class ImageGenerationHandler {
       ...message,
       payload: requestPayload,
     } as MessageEnvelope<ImageGenerationRequestPayload>);
+  }
+
+  /**
+   * Re-hydrate a conversation from webview history after extension restart
+   */
+  private rehydrateConversation(
+    conversationId: string,
+    model: string,
+    aspectRatio: string,
+    history: Array<{ prompt: string; images: Array<{ data: string; seed: number }> }>
+  ): ConversationState {
+    const conversation: ConversationState = {
+      id: conversationId,
+      messages: [],
+      model,
+      aspectRatio,
+      turnNumber: 0,
+    };
+
+    // Rebuild messages from history
+    for (const turn of history) {
+      // Add user message with prompt and reference to previous images
+      const userContent: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [
+        { type: 'text', text: turn.prompt }
+      ];
+
+      // Include images from this turn as context for the model
+      for (const img of turn.images) {
+        userContent.push({
+          type: 'image_url',
+          image_url: { url: img.data }
+        });
+      }
+
+      conversation.messages.push({
+        role: 'user',
+        content: userContent
+      });
+
+      // Add assistant response placeholder with images
+      conversation.messages.push({
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Generated images' }],
+        images: turn.images.map(img => ({ image_url: { url: img.data } }))
+      });
+
+      conversation.turnNumber++;
+
+      // Track the last seed used
+      if (turn.images.length > 0) {
+        conversation.lastSeed = turn.images[0].seed;
+      }
+    }
+
+    this.conversations.set(conversationId, conversation);
+    this.logger.debug(`Re-hydrated conversation ${conversationId} with ${conversation.turnNumber} turns`);
+
+    return conversation;
   }
 
   /**
