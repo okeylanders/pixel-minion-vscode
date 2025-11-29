@@ -6,3 +6,7 @@ export type { OrchestratorOptions, ConversationTurnResult } from './AIOrchestrat
 // Image generation conversation manager
 export { ImageConversationManager } from './ImageConversationManager';
 export type { ImageConversationState, RehydrationTurn } from './ImageConversationManager';
+
+// Image orchestrator
+export { ImageOrchestrator } from './ImageOrchestrator';
+export type { ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrator';

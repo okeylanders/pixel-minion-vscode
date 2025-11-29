@@ -30,7 +30,7 @@ import { MessageRouter } from './MessageRouter';
 import { HelloWorldHandler, SettingsHandler, AIHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OpenRouterImageClient, ImageConversationManager } from '@ai';
+import { OpenRouterImageClient, ImageOrchestrator } from '@ai';
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -64,13 +64,12 @@ export class MessageHandler {
       logger,
       (usage) => this.applyTokenUsage(usage)
     );
-    // Create image generation infrastructure
-    const imageClient = new OpenRouterImageClient(secretStorage, logger);
-    const imageConversationManager = new ImageConversationManager(logger);
+    // Create image generation orchestrator and inject client
+    const imageOrchestrator = new ImageOrchestrator(logger);
+    imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
     this.imageGenerationHandler = new ImageGenerationHandler(
       postMessage,
-      imageClient,
-      imageConversationManager,
+      imageOrchestrator,
       logger
     );
     this.svgGenerationHandler = new SVGGenerationHandler(

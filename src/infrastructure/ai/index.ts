@@ -26,9 +26,9 @@ export { OpenRouterImageClient } from './clients';
 export { AIOrchestrator, ConversationManager } from './orchestration';
 export type { OrchestratorOptions, ConversationTurnResult, Conversation, ConversationManagerOptions } from './orchestration';
 
-// Image conversation manager
-export { ImageConversationManager } from './orchestration';
-export type { ImageConversationState, RehydrationTurn } from './orchestration';
+// Image orchestration
+export { ImageConversationManager, ImageOrchestrator } from './orchestration';
+export type { ImageConversationState, RehydrationTurn, ImageGenerationOptions, ImageTurnResult } from './orchestration';
 
 // Tools
 export type { ToolProvider, ToolDefinition, ToolExecutionResult } from './tools';
