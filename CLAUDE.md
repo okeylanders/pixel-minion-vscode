@@ -34,6 +34,181 @@ Tech stack:
 2. **Strategy Pattern** - `MessageRouter` routes messages without switch statements
 3. **Tripartite Hooks** - Domain hooks export State, Actions, Persistence interfaces
 4. **Dependency Injection** - Services injected via constructors from `extension.ts`
+5. **Three-Suite Architecture** - Parallel AI infrastructure for Text, Image, and SVG generation
+6. **Thin Handlers** - Handlers only route messages, business logic lives in orchestrators
+7. **Rehydration Pattern** - Infrastructure rebuilds state from webview history after restart
+
+## Three-Suite AI Infrastructure
+
+The extension uses three parallel AI generation suites, each following the same architectural pattern:
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                    Three Parallel Suites                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  TEXT SUITE              IMAGE SUITE              SVG SUITE      │
+│  ───────────             ────────────             ─────────      │
+│  TextOrchestrator        ImageOrchestrator        SVGOrchestrator│
+│       │                        │                        │         │
+│       ├── TextClient           ├── ImageClient          ├── TextClient │
+│       │   (static model)       │                        │   (dynamic) │
+│       │                        │                        │         │
+│       └── TextConversation     └── ImageConversation    └── SVGConversation │
+│           Manager                  Manager                  Manager │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Architecture Pattern
+
+Each suite consists of three layers:
+
+1. **Orchestrator** - Coordinates between client and conversation manager
+   - Provides clean interface for handlers
+   - Handles conversation lifecycle
+   - Manages state transitions
+   - Supports re-hydration after extension restart
+
+2. **Client** - Communicates with AI service provider
+   - Implements provider-specific API calls
+   - Handles authentication via SecretStorageService
+   - Returns structured results
+
+3. **ConversationManager** - Maintains conversation state
+   - Tracks message history
+   - Formats messages for API calls
+   - Rebuilds state from history (re-hydration)
+
+### Suite Details
+
+#### Text Suite
+
+- **Purpose**: Chat/conversation functionality
+- **Client**: `OpenRouterTextClient` (static model set at construction)
+- **Messages**: `TextMessage[]` with role-based structure
+- **State**: `TextConversation` with turn counting and max turns limit
+- **Default**: `max_tokens: 16384`
+
+#### Image Suite
+
+- **Purpose**: Image generation (text-to-image, image-to-image)
+- **Client**: `OpenRouterImageClient`
+- **Messages**: `ImageConversationMessage[]` with multimodal content
+- **State**: Tracks prompts, generated images, seeds, aspect ratio
+- **Special**: Re-hydration support for conversation continuation
+
+#### SVG Suite
+
+- **Purpose**: SVG code generation using text models
+- **Client**: `OpenRouterDynamicTextClient` (model set via `setModel()`)
+- **Messages**: `TextMessage[]` with multimodal content (images optional)
+- **State**: Tracks prompts, SVG code, aspect ratio
+- **Special**: Extracts SVG code from markdown responses
+
+### Dependency Injection Pattern
+
+Orchestrators receive clients via `setClient()` method:
+
+```typescript
+// In MessageHandler.ts
+const imageOrchestrator = new ImageOrchestrator(logger);
+imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
+
+const svgOrchestrator = new SVGOrchestrator(logger);
+svgOrchestrator.setClient(new OpenRouterDynamicTextClient(secretStorage, logger));
+
+// Handlers receive orchestrators
+this.imageGenerationHandler = new ImageGenerationHandler(
+  postMessage,
+  imageOrchestrator,  // Injected!
+  logger
+);
+```
+
+### Thin Handler Pattern
+
+Handlers are THIN - they only route messages to orchestrators:
+
+```typescript
+// Handler receives orchestrator, doesn't create clients
+export class ImageGenerationHandler {
+  constructor(
+    private readonly postMessage: (message: MessageEnvelope) => void,
+    private readonly orchestrator: ImageOrchestrator,  // Injected!
+    private readonly logger: LoggingService
+  ) {}
+
+  // Handler only routes messages - NO business logic
+  async handleGenerationRequest(message: MessageEnvelope<...>): Promise<void> {
+    const result = await this.orchestrator.generateImage(...);
+    this.postMessage(createEnvelope(..., result));
+  }
+}
+```
+
+### Two-Store History Pattern
+
+The extension maintains conversation history in two separate stores:
+
+1. **Presentation Layer** (webview): `ConversationTurn[]`
+   - UI-focused structure
+   - Persists across webview reloads via `vscode.setState()`
+   - Contains user prompts, assistant responses, metadata
+
+2. **Infrastructure Layer** (extension): `TextMessage[]` or `ImageConversationMessage[]`
+   - API-focused structure
+   - Ephemeral (in-memory `Map`)
+   - Lost when extension restarts
+   - Rebuilt via re-hydration when needed
+
+### Re-hydration Pattern
+
+Extension restarts lose infrastructure state, but webview state persists. Re-hydration rebuilds infrastructure state from webview history:
+
+```typescript
+// Webview sends history with continuation requests
+const continueChat = useCallback((prompt: string) => {
+  const history = conversationHistory.map(turn => ({
+    prompt: turn.prompt,
+    images: turn.images,
+  }));
+
+  postMessage({
+    type: MessageType.CONTINUE_CONVERSATION,
+    payload: {
+      prompt,
+      conversationId,
+      history,  // Self-contained request enables re-hydration
+      model,
+      aspectRatio,
+    }
+  });
+}, [conversationId, conversationHistory, model, aspectRatio]);
+
+// Handler re-hydrates if conversation lost
+async handleContinueRequest(message) {
+  let conversation = this.orchestrator.getConversation(conversationId);
+
+  // If conversation not found but history provided, re-hydrate
+  if (!conversation && history?.length) {
+    conversation = await this.orchestrator.continueConversation(
+      conversationId,
+      prompt,
+      history,  // Orchestrator rebuilds state
+      model,
+      aspectRatio
+    );
+  }
+}
+```
+
+**Benefits**:
+
+- Webview doesn't need to know if extension restarted
+- Handler uses existing conversation if available (ignores history)
+- Handler rebuilds from history if conversation lost
+- AI model gets full context even after restart
 
 ## Import Aliases
 
@@ -42,7 +217,9 @@ Use these path aliases (defined in tsconfig.json):
 ```typescript
 import { MessageType } from '@messages';           // Message types
 import { SecretStorageService } from '@secrets';   // Secret storage
-import { TextOrchestrator } from '@ai';            // Text AI infrastructure
+import { TextOrchestrator, ImageOrchestrator, SVGOrchestrator } from '@ai';
+import { OpenRouterTextClient, OpenRouterDynamicTextClient } from '@ai';
+import { OpenRouterImageClient } from '@ai';
 import { LoggingService } from '@logging';         // Logging service
 import { OPENROUTER_CONFIG } from '@providers';    // Provider configs
 import { HelloWorldHandler } from '@handlers/domain/HelloWorldHandler';
@@ -68,9 +245,47 @@ import { useSettings } from '@hooks/domain/useSettings';
 ### Adding a New Handler
 
 1. Create handler class in `src/application/handlers/domain/`
-2. Inject dependencies via constructor (postMessage, LoggingService, etc.)
-3. Register routes in `MessageHandler.ts`
-4. Add tests in `src/__tests__/application/handlers/domain/`
+2. Inject dependencies via constructor:
+   - **Always**: `postMessage`, `logger`
+   - **If using AI**: Inject orchestrator (NOT client)
+   - **Example**: `new MyHandler(postMessage, myOrchestrator, logger)`
+3. Keep handlers THIN - only route messages to orchestrators
+4. Register routes in `MessageHandler.ts`
+5. Add tests in `src/__tests__/application/handlers/domain/`
+
+**Example Thin Handler**:
+
+```typescript
+export class MyFeatureHandler {
+  constructor(
+    private readonly postMessage: (message: MessageEnvelope) => void,
+    private readonly orchestrator: MyOrchestrator,  // Injected!
+    private readonly logger: LoggingService
+  ) {}
+
+  async handleRequest(message: MessageEnvelope<MyPayload>): Promise<void> {
+    try {
+      // NO business logic here - delegate to orchestrator
+      const result = await this.orchestrator.doSomething(message.payload);
+
+      this.postMessage(createEnvelope(
+        MessageType.MY_RESPONSE,
+        'extension.myFeature',
+        result,
+        message.correlationId
+      ));
+    } catch (error) {
+      this.logger.error('Request failed', error);
+      this.postMessage(createEnvelope(
+        MessageType.ERROR,
+        'extension.myFeature',
+        { message: error.message },
+        message.correlationId
+      ));
+    }
+  }
+}
+```
 
 ### Adding a New Hook
 
@@ -158,6 +373,7 @@ interface ProviderConfig {
 See `docs/adr/` for architectural decisions. Key ADRs:
 
 - **ADR-001**: Pixel Minion Architecture - Two-tab design, provider interface, message types
+- **ADR-002**: Three-Suite AI Infrastructure - Text, Image, and SVG generation suites with orchestrator pattern
 
 ## Resources
 
@@ -1339,291 +1555,293 @@ See `docs/conversation-architecture.md` for detailed architecture.
 
 ## 7. AI Client Integration
 
-Guide for integrating AI clients with the extension infrastructure.
+Guide for integrating AI clients with the three-suite architecture.
 
-### TextClient Interface Implementation
+### Client Types
 
-Create a client implementing the `TextClient` interface:
+The extension provides three client interfaces:
+
+1. **TextClient** - For text completion (chat, SVG code generation)
+2. **ImageGenerationClient** - For image generation
+3. **OpenRouterDynamicTextClient** - Text client with dynamic model selection
+
+### Client Implementations
+
+#### OpenRouterTextClient (Static Model)
+
+For text generation where model is fixed at construction:
 
 ```typescript
-// src/infrastructure/ai/clients/MyTextClient.ts
-import { TextClient, TextMessage, TextCompletionResult } from '@ai';
-import { LoggingService } from '@logging';
+// src/infrastructure/ai/clients/OpenRouterTextClient.ts
+import { TextClient, TextMessage, TextCompletionResult } from './TextClient';
 
-export class MyTextClient implements TextClient {
+export class OpenRouterTextClient implements TextClient {
   constructor(
     private readonly apiKey: string,
-    private readonly baseUrl: string,
+    private readonly model: string = 'anthropic/claude-sonnet-4'
+  ) {}
+
+  getModel(): string {
+    return this.model;
+  }
+
+  async createCompletion(
+    messages: TextMessage[],
+    options?: TextCompletionOptions
+  ): Promise<TextCompletionResult> {
+    // ... OpenRouter API call with this.model
+    // Default: max_tokens: 16384
+  }
+}
+```
+
+#### OpenRouterDynamicTextClient (Dynamic Model)
+
+For text generation where model changes per request (used by SVG suite):
+
+```typescript
+// src/infrastructure/ai/clients/OpenRouterDynamicTextClient.ts
+import { TextClient } from './TextClient';
+import { SecretStorageService } from '@secrets';
+import { LoggingService } from '@logging';
+
+export class OpenRouterDynamicTextClient implements TextClient {
+  private currentModel: string;
+
+  constructor(
+    private readonly secretStorage: SecretStorageService,
+    private readonly logger: LoggingService,
+    defaultModel: string = 'anthropic/claude-sonnet-4'
+  ) {
+    this.currentModel = defaultModel;
+  }
+
+  /**
+   * Set the model to use for subsequent requests
+   */
+  setModel(model: string): void {
+    this.currentModel = model;
+    this.logger.debug(`Model set to: ${model}`);
+  }
+
+  getModel(): string {
+    return this.currentModel;
+  }
+
+  async createCompletion(messages, options?): Promise<TextCompletionResult> {
+    const apiKey = await this.secretStorage.getApiKey();
+    // ... OpenRouter API call with this.currentModel
+    // Default: max_tokens: 16384
+  }
+}
+```
+
+#### OpenRouterImageClient
+
+For image generation:
+
+```typescript
+// src/infrastructure/ai/clients/OpenRouterImageClient.ts
+import { ImageGenerationClient, ImageGenerationRequest, ImageGenerationResult } from './ImageGenerationClient';
+import { SecretStorageService } from '@secrets';
+import { LoggingService } from '@logging';
+
+export class OpenRouterImageClient implements ImageGenerationClient {
+  constructor(
+    private readonly secretStorage: SecretStorageService,
     private readonly logger: LoggingService
   ) {}
 
-  async generateResponse(request: AIRequest): Promise<AIResponse> {
-    this.logger.debug('Sending request to AI service', {
-      model: request.model,
-      promptLength: request.prompt.length
-    });
+  async generateImages(request: ImageGenerationRequest): Promise<ImageGenerationResult> {
+    const apiKey = await this.secretStorage.getApiKey();
+    // ... OpenRouter image generation API call
+    // Uses modalities: ['image', 'text']
+    // Uses image_config: { aspect_ratio: request.aspectRatio }
+  }
 
-    try {
-      const response = await fetch(`${this.baseUrl}/generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: request.model,
-          prompt: request.prompt,
-          max_tokens: request.maxTokens,
-          temperature: request.temperature,
-          ...request.parameters
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`AI service error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      return {
-        content: data.content,
-        model: data.model,
-        usage: {
-          promptTokens: data.usage.prompt_tokens,
-          completionTokens: data.usage.completion_tokens,
-          totalTokens: data.usage.total_tokens
-        }
-      };
-    } catch (error) {
-      this.logger.error('AI request failed', error);
-      throw error;
-    }
+  async isConfigured(): Promise<boolean> {
+    return this.secretStorage.hasApiKey();
   }
 }
 ```
 
-### TextOrchestrator Setup
+### Orchestrator Setup in MessageHandler.ts
 
-Register clients with the orchestrator:
-
-```typescript
-// In extension.ts
-import { TextOrchestrator } from '@ai';
-import { MyTextClient } from '@ai/clients/MyTextClient';
-
-const secretStorage = new SecretStorageService(context);
-const logger = new LoggingService();
-
-const apiKey = await secretStorage.getSecret('myai.apiKey');
-if (!apiKey) {
-  throw new Error('API key not configured');
-}
-
-const myTextClient = new MyTextClient(
-  apiKey,
-  'https://api.myai.com/v1',
-  logger
-);
-
-const orchestrator = new TextOrchestrator(logger);
-orchestrator.setClient(myTextClient);
-```
-
-### TextConversationManager Usage
-
-Use TextConversationManager for multi-turn conversations:
+Wire up all three suites in MessageHandler constructor:
 
 ```typescript
-// src/infrastructure/ai/orchestration/TextConversationManager.ts
-import { TextMessage } from '../clients/TextClient';
+// src/application/handlers/MessageHandler.ts
+import { ImageOrchestrator, SVGOrchestrator } from '@ai';
+import { OpenRouterImageClient, OpenRouterDynamicTextClient } from '@ai';
 
-export class TextConversationManager {
-  private turns: ConversationTurn[] = [];
-
-  addTurn(turn: ConversationTurn): void {
-    this.turns.push(turn);
-  }
-
-  getTurns(): ConversationTurn[] {
-    return [...this.turns];
-  }
-
-  clear(): void {
-    this.turns = [];
-  }
-
-  formatForAI(): string {
-    return this.turns
-      .map(turn => {
-        let formatted = `User: ${turn.userPrompt}\n`;
-        if (turn.assistantResponse) {
-          formatted += `Assistant: ${turn.assistantResponse}\n`;
-        }
-        return formatted;
-      })
-      .join('\n');
-  }
-}
-```
-
-Usage in handler:
-
-```typescript
-// In handler
-import { ConversationManager } from '@ai/ConversationManager';
-
-export class ChatHandler extends MessageHandler {
-  private conversationManager = new ConversationManager();
-
-  async handle(message: MessageEnvelope<ChatRequestPayload>): Promise<void> {
-    const { prompt, conversationHistory } = message.payload;
-
-    // Restore conversation history
-    if (conversationHistory) {
-      conversationHistory.forEach(turn => {
-        this.conversationManager.addTurn(turn);
-      });
-    }
-
-    // Build context
-    const context = this.conversationManager.formatForAI();
-    const fullPrompt = context + `\nUser: ${prompt}\nAssistant:`;
-
-    // Generate response
-    const response = await this.orchestrator.generate({
-      model: 'gpt-4',
-      prompt: fullPrompt,
-      maxTokens: 1000
-    });
-
-    // Add turn to history
-    const turn: ConversationTurn = {
-      id: message.correlationId!,
-      timestamp: new Date(),
-      userPrompt: prompt,
-      assistantResponse: response.content,
-      status: 'complete',
-      metadata: {
-        model: response.model,
-        tokensUsed: response.usage.totalTokens
-      }
-    };
-
-    this.conversationManager.addTurn(turn);
-
-    // Send response
-    this.postMessage({
-      type: MessageType.CHAT_RESPONSE,
-      payload: { turn },
-      correlationId: message.correlationId
-    });
-  }
-}
-```
-
-### Handler Integration with AI Infrastructure
-
-Complete handler with AI integration:
-
-```typescript
-// src/application/handlers/domain/TextGenerationHandler.ts
-import { MessageHandler } from '@handlers/MessageHandler';
-import { MessageEnvelope, GenerateRequestPayload, GenerateResponsePayload } from '@messages';
-import { TextOrchestrator } from '@ai';
-import { LoggingService } from '@logging';
-
-export class TextGenerationHandler extends MessageHandler {
+export class MessageHandler {
   constructor(
-    postMessage: (message: MessageEnvelope<any>) => void,
-    private readonly orchestrator: TextOrchestrator,
+    private readonly postMessage: (message: MessageEnvelope) => void,
+    secretStorage: SecretStorageService,
     private readonly logger: LoggingService
   ) {
-    super(postMessage);
+    // IMAGE SUITE
+    const imageOrchestrator = new ImageOrchestrator(logger);
+    imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
+    this.imageGenerationHandler = new ImageGenerationHandler(
+      postMessage,
+      imageOrchestrator,  // Injected!
+      logger
+    );
+
+    // SVG SUITE
+    const svgOrchestrator = new SVGOrchestrator(logger);
+    svgOrchestrator.setClient(new OpenRouterDynamicTextClient(secretStorage, logger));
+    this.svgGenerationHandler = new SVGGenerationHandler(
+      postMessage,
+      svgOrchestrator,  // Injected!
+      logger
+    );
+
+    // Register routes...
   }
+}
+```
 
-  async handle(message: MessageEnvelope<GenerateRequestPayload>): Promise<void> {
-    const { prompt, model, parameters } = message.payload;
+### Handler Pattern (Thin Handlers)
 
-    this.logger.info('Generating AI response', { model, promptLength: prompt.length });
+Handlers ONLY route messages - all business logic in orchestrators:
+
+```typescript
+// src/application/handlers/domain/ImageGenerationHandler.ts
+export class ImageGenerationHandler {
+  constructor(
+    private readonly postMessage: (message: MessageEnvelope) => void,
+    private readonly orchestrator: ImageOrchestrator,  // Injected!
+    private readonly logger: LoggingService
+  ) {}
+
+  async handleGenerationRequest(message: MessageEnvelope<ImageGenerationRequestPayload>): Promise<void> {
+    const { prompt, model, aspectRatio, referenceImages, conversationId, seed } = message.payload;
 
     try {
-      const response = await this.orchestrator.generate({
+      // Delegate to orchestrator - NO business logic here
+      const result = await this.orchestrator.generateImage(prompt, {
         model,
-        prompt,
-        maxTokens: parameters?.maxTokens ?? 1000,
-        temperature: parameters?.temperature ?? 0.7,
-        parameters
-      });
+        aspectRatio,
+        seed,
+        referenceImages,
+      }, conversationId);
 
-      this.logger.info('AI response generated', {
-        model: response.model,
-        tokensUsed: response.usage.totalTokens
-      });
+      // Transform and send response
+      const images = this.transformToGeneratedImages(result.result, result.conversationId, result.turnNumber, prompt);
 
-      this.postMessage({
-        type: MessageType.GENERATE_RESPONSE,
-        payload: {
-          content: response.content,
-          model: response.model,
-          usage: response.usage
-        } as GenerateResponsePayload,
-        correlationId: message.correlationId
-      });
+      this.postMessage(createEnvelope<ImageGenerationResponsePayload>(
+        MessageType.IMAGE_GENERATION_RESPONSE,
+        'extension.imageGeneration',
+        { conversationId: result.conversationId, images, turnNumber: result.turnNumber },
+        message.correlationId
+      ));
     } catch (error) {
-      this.logger.error('AI generation failed', error);
-
-      this.postMessage({
-        type: MessageType.GENERATE_RESPONSE,
-        payload: {
-          error: error instanceof Error ? error.message : 'Unknown error'
-        } as GenerateResponsePayload,
-        correlationId: message.correlationId
-      });
+      this.sendError(error, message.correlationId);
     }
   }
 }
 ```
 
-### Token Usage Tracking Pattern
+### Orchestrator API Examples
 
-Track and display token usage:
+#### Text Suite
 
 ```typescript
-// In hook
-interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+// Create conversation
+const conversationId = textOrchestrator.startConversation(systemPrompt);
+
+// Send message
+const result = await textOrchestrator.sendMessage(
+  conversationId,
+  userMessage,
+  { temperature: 0.7, maxTokens: 16384 }
+);
+
+// Single message (no conversation state)
+const result = await textOrchestrator.sendSingleMessage(
+  userMessage,
+  systemPrompt,
+  { temperature: 0.7 }
+);
+```
+
+#### Image Suite
+
+```typescript
+// Generate image (new or continue)
+const result = await imageOrchestrator.generateImage(prompt, {
+  model: 'google/gemini-2.5-flash-image',
+  aspectRatio: '16:9',
+  seed: 12345,
+  referenceImages: [base64Image1, base64Image2],
+}, conversationId);
+
+// Continue conversation with re-hydration
+const result = await imageOrchestrator.continueConversation(
+  conversationId,
+  prompt,
+  history,  // Re-hydration data from webview
+  model,
+  aspectRatio
+);
+```
+
+#### SVG Suite
+
+```typescript
+// Generate SVG (new or continue)
+const result = await svgOrchestrator.generateSVG(prompt, {
+  model: 'google/gemini-3-pro-preview',
+  aspectRatio: '1:1',
+  referenceImage: base64Image,
+}, conversationId);
+
+// Continue existing conversation
+const result = await svgOrchestrator.continueSVG(conversationId, prompt);
+```
+
+### Re-hydration Support
+
+Image and SVG orchestrators support re-hydration after extension restart:
+
+```typescript
+// In handler - check if conversation exists
+let conversation = this.orchestrator.getConversation(conversationId);
+
+// If not found but history provided, re-hydrate
+if (!conversation && history?.length) {
+  this.logger.info(`Re-hydrating conversation ${conversationId}`);
+  conversation = await this.orchestrator.continueConversation(
+    conversationId,
+    prompt,
+    history,  // Webview sends this with every continuation request
+    model,
+    aspectRatio
+  );
+}
+```
+
+### Client Interface Reference
+
+All clients must provide:
+
+```typescript
+interface TextClient {
+  getModel(): string;
+  createCompletion(messages: TextMessage[], options?: TextCompletionOptions): Promise<TextCompletionResult>;
+  isConfigured(): Promise<boolean>;
 }
 
-const [totalTokensUsed, setTotalTokensUsed] = useState(0);
-
-const handleResponse = useCallback((message: MessageEnvelope<GenerateResponsePayload>) => {
-  if (message.payload.usage) {
-    setTotalTokensUsed(prev => prev + message.payload.usage.totalTokens);
-  }
-}, []);
-
-// In view
-<div className="usage-stats">
-  <span>Total tokens used: {totalTokensUsed.toLocaleString()}</span>
-</div>
+interface ImageGenerationClient {
+  generateImages(request: ImageGenerationRequest): Promise<ImageGenerationResult>;
+  isConfigured(): Promise<boolean>;
+}
 ```
 
-Store usage in conversation metadata:
+### Default Parameters
 
-```typescript
-const turn: ConversationTurn = {
-  id: crypto.randomUUID(),
-  timestamp: new Date(),
-  userPrompt: prompt,
-  assistantResponse: response.content,
-  status: 'complete',
-  metadata: {
-    model: response.model,
-    tokensUsed: response.usage.totalTokens,
-    promptTokens: response.usage.promptTokens,
-    completionTokens: response.usage.completionTokens
-  }
-};
-```
+- **Text clients**: `max_tokens: 16384`, `temperature: 0.7`
+- **Image clients**: Uses OpenRouter defaults per model
+- **SVG clients**: `max_tokens: 16384`, `temperature: 0.7`

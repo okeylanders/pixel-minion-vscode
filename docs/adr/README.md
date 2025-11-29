@@ -13,3 +13,5 @@ See `000-template.md` for the ADR template.
 ## Index
 
 - [000-template](./000-template.md) - ADR Template
+- [001-pixel-minion-architecture](./001-pixel-minion-architecture.md) - Pixel Minion Architecture - Two-tab design, provider interface, message types
+- [002-three-suite-infrastructure](./002-three-suite-infrastructure.md) - Three-Suite AI Infrastructure - Text, Image, and SVG generation suites with orchestrator pattern

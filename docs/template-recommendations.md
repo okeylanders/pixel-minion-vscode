@@ -1,8 +1,10 @@
 # VSCode Extension Template Recommendations
 
 **Date**: 2025-11-29
+**Last Updated**: 2025-11-29
 **Based on**: Pixel Minion codebase evolution analysis
 **Audience**: Template maintainers and extension developers
+**Status**: ✅ Most recommendations implemented in Pixel Minion, documented for template backport
 
 ## Executive Summary
 
@@ -16,20 +18,40 @@ This document analyzes architectural improvements made during the evolution of t
 4. **Message Passing Infrastructure** - Basic extension-to-webview communication
 5. **Build Tooling** - Watch mode, production builds, packaging scripts
 
-### What Needs Improvement
+### What Needs Improvement (Original Assessment)
 
 The template provides basic infrastructure but lacks patterns for:
 
-1. **Message Routing** - Relies on switch statements instead of Strategy pattern
-2. **State Management** - No guidance on organizing React hooks by domain
-3. **Message Architecture** - No envelope pattern, source tracking, or echo prevention
-4. **Conversation Patterns** - No examples of multi-turn chat or state threads
-5. **Loading States** - No consistent pattern for async operation feedback
-6. **Persistence** - No clear boundary pattern for what gets saved vs ephemeral state
-7. **Error Boundaries** - Missing React error boundary components
-8. **Tab 2 Placeholder** - Empty tab with no example implementation
+| # | Gap | Status | Notes |
+|---|-----|--------|-------|
+| 1 | **Message Routing** - Relies on switch statements instead of Strategy pattern | ✅ Implemented | `MessageRouter` with Strategy pattern |
+| 2 | **State Management** - No guidance on organizing React hooks by domain | ✅ Implemented | Tripartite pattern (State, Actions, Persistence) |
+| 3 | **Message Architecture** - No envelope pattern, source tracking, or echo prevention | ✅ Implemented | `MessageEnvelope<TPayload>` with source |
+| 4 | **Conversation Patterns** - No examples of multi-turn chat or state threads | ✅ Implemented | Image & SVG conversation threading |
+| 5 | **Loading States** - No consistent pattern for async operation feedback | ✅ Implemented | Three-zone layout pattern |
+| 6 | **Persistence** - No clear boundary pattern for what gets saved vs ephemeral | ✅ Implemented | Two-store history + `persistedState` |
+| 7 | **Error Boundaries** - Missing React error boundary components | ⚠️ Partial | Error handling, no React boundary |
+| 8 | **Tab 2 Placeholder** - Empty tab with no example implementation | ✅ Implemented | SVG Generation tab |
+| 9 | **AI Infrastructure** - No pattern for AI client integration | ✅ Implemented | Three-Suite Architecture (NEW) |
+| 10 | **Thin Handlers** - Business logic mixed with message routing | ✅ Implemented | Orchestrator pattern (NEW) |
+| 11 | **Re-hydration** - No pattern for state recovery after restart | ✅ Implemented | Self-contained requests (NEW) |
 
 **Impact**: Developers starting from the template immediately face architectural decisions without guidance, leading to anti-patterns (god components, switch statement proliferation, scattered state management).
+
+### New Patterns Discovered (Post-Implementation)
+
+During Pixel Minion development, several additional patterns emerged that weren't in the original assessment:
+
+1. **Three-Suite Architecture** - Parallel infrastructure for Text, Image, and SVG generation
+2. **Thin Handler Pattern** - Handlers only route messages, orchestrators contain business logic
+3. **Two-Store History Pattern** - Presentation stores UI-focused state, Infrastructure stores API-focused state
+4. **Re-hydration Pattern** - Infrastructure rebuilds state from webview history after extension restart
+5. **Dynamic vs Static Client Pattern** - `OpenRouterDynamicTextClient` vs `OpenRouterTextClient`
+
+These patterns are now documented in:
+
+- [CLAUDE.md](../CLAUDE.md) - Three-Suite AI Infrastructure section
+- [ADR-002](adr/002-three-suite-infrastructure.md) - Architectural decision record
 
 ---
 
@@ -528,9 +550,193 @@ function ImageGenerationView({ imageGeneration }) {
 - Accessible (button disabled states)
 
 **Template Recommendation**:
+
 1. Add `LoadingIndicator` component to template
 2. Show three-zone layout in example tab
 3. Document placement strategy (bottom of scroll area)
+
+---
+
+### 5. Three-Suite AI Infrastructure Pattern (NEW)
+
+**Problem**: Template has no guidance on AI client integration, leading to:
+
+- Business logic mixed with API calls in handlers
+- No consistent pattern for conversation state management
+- No recovery mechanism after extension restarts
+- Tight coupling between handlers and specific AI providers
+
+**Solution**: Three-Suite Architecture with Orchestrator pattern
+
+#### Pattern Overview
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                    Three Parallel Suites                          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  TEXT SUITE              IMAGE SUITE              SVG SUITE      │
+│  ───────────             ────────────             ─────────      │
+│  TextOrchestrator        ImageOrchestrator        SVGOrchestrator│
+│       │                        │                        │         │
+│       ├── TextClient           ├── ImageClient          ├── TextClient │
+│       │   (static model)       │                        │   (dynamic) │
+│       │                        │                        │         │
+│       └── TextConversation     └── ImageConversation    └── SVGConversation │
+│           Manager                  Manager                  Manager │
+│                                                                   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Each suite consists of three layers:
+
+1. **Orchestrator** - Coordinates between client and conversation manager
+   - Provides clean interface for handlers
+   - Handles conversation lifecycle
+   - Manages state transitions
+   - Supports re-hydration after extension restart
+
+2. **Client** - Communicates with AI service provider
+   - Implements provider-specific API calls
+   - Handles authentication via SecretStorageService
+   - Returns structured results
+
+3. **ConversationManager** - Maintains conversation state
+   - Tracks message history
+   - Formats messages for API calls
+   - Rebuilds state from history (re-hydration)
+
+#### Thin Handler Pattern
+
+Handlers are THIN - they only route messages to orchestrators:
+
+```typescript
+// Handler receives orchestrator, doesn't create clients
+export class ImageGenerationHandler {
+  constructor(
+    private readonly postMessage: (message: MessageEnvelope) => void,
+    private readonly orchestrator: ImageOrchestrator,  // Injected!
+    private readonly logger: LoggingService
+  ) {}
+
+  // Handler only routes messages - NO business logic
+  async handleGenerationRequest(message: MessageEnvelope<...>): Promise<void> {
+    const result = await this.orchestrator.generateImage(...);
+    this.postMessage(createEnvelope(..., result));
+  }
+}
+```
+
+#### Dependency Injection Pattern
+
+Orchestrators receive clients via `setClient()` method:
+
+```typescript
+// In MessageHandler.ts
+const imageOrchestrator = new ImageOrchestrator(logger);
+imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
+
+const svgOrchestrator = new SVGOrchestrator(logger);
+svgOrchestrator.setClient(new OpenRouterDynamicTextClient(secretStorage, logger));
+
+// Handlers receive orchestrators
+this.imageGenerationHandler = new ImageGenerationHandler(
+  postMessage,
+  imageOrchestrator,  // Injected!
+  logger
+);
+```
+
+#### Two-Store History Pattern
+
+The extension maintains conversation history in two separate stores:
+
+1. **Presentation Layer** (webview): `ConversationTurn[]`
+   - UI-focused structure
+   - Persists across webview reloads via `vscode.setState()`
+   - Contains user prompts, assistant responses, metadata
+
+2. **Infrastructure Layer** (extension): `TextMessage[]` or `ImageConversationMessage[]`
+   - API-focused structure
+   - Ephemeral (in-memory `Map`)
+   - Lost when extension restarts
+   - Rebuilt via re-hydration when needed
+
+#### Re-hydration Pattern
+
+Extension restarts lose infrastructure state, but webview state persists. Re-hydration rebuilds infrastructure state from webview history:
+
+```typescript
+// Webview sends history with continuation requests
+const continueChat = useCallback((prompt: string) => {
+  const history = conversationHistory.map(turn => ({
+    prompt: turn.prompt,
+    images: turn.images,
+  }));
+
+  postMessage({
+    type: MessageType.CONTINUE_CONVERSATION,
+    payload: {
+      prompt,
+      conversationId,
+      history,  // Self-contained request enables re-hydration
+      model,
+      aspectRatio,
+    }
+  });
+}, [conversationId, conversationHistory, model, aspectRatio]);
+
+// Handler re-hydrates if conversation lost
+async handleContinueRequest(message) {
+  let conversation = this.orchestrator.getConversation(conversationId);
+
+  // If conversation not found but history provided, re-hydrate
+  if (!conversation && history?.length) {
+    conversation = await this.orchestrator.continueConversation(
+      conversationId,
+      prompt,
+      history,  // Orchestrator rebuilds state
+      model,
+      aspectRatio
+    );
+  }
+}
+```
+
+**Benefits**:
+
+- Webview doesn't need to know if extension restarted
+- Handler uses existing conversation if available (ignores history)
+- Handler rebuilds from history if conversation lost
+- AI model gets full context even after restart
+
+#### Static vs Dynamic Client Pattern
+
+Two client types for different use cases:
+
+1. **OpenRouterTextClient** (Static Model)
+   - Model set at construction time
+   - Used when model never changes (Text Suite)
+
+2. **OpenRouterDynamicTextClient** (Dynamic Model)
+   - Model changed via `setModel()` per request
+   - Used when UI allows model selection (SVG Suite)
+
+```typescript
+// Static - model fixed at construction
+const textClient = new OpenRouterTextClient(apiKey, 'anthropic/claude-sonnet-4');
+
+// Dynamic - model can change
+const svgClient = new OpenRouterDynamicTextClient(secretStorage, logger);
+svgClient.setModel('google/gemini-3-pro-preview'); // Change per request
+```
+
+**Template Recommendation**:
+
+1. Add orchestrator pattern to template infrastructure layer
+2. Show thin handler example
+3. Document two-store history and re-hydration patterns
+4. Include both static and dynamic client patterns
 
 ---
 
@@ -1440,26 +1646,42 @@ export function App() {
 
 ### High Priority (Essential)
 
-1. **Message Routing Lift** - Replace component-level registration with `useMessageRouter` hook
-2. **Tripartite Hook Pattern** - Show State, Actions, Handlers, Persistence interfaces
-3. **Persistence Boundaries** - Add `usePersistence` hook with `persistedState` pattern
-4. **Tab 2 Conversation Example** - Replace empty placeholder with working conversation demo
-5. **Loading State Patterns** - Add `LoadingIndicator` and three-zone layout examples
-6. **Error Boundaries** - Add `ErrorBoundary` component
+| # | Recommendation | Status |
+|---|----------------|--------|
+| 1 | **Message Routing Lift** - Replace component-level registration with `useMessageRouter` hook | ✅ Done |
+| 2 | **Tripartite Hook Pattern** - Show State, Actions, Handlers, Persistence interfaces | ✅ Done |
+| 3 | **Persistence Boundaries** - Add `usePersistence` hook with `persistedState` pattern | ✅ Done |
+| 4 | **Tab 2 Conversation Example** - Replace empty placeholder with working conversation demo | ✅ Done (SVG) |
+| 5 | **Loading State Patterns** - Add `LoadingIndicator` and three-zone layout examples | ✅ Done |
+| 6 | **Error Boundaries** - Add `ErrorBoundary` component | ⚠️ Partial |
 
 ### Medium Priority (Recommended)
 
-7. **Standard Procedures in CLAUDE.md** - Add step-by-step guides for common tasks
-8. **Message Envelope Pattern** - Add source tracking and echo prevention to base template
-9. **Correlation IDs** - Show pattern for linking requests to responses
-10. **ConversationThread Component** - Add chat-style UI component
+| # | Recommendation | Status |
+|---|----------------|--------|
+| 7 | **Standard Procedures in CLAUDE.md** - Add step-by-step guides for common tasks | ✅ Done |
+| 8 | **Message Envelope Pattern** - Add source tracking and echo prevention to base template | ✅ Done |
+| 9 | **Correlation IDs** - Show pattern for linking requests to responses | ✅ Done |
+| 10 | **ConversationThread Component** - Add chat-style UI component | ✅ Done |
+
+### Infrastructure Priority (NEW - AI Integration)
+
+| # | Recommendation | Status |
+|---|----------------|--------|
+| 11 | **Three-Suite Architecture** - Orchestrator + Client + ConversationManager pattern | ✅ Done |
+| 12 | **Thin Handler Pattern** - Handlers only route, orchestrators contain logic | ✅ Done |
+| 13 | **Two-Store History** - Presentation vs Infrastructure state separation | ✅ Done |
+| 14 | **Re-hydration Pattern** - Self-contained requests for state recovery | ✅ Done |
+| 15 | **Dynamic Client Pattern** - `setModel()` for UI-selected models | ✅ Done |
 
 ### Low Priority (Nice to Have)
 
-11. **More ADR Examples** - Show how to document architectural decisions
-12. **Testing Examples** - Add Jest tests for hooks and components
-13. **Performance Patterns** - Document useCallback/useMemo usage
-14. **VSCode Integration Patterns** - Show file opening, command palette, etc.
+| # | Recommendation | Status |
+|---|----------------|--------|
+| 16 | **More ADR Examples** - Show how to document architectural decisions | ✅ Done (ADR-001, ADR-002) |
+| 17 | **Testing Examples** - Add Jest tests for hooks and components | ✅ Done |
+| 18 | **Performance Patterns** - Document useCallback/useMemo usage | ⚠️ Partial |
+| 19 | **VSCode Integration Patterns** - Show file opening, command palette, etc. | ✅ Done |
 
 ---
 
@@ -1520,24 +1742,74 @@ export function App() {
 ### Tab 2
 
 **Before**:
+
 - Empty placeholder with "TODO" comment
 - No guidance on multi-turn features
 
 **After**:
+
 - Working conversation example
 - Demonstrates all key patterns
 - Copy-paste starting point for developers
+
+### AI Infrastructure (NEW)
+
+**Before** (Fat handlers):
+
+- Business logic mixed with API calls in handlers
+- No conversation state management
+- No recovery after extension restart
+- Tight coupling to AI providers
+
+**After** (Three-Suite Architecture):
+
+- Thin handlers only route messages
+- Orchestrators contain all business logic
+- ConversationManagers track state
+- Re-hydration pattern for state recovery
+- Client injection for testability
+
+### State Management (NEW)
+
+**Before** (Single store):
+
+- All state in webview `vscode.setState()`
+- No clear boundary between UI and API state
+- Lost context after extension restart
+
+**After** (Two-store history):
+
+- Presentation: `ConversationTurn[]` (UI-focused, persisted)
+- Infrastructure: `TextMessage[]` (API-focused, ephemeral)
+- Re-hydration rebuilds infrastructure from presentation
 
 ---
 
 ## Conclusion
 
-The template provides a solid foundation but lacks patterns for real-world extension development. Adding these patterns (message routing lift, tripartite hooks, conversation example, loading states, error boundaries) would dramatically improve the developer experience and prevent common anti-patterns.
+The template provides a solid foundation but lacks patterns for real-world extension development. Adding these patterns would dramatically improve the developer experience and prevent common anti-patterns:
+
+**Presentation Layer Patterns**:
+
+- Message routing lift with Strategy pattern
+- Tripartite hooks (State, Actions, Persistence)
+- Three-zone layout for loading states
+- Error boundaries
+
+**Infrastructure Layer Patterns (NEW)**:
+
+- Three-Suite Architecture (Orchestrator + Client + ConversationManager)
+- Thin Handler pattern (handlers only route, orchestrators contain logic)
+- Two-Store History (presentation vs infrastructure state)
+- Re-hydration pattern (self-contained requests for state recovery)
+- Static vs Dynamic client pattern
 
 The recommendations are based on proven patterns from the Pixel Minion codebase evolution, which went from:
+
 - **App.tsx**: 697 lines → 394 lines (43% reduction)
 - **MessageHandler**: 1,091 lines → 495 lines (54% reduction)
 - **Architecture Score**: 4/10 → 9.8/10 (from comprehensive review)
+- **SVGGenerationHandler**: 388 lines → 242 lines (38% reduction) via thin handler pattern
 
 These improvements weren't theoretical - they were battle-tested through rapid AI-driven development and architectural reviews. Incorporating them into the template would save every developer the pain of discovering these patterns themselves.
 
@@ -1546,25 +1818,45 @@ These improvements weren't theoretical - they were battle-tested through rapid A
 ## References
 
 ### Pixel Minion Codebase
+
 - **Repository**: /Users/okeylanders/Documents/GitHub/pixel-minion-vscode
-- **Key Files**:
-  - `/src/presentation/webview/App.tsx` - Message routing lift example
-  - `/src/presentation/webview/hooks/useMessageRouter.ts` - Strategy pattern implementation
-  - `/src/presentation/webview/hooks/domain/useImageGeneration.ts` - Tripartite hook example
-  - `/src/presentation/webview/hooks/usePersistence.ts` - Persistence pattern
-  - `/src/presentation/webview/components/image/ConversationThread.tsx` - Conversation UI
-  - `/src/shared/types/messages/imageGeneration.ts` - Conversation data structures
+
+**Presentation Layer**:
+
+- [App.tsx](../src/presentation/webview/App.tsx) - Message routing lift example
+- [useMessageRouter.ts](../src/presentation/webview/hooks/useMessageRouter.ts) - Strategy pattern implementation
+- [useImageGeneration.ts](../src/presentation/webview/hooks/domain/useImageGeneration.ts) - Tripartite hook example
+- [usePersistence.ts](../src/presentation/webview/hooks/usePersistence.ts) - Persistence pattern
+- [ConversationThread.tsx](../src/presentation/webview/components/image/ConversationThread.tsx) - Conversation UI
+
+**Infrastructure Layer (AI Suites)**:
+
+- [ImageOrchestrator.ts](../src/infrastructure/ai/orchestration/ImageOrchestrator.ts) - Image suite orchestrator
+- [SVGOrchestrator.ts](../src/infrastructure/ai/orchestration/SVGOrchestrator.ts) - SVG suite orchestrator
+- [TextOrchestrator.ts](../src/infrastructure/ai/orchestration/TextOrchestrator.ts) - Text suite orchestrator
+- [OpenRouterTextClient.ts](../src/infrastructure/ai/clients/OpenRouterTextClient.ts) - Static model client
+- [OpenRouterDynamicTextClient.ts](../src/infrastructure/ai/clients/OpenRouterDynamicTextClient.ts) - Dynamic model client
+- [OpenRouterImageClient.ts](../src/infrastructure/ai/clients/OpenRouterImageClient.ts) - Image generation client
+
+**Application Layer (Thin Handlers)**:
+
+- [ImageGenerationHandler.ts](../src/application/handlers/domain/ImageGenerationHandler.ts) - Image thin handler
+- [SVGGenerationHandler.ts](../src/application/handlers/domain/SVGGenerationHandler.ts) - SVG thin handler
+- [MessageHandler.ts](../src/application/handlers/MessageHandler.ts) - Orchestrator wiring
 
 ### Architecture Decision Records
-- [ADR: Presentation Layer Domain Hooks](docs/adr/2025-10-27-presentation-layer-domain-hooks.md)
-- [ADR: Message Envelope Architecture](docs/adr/2025-10-28-message-envelope-architecture.md)
 
-### Memory Bank Entries
-- [Presentation Layer Refactor](docs/example-repo/.memory-bank/20251027-1236-presentation-layer-domain-hooks-refactor.md)
-- [Architectural Review](docs/example-repo/.memory-bank/20251102-1845-presentation-layer-architectural-review.md)
+- [ADR-001: Pixel Minion Architecture](adr/001-pixel-minion-architecture.md) - Two-tab design, provider interface
+- [ADR-002: Three-Suite AI Infrastructure](adr/002-three-suite-infrastructure.md) - Orchestrator pattern, thin handlers, re-hydration
+
+### Documentation
+
+- [CLAUDE.md](../CLAUDE.md) - Full developer guide with all patterns
+- [Conversation Architecture](conversation-architecture.md) - Detailed re-hydration documentation
 
 ---
 
-**Document Version**: 1.0
+**Document Version**: 2.0
 **Last Updated**: 2025-11-29
 **Authors**: Analysis based on Pixel Minion codebase evolution
+**Changes in v2.0**: Added Three-Suite AI Infrastructure pattern, Thin Handler pattern, Two-Store History, Re-hydration pattern, updated status tracking
