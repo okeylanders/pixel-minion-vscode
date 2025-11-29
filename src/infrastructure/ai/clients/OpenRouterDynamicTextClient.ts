@@ -63,7 +63,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
         // Content can be either string or multimodal array - pass as-is
         messages: messages.map(m => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 4096,
+        max_tokens: options?.maxTokens ?? 16384,
       }),
       signal: options?.signal,
     });
