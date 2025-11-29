@@ -48,8 +48,27 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     error,
     generate,
     continueChat,
+    clearConversation,
     saveImage,
   } = imageGeneration;
+
+  // Format the conversation start time
+  const formatDateTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  // Get conversation title from first prompt
+  const getConversationTitle = () => {
+    if (conversationHistory.length === 0) return '';
+    const firstPrompt = conversationHistory[0].prompt;
+    return firstPrompt.length > 25 ? `${firstPrompt.slice(0, 25)}...` : firstPrompt;
+  };
 
   // Track which images are being saved/have been saved
   const [savingIds, setSavingIds] = React.useState<Set<string>>(new Set());
@@ -126,6 +145,30 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
       {error && (
         <div className="image-generation-error">
           {error}
+        </div>
+      )}
+
+      {/* Divider */}
+      <hr className="image-generation-divider" />
+
+      {/* Conversation header - only show when we have a conversation */}
+      {conversationHistory.length > 0 && (
+        <div className="conversation-header">
+          <div className="conversation-header-info">
+            <span className="conversation-header-title">{getConversationTitle()}</span>
+            <span className="conversation-header-date">
+              {formatDateTime(conversationHistory[0].timestamp)}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="conversation-header-clear"
+            onClick={clearConversation}
+            title="Clear conversation"
+            disabled={isLoading}
+          >
+            <span aria-hidden="true">&#128465;</span>
+          </button>
         </div>
       )}
 
