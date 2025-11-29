@@ -30,11 +30,35 @@
   border-top: 1px solid var(--vscode-panel-border);
 }
 
-.image-card-prompt {
+.image-card-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.image-card-prompt {
   font-size: 11px;
   color: var(--vscode-descriptionForeground);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.image-card-seed {
+  background: none;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  width: fit-content;
+  transition: background-color 0.15s;
+}
+
+.image-card-seed:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+  color: var(--vscode-foreground);
 }

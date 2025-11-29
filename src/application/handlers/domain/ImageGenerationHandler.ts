@@ -36,6 +36,7 @@ interface ConversationState {
   model: string;
   aspectRatio: string;
   turnNumber: number;
+  lastSeed?: number;  // Track last used seed for the conversation
 }
 
 export class ImageGenerationHandler {
@@ -51,11 +52,21 @@ export class ImageGenerationHandler {
   }
 
   /**
+   * Generate a random seed (0 to 2^31-1)
+   */
+  private generateSeed(): number {
+    return Math.floor(Math.random() * 2147483647);
+  }
+
+  /**
    * Handle new image generation request
    */
   async handleGenerationRequest(message: MessageEnvelope<ImageGenerationRequestPayload>): Promise<void> {
-    const { prompt, model, aspectRatio, referenceImages, conversationId } = message.payload;
-    this.logger.info(`Image generation request: ${prompt.substring(0, 50)}...`);
+    const { prompt, model, aspectRatio, referenceImages, conversationId, seed: requestedSeed } = message.payload;
+
+    // Use provided seed or generate a new one
+    const seed = requestedSeed ?? this.generateSeed();
+    this.logger.info(`Image generation request: ${prompt.substring(0, 50)}... (seed: ${seed})`);
 
     // Send loading status
     this.postMessage(createEnvelope<StatusPayload>(
@@ -100,9 +111,10 @@ export class ImageGenerationHandler {
       };
 
       conversation.messages.push(userMessage);
+      conversation.lastSeed = seed;
 
       // Call OpenRouter API
-      const images = await this.callOpenRouter(apiKey, conversation);
+      const images = await this.callOpenRouter(apiKey, conversation, seed);
 
       // Create assistant message with the generated images
       const assistantMessage: ConversationMessage = {
@@ -250,7 +262,7 @@ export class ImageGenerationHandler {
   /**
    * Call OpenRouter API for image generation
    */
-  private async callOpenRouter(apiKey: string, conversation: ConversationState): Promise<GeneratedImage[]> {
+  private async callOpenRouter(apiKey: string, conversation: ConversationState, seed: number): Promise<GeneratedImage[]> {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -263,6 +275,7 @@ export class ImageGenerationHandler {
         model: conversation.model,
         messages: conversation.messages,
         modalities: ['image', 'text'],
+        seed,
         image_config: { aspect_ratio: conversation.aspectRatio },
       }),
     });
@@ -309,6 +322,7 @@ export class ImageGenerationHandler {
         mimeType,
         prompt,
         timestamp: Date.now(),
+        seed,
       });
     }
 

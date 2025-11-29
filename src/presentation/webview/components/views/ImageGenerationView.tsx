@@ -18,6 +18,7 @@ import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
+import { Input } from '../common/Input';
 import { GeneratedImage } from '@messages';
 import '../../styles/components/image-generation-view.css';
 
@@ -35,6 +36,8 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     setModel,
     aspectRatio,
     setAspectRatio,
+    seedInput,
+    setSeedInput,
     referenceImages,
     addReferenceImage,
     removeReferenceImage,
@@ -68,7 +71,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
   return (
     <div className="image-generation-view">
-      {/* Header: Model + Aspect Ratio selectors */}
+      {/* Header: Model + Aspect Ratio + Seed selectors */}
       <div className="image-generation-header">
         <ModelSelector
           models={OPENROUTER_IMAGE_MODELS}
@@ -80,6 +83,15 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           selectedRatio={aspectRatio}
           onRatioChange={setAspectRatio}
           disabled={isLoading}
+        />
+        <Input
+          type="text"
+          value={seedInput}
+          onChange={(e) => setSeedInput(e.target.value)}
+          placeholder="Auto Generate"
+          disabled={isLoading}
+          label="Seed"
+          className="seed-input"
         />
       </div>
 

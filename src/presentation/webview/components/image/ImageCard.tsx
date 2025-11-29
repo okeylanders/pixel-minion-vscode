@@ -25,8 +25,17 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   saving = false,
   saved = false,
 }) => {
+  const [seedCopied, setSeedCopied] = React.useState(false);
+
   const handleSave = () => {
     onSave(image);
+  };
+
+  const handleCopySeed = () => {
+    navigator.clipboard.writeText(String(image.seed)).then(() => {
+      setSeedCopied(true);
+      setTimeout(() => setSeedCopied(false), 2000);
+    });
   };
 
   return (
@@ -39,9 +48,19 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         />
       </div>
       <div className="image-card-footer">
-        <span className="image-card-prompt" title={image.prompt}>
-          {image.prompt.length > 50 ? `${image.prompt.slice(0, 50)}...` : image.prompt}
-        </span>
+        <div className="image-card-info">
+          <span className="image-card-prompt" title={image.prompt}>
+            {image.prompt.length > 50 ? `${image.prompt.slice(0, 50)}...` : image.prompt}
+          </span>
+          <button
+            type="button"
+            className="image-card-seed"
+            onClick={handleCopySeed}
+            title={seedCopied ? 'Copied!' : `Seed: ${image.seed} (click to copy)`}
+          >
+            🎲 {image.seed}
+          </button>
+        </div>
         <SaveButton onClick={handleSave} saving={saving} saved={saved} />
       </div>
     </div>

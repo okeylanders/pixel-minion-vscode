@@ -20,6 +20,7 @@ export interface ImageGenerationRequestPayload {
   aspectRatio: AspectRatio;
   referenceImages?: string[];  // base64 encoded
   conversationId?: string;     // for continuation
+  seed?: number;               // optional seed for reproducibility (auto-generated if not provided)
 }
 
 export interface ImageGenerationContinuePayload {
@@ -33,6 +34,7 @@ export interface GeneratedImage {
   mimeType: string;      // 'image/png' | 'image/jpeg'
   prompt: string;        // prompt that generated it
   timestamp: number;
+  seed: number;          // seed used for generation (for reproducibility)
 }
 
 export interface ImageGenerationResponsePayload {

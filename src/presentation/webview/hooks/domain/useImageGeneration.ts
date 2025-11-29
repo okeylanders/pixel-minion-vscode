@@ -23,6 +23,7 @@ export interface ImageGenerationState {
   model: string;
   aspectRatio: AspectRatio;
   referenceImages: string[];  // base64 data URLs
+  seedInput: string;          // seed input field (empty = auto-generate)
   generatedImages: GeneratedImage[];
   conversationId: string | null;
   isLoading: boolean;
@@ -34,6 +35,7 @@ export interface ImageGenerationActions {
   setPrompt: (prompt: string) => void;
   setModel: (model: string) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
+  setSeedInput: (seed: string) => void;
   addReferenceImage: (dataUrl: string) => void;
   removeReferenceImage: (index: number) => void;
   clearReferenceImages: () => void;
@@ -75,6 +77,7 @@ export function useImageGeneration(
     initialState?.aspectRatio ?? '1:1'
   );
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [seedInput, setSeedInput] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
     initialState?.generatedImages ?? []
   );
@@ -129,6 +132,10 @@ export function useImageGeneration(
     setConversationId(null);  // Clear conversation for new generation
     setGeneratedImages([]);    // Clear previous images
 
+    // Parse seed input - if valid number use it, otherwise let handler auto-generate
+    const parsedSeed = seedInput.trim() ? parseInt(seedInput, 10) : undefined;
+    const seed = parsedSeed !== undefined && !isNaN(parsedSeed) ? parsedSeed : undefined;
+
     vscode.postMessage(
       createEnvelope(
         MessageType.IMAGE_GENERATION_REQUEST,
@@ -138,10 +145,11 @@ export function useImageGeneration(
           model,
           aspectRatio,
           referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+          seed,
         }
       )
     );
-  }, [prompt, model, aspectRatio, referenceImages, vscode]);
+  }, [prompt, model, aspectRatio, referenceImages, seedInput, vscode]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -215,6 +223,7 @@ export function useImageGeneration(
     model,
     aspectRatio,
     referenceImages,
+    seedInput,
     generatedImages,
     conversationId,
     isLoading,
@@ -223,6 +232,7 @@ export function useImageGeneration(
     setPrompt,
     setModel,
     setAspectRatio,
+    setSeedInput,
     addReferenceImage,
     removeReferenceImage,
     clearReferenceImages,
