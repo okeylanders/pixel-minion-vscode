@@ -4,11 +4,11 @@
  * Pattern: Composition of existing SVG generation components
  * Responsibilities:
  * - Compose ModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
- * - Use useSVGGeneration hook for state and actions
+ * - Receive hook instance as prop (prose-minion pattern)
  * - Handle SVG save state tracking
  */
 import React from 'react';
-import { useSVGGeneration } from '../../hooks/domain/useSVGGeneration';
+import { UseSVGGenerationReturn } from '../../hooks/domain/useSVGGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { SingleImageUploader } from '../svg/SingleImageUploader';
@@ -21,7 +21,13 @@ import { Button } from '../common/Button';
 import { SaveButton } from '../shared/SaveButton';
 import '../../styles/components/svg-generation-view.css';
 
-export const SVGGenerationView: React.FC = () => {
+export interface SVGGenerationViewProps {
+  svgGeneration: UseSVGGenerationReturn;
+}
+
+export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
+  svgGeneration,
+}) => {
   const {
     prompt,
     setPrompt,
@@ -39,7 +45,7 @@ export const SVGGenerationView: React.FC = () => {
     continueChat,
     saveSVG,
     copySVG,
-  } = useSVGGeneration();
+  } = svgGeneration;
 
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);

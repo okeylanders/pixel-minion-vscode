@@ -2,12 +2,13 @@
  * useSVGGeneration - SVG Generation domain hook
  *
  * Pattern: Tripartite Interface (State, Actions, Persistence)
+ * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
-import { useMessageRouter } from '../useMessageRouter';
 import {
   MessageType,
+  MessageEnvelope,
   createEnvelope,
   AspectRatio,
   SVGGenerationResponsePayload,
@@ -40,6 +41,13 @@ export interface SVGGenerationActions {
   copySVG: () => void;
 }
 
+// 2b. Message Handlers Interface (for App-level routing)
+export interface SVGGenerationHandlers {
+  handleGenerationResponse: (message: MessageEnvelope) => void;
+  handleSaveResult: (message: MessageEnvelope) => void;
+  handleError: (message: MessageEnvelope) => void;
+}
+
 // 3. Persistence Interface (what gets saved)
 export interface SVGGenerationPersistence {
   model: string;
@@ -49,7 +57,7 @@ export interface SVGGenerationPersistence {
 }
 
 // Composed return type
-export type UseSVGGenerationReturn = SVGGenerationState & SVGGenerationActions & {
+export type UseSVGGenerationReturn = SVGGenerationState & SVGGenerationActions & SVGGenerationHandlers & {
   persistedState: SVGGenerationPersistence;
 };
 
@@ -57,7 +65,6 @@ export function useSVGGeneration(
   initialState?: Partial<SVGGenerationPersistence>
 ): UseSVGGenerationReturn {
   const vscode = useVSCodeApi();
-  const { register } = useMessageRouter();
 
   // State
   const [prompt, setPrompt] = useState('');
@@ -75,28 +82,26 @@ export function useSVGGeneration(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Register message handlers
-  useEffect(() => {
-    register(MessageType.SVG_GENERATION_RESPONSE, (message) => {
-      const payload = message.payload as SVGGenerationResponsePayload;
-      setConversationId(payload.conversationId);
-      setSvgCode(payload.svgCode);
-      setIsLoading(false);
-      setError(null);
-    });
+  // Message handlers (exposed for App-level routing)
+  const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as SVGGenerationResponsePayload;
+    setConversationId(payload.conversationId);
+    setSvgCode(payload.svgCode);
+    setIsLoading(false);
+    setError(null);
+  }, []);
 
-    register(MessageType.SVG_SAVE_RESULT, (message) => {
-      const payload = message.payload as SVGSaveResultPayload;
-      if (!payload.success) {
-        setError(payload.error ?? 'Failed to save SVG');
-      }
-    });
+  const handleSaveResult = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as SVGSaveResultPayload;
+    if (!payload.success) {
+      setError(payload.error ?? 'Failed to save SVG');
+    }
+  }, []);
 
-    register(MessageType.ERROR, (message) => {
-      setIsLoading(false);
-      setError((message.payload as { message: string }).message);
-    });
-  }, [register]);
+  const handleError = useCallback((message: MessageEnvelope) => {
+    setIsLoading(false);
+    setError((message.payload as { message: string }).message);
+  }, []);
 
   // Actions
   const generate = useCallback(() => {
@@ -220,6 +225,10 @@ export function useSVGGeneration(
     clearConversation,
     saveSVG,
     copySVG,
+    // Message Handlers (for App-level routing)
+    handleGenerationResponse,
+    handleSaveResult,
+    handleError,
     // Persistence
     persistedState,
   };

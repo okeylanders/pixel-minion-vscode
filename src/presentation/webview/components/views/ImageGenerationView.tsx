@@ -4,11 +4,11 @@
  * Pattern: Composition of existing image generation components
  * Responsibilities:
  * - Compose ModelSelector, AspectRatioSelector, ImageUploader, ImageGallery
- * - Use useImageGeneration hook for state and actions
+ * - Receive hook instance as prop (prose-minion pattern)
  * - Handle image save state tracking
  */
 import React from 'react';
-import { useImageGeneration } from '../../hooks/domain/useImageGeneration';
+import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { ImageUploader } from '../image/ImageUploader';
@@ -20,7 +20,13 @@ import { Button } from '../common/Button';
 import { GeneratedImage } from '@messages';
 import '../../styles/components/image-generation-view.css';
 
-export const ImageGenerationView: React.FC = () => {
+export interface ImageGenerationViewProps {
+  imageGeneration: UseImageGenerationReturn;
+}
+
+export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
+  imageGeneration,
+}) => {
   const {
     prompt,
     setPrompt,
@@ -39,7 +45,7 @@ export const ImageGenerationView: React.FC = () => {
     generate,
     continueChat,
     saveImage,
-  } = useImageGeneration();
+  } = imageGeneration;
 
   // Track which images are being saved/have been saved
   const [savingIds, setSavingIds] = React.useState<Set<string>>(new Set());

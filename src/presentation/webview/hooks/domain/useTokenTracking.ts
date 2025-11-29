@@ -3,10 +3,10 @@
  *
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Tracks accumulated token usage and costs across AI operations.
+ * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
-import { useMessageRouter } from '../useMessageRouter';
 import {
   MessageType,
   createEnvelope,
@@ -22,8 +22,12 @@ export interface TokenTrackingState {
 
 // 2. Actions Interface
 export interface TokenTrackingActions {
-  handleTokenUsageUpdate: (message: MessageEnvelope<TokenUsageUpdatePayload>) => void;
   resetTokens: () => void;
+}
+
+// 2b. Message Handlers Interface (for App-level routing)
+export interface TokenTrackingHandlers {
+  handleTokenUsageUpdate: (message: MessageEnvelope) => void;
 }
 
 // 3. Persistence Interface
@@ -32,7 +36,8 @@ export interface TokenTrackingPersistence {
 }
 
 export type UseTokenTrackingReturn = TokenTrackingState &
-  TokenTrackingActions & {
+  TokenTrackingActions &
+  TokenTrackingHandlers & {
     persistedState: TokenTrackingPersistence;
   };
 
@@ -47,7 +52,6 @@ export function useTokenTracking(
   initialState?: Partial<TokenTrackingPersistence>
 ): UseTokenTrackingReturn {
   const vscode = useVSCodeApi();
-  const { register } = useMessageRouter();
 
   // State - initialize from persisted state
   const [usage, setUsage] = useState<TokenUsage>({
@@ -55,16 +59,13 @@ export function useTokenTracking(
     ...(initialState?.tokenTracking ?? {}),
   });
 
-  // Handle TOKEN_USAGE_UPDATE messages from extension
-  const handleTokenUsageUpdate = useCallback(
-    (message: MessageEnvelope<TokenUsageUpdatePayload>) => {
-      if (message.type === MessageType.TOKEN_USAGE_UPDATE) {
-        const { totals } = message.payload;
-        setUsage(totals);
-      }
-    },
-    []
-  );
+  // Message handlers (exposed for App-level routing)
+  const handleTokenUsageUpdate = useCallback((message: MessageEnvelope) => {
+    if (message.type === MessageType.TOKEN_USAGE_UPDATE) {
+      const { totals } = message.payload as TokenUsageUpdatePayload;
+      setUsage(totals);
+    }
+  }, []);
 
   // Reset tokens to zero
   const resetTokens = useCallback(() => {
@@ -73,13 +74,6 @@ export function useTokenTracking(
       createEnvelope(MessageType.RESET_TOKEN_USAGE, 'webview.settings', {})
     );
   }, [vscode]);
-
-  // Register message handler
-  useEffect(() => {
-    register(MessageType.TOKEN_USAGE_UPDATE, (msg) =>
-      handleTokenUsageUpdate(msg as MessageEnvelope<TokenUsageUpdatePayload>)
-    );
-  }, [register, handleTokenUsageUpdate]);
 
   // Persistence
   const persistedState: TokenTrackingPersistence = {
@@ -90,8 +84,9 @@ export function useTokenTracking(
     // State
     usage,
     // Actions
-    handleTokenUsageUpdate,
     resetTokens,
+    // Message Handlers (for App-level routing)
+    handleTokenUsageUpdate,
     // Persistence
     persistedState,
   };

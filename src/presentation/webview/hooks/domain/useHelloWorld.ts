@@ -2,13 +2,13 @@
  * useHelloWorld - Hello World domain hook
  *
  * Pattern: Tripartite Interface (State, Actions, Persistence)
- * Reference: docs/example-repo/src/presentation/webview/hooks/domain/useAnalysis.ts
+ * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
-import { useMessageRouter } from '../useMessageRouter';
 import {
   MessageType,
+  MessageEnvelope,
   createEnvelope,
   HelloWorldResultPayload,
 } from '@messages';
@@ -27,6 +27,11 @@ export interface HelloWorldActions {
   clearResult: () => void;
 }
 
+// 2b. Message Handlers Interface (for App-level routing)
+export interface HelloWorldHandlers {
+  handleResult: (message: MessageEnvelope) => void;
+}
+
 // 3. Persistence Interface (what gets saved)
 export interface HelloWorldPersistence {
   text: string;
@@ -34,7 +39,7 @@ export interface HelloWorldPersistence {
 }
 
 // Composed return type
-export type UseHelloWorldReturn = HelloWorldState & HelloWorldActions & {
+export type UseHelloWorldReturn = HelloWorldState & HelloWorldActions & HelloWorldHandlers & {
   persistedState: HelloWorldPersistence;
 };
 
@@ -42,7 +47,6 @@ export function useHelloWorld(
   initialState?: Partial<HelloWorldPersistence>
 ): UseHelloWorldReturn {
   const vscode = useVSCodeApi();
-  const { register } = useMessageRouter();
 
   // State
   const [text, setText] = useState(initialState?.text ?? '');
@@ -51,14 +55,12 @@ export function useHelloWorld(
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  // Register message handler
-  useEffect(() => {
-    register(MessageType.HELLO_WORLD_RESULT, (message) => {
-      const payload = message.payload as HelloWorldResultPayload;
-      setRenderedMarkdown(payload.renderedMarkdown);
-      setIsLoading(false);
-    });
-  }, [register]);
+  // Message handlers (exposed for App-level routing)
+  const handleResult = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as HelloWorldResultPayload;
+    setRenderedMarkdown(payload.renderedMarkdown);
+    setIsLoading(false);
+  }, []);
 
   // Actions
   const submitText = useCallback(() => {
@@ -93,6 +95,8 @@ export function useHelloWorld(
     setText,
     submitText,
     clearResult,
+    // Message Handlers (for App-level routing)
+    handleResult,
     // Persistence
     persistedState,
   };

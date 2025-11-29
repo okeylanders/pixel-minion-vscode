@@ -1,28 +1,51 @@
 /**
- * useMessageRouter - Handles message routing in the webview
+ * useMessageRouter - Strategy pattern for message routing
  *
- * Pattern: Strategy pattern for message routing
- * Uses stable references to avoid re-registering listeners
- * Reference: docs/example-repo/src/presentation/webview/hooks/useMessageRouter.ts
+ * Provides a declarative way to route extension messages to appropriate handlers.
+ * Uses the Strategy pattern to map MessageType → Handler function.
+ *
+ * Pattern matches prose-minion: handlers passed as parameter, stays mounted in App.
  */
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { MessageType, MessageEnvelope } from '@messages';
 
 export type MessageHandler = (message: MessageEnvelope) => void;
 
-export function useMessageRouter() {
-  const handlersRef = useRef<Map<MessageType, MessageHandler>>(new Map());
+/**
+ * Map of MessageType to handler functions
+ * Allows partial implementation (not all message types required)
+ */
+export type MessageHandlerMap = Partial<Record<MessageType, MessageHandler>>;
 
-  const register = useCallback((type: MessageType, handler: MessageHandler) => {
-    handlersRef.current.set(type, handler);
-  }, []);
+/**
+ * Hook that sets up message routing from extension to webview
+ *
+ * Uses the Strategy pattern to route messages based on their type.
+ * Maintains stable event listeners to avoid unnecessary re-registrations.
+ *
+ * @param handlers - Map of MessageType to handler functions
+ *
+ * @example
+ * ```tsx
+ * useMessageRouter({
+ *   [MessageType.IMAGE_GENERATION_RESPONSE]: imageGeneration.handleResponse,
+ *   [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleResponse,
+ *   [MessageType.ERROR]: (msg) => console.error(msg.payload),
+ * });
+ * ```
+ */
+export function useMessageRouter(handlers: MessageHandlerMap): void {
+  // Store handlers in ref to avoid re-creating event listener on every render
+  const handlersRef = useRef(handlers);
 
-  const unregister = useCallback((type: MessageType) => {
-    handlersRef.current.delete(type);
-  }, []);
-
+  // Update ref when handlers change
   useEffect(() => {
-    const handleMessage = (event: MessageEvent<MessageEnvelope>) => {
+    handlersRef.current = handlers;
+  }, [handlers]);
+
+  // Set up message event listener (only once)
+  useEffect(() => {
+    const messageHandler = (event: MessageEvent<MessageEnvelope>) => {
       const message = event.data;
 
       // Ignore messages from webview (echo prevention)
@@ -30,15 +53,13 @@ export function useMessageRouter() {
         return;
       }
 
-      const handler = handlersRef.current.get(message.type);
+      const handler = handlersRef.current[message.type];
       if (handler) {
         handler(message);
       }
     };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  return { register, unregister };
+    window.addEventListener('message', messageHandler);
+    return () => window.removeEventListener('message', messageHandler);
+  }, []); // Empty deps - listener is stable, handlers via ref
 }

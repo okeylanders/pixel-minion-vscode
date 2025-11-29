@@ -2,12 +2,13 @@
  * useSettings - Settings domain hook with API key management
  *
  * Pattern: Tripartite Interface (State, Actions, Persistence)
+ * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
 import { useState, useCallback, useEffect } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
-import { useMessageRouter } from '../useMessageRouter';
 import {
   MessageType,
+  MessageEnvelope,
   createEnvelope,
   SettingsPayload,
   ApiKeyStatusPayload,
@@ -33,13 +34,19 @@ export interface SettingsActions {
   refreshApiKeyStatus: () => void;
 }
 
+// 2b. Message Handlers Interface (for App-level routing)
+export interface SettingsHandlers {
+  handleSettingsData: (message: MessageEnvelope) => void;
+  handleApiKeyStatus: (message: MessageEnvelope) => void;
+}
+
 // 3. Persistence Interface
 export interface SettingsPersistence {
   maxConversationTurns: number;
   openRouterModel: string;
 }
 
-export type UseSettingsReturn = SettingsState & SettingsActions & {
+export type UseSettingsReturn = SettingsState & SettingsActions & SettingsHandlers & {
   persistedState: SettingsPersistence;
 };
 
@@ -47,7 +54,6 @@ export function useSettings(
   initialState?: Partial<SettingsPersistence>
 ): UseSettingsReturn {
   const vscode = useVSCodeApi();
-  const { register } = useMessageRouter();
 
   // State
   const [maxConversationTurns, setMaxConversationTurns] = useState(
@@ -59,20 +65,18 @@ export function useSettings(
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Register message handlers
-  useEffect(() => {
-    register(MessageType.SETTINGS_DATA, (message) => {
-      const payload = message.payload as SettingsPayload;
-      setMaxConversationTurns(payload.maxConversationTurns);
-      setOpenRouterModel(payload.openRouterModel);
-      setIsLoading(false);
-    });
+  // Message handlers (exposed for App-level routing)
+  const handleSettingsData = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as SettingsPayload;
+    setMaxConversationTurns(payload.maxConversationTurns);
+    setOpenRouterModel(payload.openRouterModel);
+    setIsLoading(false);
+  }, []);
 
-    register(MessageType.API_KEY_STATUS, (message) => {
-      const payload = message.payload as ApiKeyStatusPayload;
-      setApiKeyConfigured(payload.isConfigured);
-    });
-  }, [register]);
+  const handleApiKeyStatus = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as ApiKeyStatusPayload;
+    setApiKeyConfigured(payload.isConfigured);
+  }, []);
 
   // Actions
   const updateSetting = useCallback(
@@ -147,6 +151,9 @@ export function useSettings(
     clearApiKey,
     refreshSettings,
     refreshApiKeyStatus,
+    // Message Handlers (for App-level routing)
+    handleSettingsData,
+    handleApiKeyStatus,
     // Persistence
     persistedState,
   };
