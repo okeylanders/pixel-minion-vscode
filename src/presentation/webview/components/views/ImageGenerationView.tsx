@@ -129,21 +129,24 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         </div>
       )}
 
-      {/* Conversation thread - chat-style display of all turns */}
-      <ConversationThread
-        turns={conversationHistory}
-        onSaveImage={handleSaveImage}
-        savingImageIds={savingIds}
-        savedImageIds={savedIds}
-      />
+      {/* Scrollable conversation area */}
+      <div className="image-generation-scroll-area">
+        {/* Conversation thread - chat-style display of all turns */}
+        <ConversationThread
+          turns={conversationHistory}
+          onSaveImage={handleSaveImage}
+          savingImageIds={savingIds}
+          savedImageIds={savedIds}
+        />
 
-      {/* Loading indicator - appears at bottom where new content will show */}
-      <LoadingIndicator
-        isLoading={isLoading}
-        defaultMessage="Generating image..."
-      />
+        {/* Loading indicator - appears at bottom where new content will show */}
+        <LoadingIndicator
+          isLoading={isLoading}
+          defaultMessage="Generating image..."
+        />
+      </div>
 
-      {/* Continue chat input (only show when we have a conversation) */}
+      {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}
       {conversationId && conversationHistory.length > 0 && (
         <ContinueChatInput
           onSubmit={continueChat}

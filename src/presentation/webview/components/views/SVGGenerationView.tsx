@@ -109,27 +109,30 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         </div>
       )}
 
-      {/* Generated SVG preview and code */}
-      {svgCode && (
-        <div className="svg-generation-result">
-          <div className="svg-result-header">
-            <h3>Generated SVG</h3>
-            <div className="svg-result-actions">
-              <SaveButton onClick={handleSave} saving={saving} saved={saved} />
+      {/* Scrollable result area */}
+      <div className="svg-generation-scroll-area">
+        {/* Generated SVG preview and code */}
+        {svgCode && (
+          <div className="svg-generation-result">
+            <div className="svg-result-header">
+              <h3>Generated SVG</h3>
+              <div className="svg-result-actions">
+                <SaveButton onClick={handleSave} saving={saving} saved={saved} />
+              </div>
             </div>
+            <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
+            <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
           </div>
-          <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
-          <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
-        </div>
-      )}
+        )}
 
-      {/* Loading indicator - appears at bottom where new content will show */}
-      <LoadingIndicator
-        isLoading={isLoading}
-        defaultMessage="Generating SVG..."
-      />
+        {/* Loading indicator - appears at bottom where new content will show */}
+        <LoadingIndicator
+          isLoading={isLoading}
+          defaultMessage="Generating SVG..."
+        />
+      </div>
 
-      {/* Continue chat input */}
+      {/* Continue chat input - fixed at bottom */}
       {conversationId && svgCode && (
         <ContinueChatInput
           onSubmit={continueChat}

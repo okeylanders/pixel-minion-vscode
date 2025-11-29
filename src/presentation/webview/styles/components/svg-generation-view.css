@@ -8,7 +8,17 @@
   gap: 16px;
   height: 100%;
   padding: 12px;
+  overflow: hidden;
+}
+
+/* Scrollable result area - takes remaining space */
+.svg-generation-scroll-area {
+  flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Important for flex item to shrink */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .svg-generation-header {
