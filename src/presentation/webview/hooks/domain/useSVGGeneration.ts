@@ -50,6 +50,7 @@ export interface SVGGenerationHandlers {
 
 // 3. Persistence Interface (what gets saved)
 export interface SVGGenerationPersistence {
+  prompt: string;
   model: string;
   aspectRatio: AspectRatio;
   conversationId: string | null;
@@ -67,7 +68,7 @@ export function useSVGGeneration(
   const vscode = useVSCodeApi();
 
   // State
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
   const [model, setModel] = useState(initialState?.model ?? DEFAULT_SVG_MODEL);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
@@ -199,6 +200,7 @@ export function useSVGGeneration(
 
   // Persistence object
   const persistedState: SVGGenerationPersistence = {
+    prompt,
     model,
     aspectRatio,
     conversationId,

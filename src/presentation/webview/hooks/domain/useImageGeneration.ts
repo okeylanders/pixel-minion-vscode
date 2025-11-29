@@ -54,6 +54,7 @@ export interface ImageGenerationHandlers {
 
 // 3. Persistence Interface (what gets saved)
 export interface ImageGenerationPersistence {
+  prompt: string;
   model: string;
   aspectRatio: AspectRatio;
   conversationId: string | null;
@@ -71,7 +72,7 @@ export function useImageGeneration(
   const vscode = useVSCodeApi();
 
   // State
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
   const [model, setModel] = useState(initialState?.model ?? DEFAULT_IMAGE_MODEL);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
@@ -211,6 +212,7 @@ export function useImageGeneration(
 
   // Persistence object
   const persistedState: ImageGenerationPersistence = {
+    prompt,
     model,
     aspectRatio,
     conversationId,
