@@ -1,12 +1,11 @@
-export { ConversationManager } from './ConversationManager';
-export type { Conversation, ConversationManagerOptions } from './ConversationManager';
-export { AIOrchestrator } from './AIOrchestrator';
-export type { OrchestratorOptions, ConversationTurnResult } from './AIOrchestrator';
+// Text orchestration
+export { TextConversationManager } from './TextConversationManager';
+export type { TextConversation, TextConversationManagerOptions } from './TextConversationManager';
+export { TextOrchestrator } from './TextOrchestrator';
+export type { TextOrchestratorOptions, TextTurnResult } from './TextOrchestrator';
 
-// Image generation conversation manager
+// Image orchestration
 export { ImageConversationManager } from './ImageConversationManager';
 export type { ImageConversationState, RehydrationTurn } from './ImageConversationManager';
-
-// Image orchestrator
 export { ImageOrchestrator } from './ImageOrchestrator';
 export type { ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrator';

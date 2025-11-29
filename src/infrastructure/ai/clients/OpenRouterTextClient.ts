@@ -1,14 +1,14 @@
 /**
- * OpenRouterClient - Implementation of AIClient for OpenRouter API
+ * OpenRouterTextClient - Implementation of TextClient for OpenRouter API
  *
  * OpenRouter provides access to multiple AI models through a unified API.
  * https://openrouter.ai/docs
  *
  * Reference: docs/example-repo/src/infrastructure/api/OpenRouterClient.ts
  */
-import { AIClient, ChatMessage, ChatCompletionOptions, ChatCompletionResult } from './AIClient';
+import { TextClient, TextMessage, TextCompletionOptions, TextCompletionResult } from './TextClient';
 
-export class OpenRouterClient implements AIClient {
+export class OpenRouterTextClient implements TextClient {
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
 
   constructor(
@@ -24,10 +24,10 @@ export class OpenRouterClient implements AIClient {
     return this.apiKey !== undefined && this.apiKey.length > 0;
   }
 
-  async createChatCompletion(
-    messages: ChatMessage[],
-    options?: ChatCompletionOptions
-  ): Promise<ChatCompletionResult> {
+  async createCompletion(
+    messages: TextMessage[],
+    options?: TextCompletionOptions
+  ): Promise<TextCompletionResult> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {

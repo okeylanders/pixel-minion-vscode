@@ -1,7 +1,7 @@
 /**
- * AIHandler - Handles AI conversation messages
+ * TextHandler - Handles text conversation messages
  *
- * Pattern: Domain handler with AI orchestration integration
+ * Pattern: Domain handler with text orchestration integration
  */
 import * as vscode from 'vscode';
 import {
@@ -13,12 +13,12 @@ import {
   StatusPayload,
   TokenUsage,
 } from '@messages';
-import { AIOrchestrator, OpenRouterClient } from '@ai';
+import { TextOrchestrator, OpenRouterTextClient } from '@ai';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 
-export class AIHandler {
-  private readonly orchestrator: AIOrchestrator;
+export class TextHandler {
+  private readonly orchestrator: TextOrchestrator;
   private readonly configSection = 'templateExtension';
 
   constructor(
@@ -30,19 +30,19 @@ export class AIHandler {
     const config = vscode.workspace.getConfiguration(this.configSection);
     const maxTurns = config.get<number>('maxConversationTurns', 10);
 
-    this.orchestrator = new AIOrchestrator({
+    this.orchestrator = new TextOrchestrator({
       maxTurns,
       systemPrompt: 'You are a helpful assistant integrated into a VSCode extension. Help users with their coding tasks.',
     });
-    this.logger.debug(`AIHandler initialized with maxTurns: ${maxTurns}`);
+    this.logger.debug(`TextHandler initialized with maxTurns: ${maxTurns}`);
   }
 
   /**
-   * Handle AI conversation request
+   * Handle text conversation request
    */
   async handleConversationRequest(message: MessageEnvelope<AIConversationRequestPayload>): Promise<void> {
     const { message: userMessage, conversationId } = message.payload;
-    this.logger.info(`AI conversation request: ${userMessage.substring(0, 50)}...`);
+    this.logger.info(`Text conversation request: ${userMessage.substring(0, 50)}...`);
 
     // Send loading status
     this.postMessage(createEnvelope<StatusPayload>(
@@ -62,7 +62,7 @@ export class AIHandler {
 
       // Send the message
       const result = await this.orchestrator.sendMessage(activeConversationId, userMessage);
-      this.logger.info(`AI response received (turn ${result.turnNumber})`);
+      this.logger.info(`Text response received (turn ${result.turnNumber})`);
 
       // Send response
       this.postMessage(createEnvelope<AIConversationResponsePayload>(
@@ -77,13 +77,13 @@ export class AIHandler {
         message.correlationId
       ));
     } catch (error) {
-      this.logger.error('AI request failed', error);
+      this.logger.error('Text request failed', error);
       this.postMessage(createEnvelope(
         MessageType.ERROR,
         'extension.ai',
         {
-          message: error instanceof Error ? error.message : 'AI request failed',
-          code: 'AI_REQUEST_ERROR',
+          message: error instanceof Error ? error.message : 'Text request failed',
+          code: 'TEXT_REQUEST_ERROR',
         },
         message.correlationId
       ));
@@ -108,14 +108,14 @@ export class AIHandler {
   }
 
   /**
-   * Ensure the AI client is configured with API key
+   * Ensure the text client is configured with API key
    */
   private async ensureClientConfigured(): Promise<void> {
     if (this.orchestrator.hasClient()) {
       return;
     }
 
-    this.logger.debug('Configuring AI client...');
+    this.logger.debug('Configuring text client...');
     const apiKey = await this.secretStorage.getApiKey();
     if (!apiKey) {
       throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
@@ -124,9 +124,9 @@ export class AIHandler {
     const config = vscode.workspace.getConfiguration(this.configSection);
     const model = config.get<string>('openRouterModel', 'anthropic/claude-sonnet-4');
 
-    const client = new OpenRouterClient(apiKey, model);
+    const client = new OpenRouterTextClient(apiKey, model);
     this.orchestrator.setClient(client);
-    this.logger.info(`AI client configured with model: ${model}`);
+    this.logger.info(`Text client configured with model: ${model}`);
   }
 
   /**
@@ -141,7 +141,7 @@ export class AIHandler {
    * Reset client (e.g., when API key changes)
    */
   resetClient(): void {
-    this.logger.info('Resetting AI client');
+    this.logger.info('Resetting text client');
     this.orchestrator.setClient(null as unknown as never); // Force re-initialization on next request
   }
 

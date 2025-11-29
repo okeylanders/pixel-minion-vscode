@@ -42,7 +42,7 @@ Use these path aliases (defined in tsconfig.json):
 ```typescript
 import { MessageType } from '@messages';           // Message types
 import { SecretStorageService } from '@secrets';   // Secret storage
-import { AIOrchestrator } from '@ai';              // AI infrastructure
+import { TextOrchestrator } from '@ai';            // Text AI infrastructure
 import { LoggingService } from '@logging';         // Logging service
 import { OPENROUTER_CONFIG } from '@providers';    // Provider configs
 import { HelloWorldHandler } from '@handlers/domain/HelloWorldHandler';
@@ -1341,16 +1341,16 @@ See `docs/conversation-architecture.md` for detailed architecture.
 
 Guide for integrating AI clients with the extension infrastructure.
 
-### AIClient Interface Implementation
+### TextClient Interface Implementation
 
-Create a client implementing the `AIClient` interface:
+Create a client implementing the `TextClient` interface:
 
 ```typescript
-// src/infrastructure/ai/clients/MyAIClient.ts
-import { AIClient, AIRequest, AIResponse } from '@ai/types';
+// src/infrastructure/ai/clients/MyTextClient.ts
+import { TextClient, TextMessage, TextCompletionResult } from '@ai';
 import { LoggingService } from '@logging';
 
-export class MyAIClient implements AIClient {
+export class MyTextClient implements TextClient {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl: string,
@@ -1402,14 +1402,14 @@ export class MyAIClient implements AIClient {
 }
 ```
 
-### AIOrchestrator Setup
+### TextOrchestrator Setup
 
 Register clients with the orchestrator:
 
 ```typescript
 // In extension.ts
-import { AIOrchestrator } from '@ai';
-import { MyAIClient } from '@ai/clients/MyAIClient';
+import { TextOrchestrator } from '@ai';
+import { MyTextClient } from '@ai/clients/MyTextClient';
 
 const secretStorage = new SecretStorageService(context);
 const logger = new LoggingService();
@@ -1419,25 +1419,25 @@ if (!apiKey) {
   throw new Error('API key not configured');
 }
 
-const myAIClient = new MyAIClient(
+const myTextClient = new MyTextClient(
   apiKey,
   'https://api.myai.com/v1',
   logger
 );
 
-const orchestrator = new AIOrchestrator(logger);
-orchestrator.registerClient('myai', myAIClient);
+const orchestrator = new TextOrchestrator(logger);
+orchestrator.setClient(myTextClient);
 ```
 
-### ConversationManager Usage
+### TextConversationManager Usage
 
-Use ConversationManager for multi-turn conversations:
+Use TextConversationManager for multi-turn conversations:
 
 ```typescript
-// src/infrastructure/ai/ConversationManager.ts
-import { ConversationTurn } from '@messages';
+// src/infrastructure/ai/orchestration/TextConversationManager.ts
+import { TextMessage } from '../clients/TextClient';
 
-export class ConversationManager {
+export class TextConversationManager {
   private turns: ConversationTurn[] = [];
 
   addTurn(turn: ConversationTurn): void {
@@ -1526,16 +1526,16 @@ export class ChatHandler extends MessageHandler {
 Complete handler with AI integration:
 
 ```typescript
-// src/application/handlers/domain/AIGenerationHandler.ts
+// src/application/handlers/domain/TextGenerationHandler.ts
 import { MessageHandler } from '@handlers/MessageHandler';
 import { MessageEnvelope, GenerateRequestPayload, GenerateResponsePayload } from '@messages';
-import { AIOrchestrator } from '@ai';
+import { TextOrchestrator } from '@ai';
 import { LoggingService } from '@logging';
 
-export class AIGenerationHandler extends MessageHandler {
+export class TextGenerationHandler extends MessageHandler {
   constructor(
     postMessage: (message: MessageEnvelope<any>) => void,
-    private readonly orchestrator: AIOrchestrator,
+    private readonly orchestrator: TextOrchestrator,
     private readonly logger: LoggingService
   ) {
     super(postMessage);

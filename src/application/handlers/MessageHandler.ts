@@ -27,7 +27,7 @@ import {
   createEnvelope,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
-import { HelloWorldHandler, SettingsHandler, AIHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
+import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import { OpenRouterImageClient, ImageOrchestrator } from '@ai';
@@ -36,7 +36,7 @@ export class MessageHandler {
   private readonly router: MessageRouter;
   private readonly helloWorldHandler: HelloWorldHandler;
   private readonly settingsHandler: SettingsHandler;
-  private readonly aiHandler: AIHandler;
+  private readonly textHandler: TextHandler;
   private readonly imageGenerationHandler: ImageGenerationHandler;
   private readonly svgGenerationHandler: SVGGenerationHandler;
 
@@ -58,7 +58,7 @@ export class MessageHandler {
     // Initialize domain handlers with token usage callback
     this.helloWorldHandler = new HelloWorldHandler(postMessage, logger);
     this.settingsHandler = new SettingsHandler(postMessage, secretStorage, logger);
-    this.aiHandler = new AIHandler(
+    this.textHandler = new TextHandler(
       postMessage,
       secretStorage,
       logger,
@@ -174,16 +174,16 @@ export class MessageHandler {
       (msg) => this.settingsHandler.handleClearApiKey(msg)
     );
 
-    // AI domain
+    // Text conversation domain
     this.router.register(
       MessageType.AI_CONVERSATION_REQUEST,
-      (msg) => this.aiHandler.handleConversationRequest(
+      (msg) => this.textHandler.handleConversationRequest(
         msg as MessageEnvelope<AIConversationRequestPayload>
       )
     );
     this.router.register(
       MessageType.AI_CONVERSATION_CLEAR,
-      (msg) => this.aiHandler.handleClearConversation(
+      (msg) => this.textHandler.handleClearConversation(
         msg as MessageEnvelope<{ conversationId: string }>
       )
     );

@@ -1,9 +1,9 @@
 /**
- * AIHandler tests
+ * TextHandler tests
  *
- * Tests AI conversation handling and orchestration
+ * Tests text conversation handling and orchestration
  */
-import { AIHandler } from '../../../../application/handlers/domain/AIHandler';
+import { TextHandler } from '../../../../application/handlers/domain/TextHandler';
 import {
   MessageType,
   createEnvelope,
@@ -14,12 +14,12 @@ import * as vscode from 'vscode';
 
 // Mock the AI infrastructure - must match alias used in source
 jest.mock('@ai', () => ({
-  AIOrchestrator: jest.fn().mockImplementation(() => ({
+  TextOrchestrator: jest.fn().mockImplementation(() => ({
     hasClient: jest.fn().mockReturnValue(false),
     setClient: jest.fn(),
     startConversation: jest.fn().mockReturnValue('conv-123'),
     sendMessage: jest.fn().mockResolvedValue({
-      response: 'AI response',
+      response: 'Text response',
       conversationId: 'conv-123',
       turnNumber: 1,
       isComplete: false,
@@ -27,7 +27,7 @@ jest.mock('@ai', () => ({
     clearConversation: jest.fn(),
     setMaxTurns: jest.fn(),
   })),
-  OpenRouterClient: jest.fn().mockImplementation(() => ({})),
+  OpenRouterTextClient: jest.fn().mockImplementation(() => ({})),
 }));
 
 const mockLogger = {
@@ -55,10 +55,10 @@ const mockConfig = {
   }),
 };
 
-describe('AIHandler', () => {
+describe('TextHandler', () => {
   let postMessage: jest.Mock;
   let applyTokenUsageCallback: jest.Mock;
-  let handler: AIHandler;
+  let handler: TextHandler;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -67,7 +67,7 @@ describe('AIHandler', () => {
 
     (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(mockConfig);
 
-    handler = new AIHandler(
+    handler = new TextHandler(
       postMessage,
       mockSecretStorage as never,
       mockLogger as never,
@@ -78,7 +78,7 @@ describe('AIHandler', () => {
   describe('constructor', () => {
     it('should initialize with config values', () => {
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('AIHandler initialized with maxTurns: 10')
+        expect.stringContaining('TextHandler initialized with maxTurns: 10')
       );
     });
   });
@@ -92,7 +92,7 @@ describe('AIHandler', () => {
       const message = createEnvelope<AIConversationRequestPayload>(
         MessageType.AI_CONVERSATION_REQUEST,
         'webview.ai',
-        { message: 'Hello AI', conversationId: 'conv-123' },
+        { message: 'Hello', conversationId: 'conv-123' },
         'correlation-123'
       );
 
@@ -106,11 +106,11 @@ describe('AIHandler', () => {
       );
     });
 
-    it('should send AI response on success', async () => {
+    it('should send text response on success', async () => {
       const message = createEnvelope<AIConversationRequestPayload>(
         MessageType.AI_CONVERSATION_REQUEST,
         'webview.ai',
-        { message: 'Hello AI', conversationId: 'conv-123' },
+        { message: 'Hello', conversationId: 'conv-123' },
         'correlation-456'
       );
 
@@ -121,7 +121,7 @@ describe('AIHandler', () => {
           type: MessageType.AI_CONVERSATION_RESPONSE,
           source: 'extension.ai',
           payload: {
-            response: 'AI response',
+            response: 'Text response',
             conversationId: 'conv-123',
             turnNumber: 1,
             isComplete: false,
@@ -135,7 +135,7 @@ describe('AIHandler', () => {
       const message = createEnvelope<AIConversationRequestPayload>(
         MessageType.AI_CONVERSATION_REQUEST,
         'webview.ai',
-        { message: 'Hello AI' }
+        { message: 'Hello' }
       );
 
       await handler.handleConversationRequest(message);
@@ -158,7 +158,7 @@ describe('AIHandler', () => {
       const message = createEnvelope<AIConversationRequestPayload>(
         MessageType.AI_CONVERSATION_REQUEST,
         'webview.ai',
-        { message: 'Hello AI' },
+        { message: 'Hello' },
         'correlation-789'
       );
 
@@ -169,7 +169,7 @@ describe('AIHandler', () => {
           type: MessageType.ERROR,
           payload: {
             message: expect.stringContaining('API key not configured'),
-            code: 'AI_REQUEST_ERROR',
+            code: 'TEXT_REQUEST_ERROR',
           },
           correlationId: 'correlation-789',
         })
@@ -177,13 +177,13 @@ describe('AIHandler', () => {
     });
 
     it('should start new conversation when no conversationId provided', async () => {
-      const { AIOrchestrator } = require('@ai');
-      const mockOrchestrator = AIOrchestrator.mock.results[0].value;
+      const { TextOrchestrator } = require('@ai');
+      const mockOrchestrator = TextOrchestrator.mock.results[0].value;
 
       const message = createEnvelope<AIConversationRequestPayload>(
         MessageType.AI_CONVERSATION_REQUEST,
         'webview.ai',
-        { message: 'Hello AI' }
+        { message: 'Hello' }
       );
 
       await handler.handleConversationRequest(message);
@@ -194,8 +194,8 @@ describe('AIHandler', () => {
 
   describe('handleClearConversation', () => {
     it('should clear the specified conversation', () => {
-      const { AIOrchestrator } = require('@ai');
-      const mockOrchestrator = AIOrchestrator.mock.results[0].value;
+      const { TextOrchestrator } = require('@ai');
+      const mockOrchestrator = TextOrchestrator.mock.results[0].value;
 
       const message = createEnvelope(
         MessageType.AI_CONVERSATION_CLEAR,
@@ -214,8 +214,8 @@ describe('AIHandler', () => {
 
   describe('updateMaxTurns', () => {
     it('should update max turns on orchestrator', () => {
-      const { AIOrchestrator } = require('@ai');
-      const mockOrchestrator = AIOrchestrator.mock.results[0].value;
+      const { TextOrchestrator } = require('@ai');
+      const mockOrchestrator = TextOrchestrator.mock.results[0].value;
 
       handler.updateMaxTurns(25);
 
@@ -225,14 +225,14 @@ describe('AIHandler', () => {
   });
 
   describe('resetClient', () => {
-    it('should reset the AI client', () => {
-      const { AIOrchestrator } = require('@ai');
-      const mockOrchestrator = AIOrchestrator.mock.results[0].value;
+    it('should reset the text client', () => {
+      const { TextOrchestrator } = require('@ai');
+      const mockOrchestrator = TextOrchestrator.mock.results[0].value;
 
       handler.resetClient();
 
       expect(mockOrchestrator.setClient).toHaveBeenCalled();
-      expect(mockLogger.info).toHaveBeenCalledWith('Resetting AI client');
+      expect(mockLogger.info).toHaveBeenCalledWith('Resetting text client');
     });
   });
 });

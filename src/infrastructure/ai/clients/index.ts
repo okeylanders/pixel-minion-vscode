@@ -1,5 +1,12 @@
-export type { AIClient, ChatMessage, ChatCompletionOptions, ChatCompletionResult, TokenUsage } from './AIClient';
-export { OpenRouterClient } from './OpenRouterClient';
+// Text client
+export type {
+  TextClient,
+  TextMessage,
+  TextCompletionOptions,
+  TextCompletionResult,
+  TokenUsage,
+} from './TextClient';
+export { OpenRouterTextClient } from './OpenRouterTextClient';
 
 // Image generation client
 export type {

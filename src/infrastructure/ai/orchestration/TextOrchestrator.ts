@@ -1,20 +1,20 @@
 /**
- * AIOrchestrator - Coordinates AI conversations without knowing which client is used
+ * TextOrchestrator - Coordinates text conversations without knowing which client is used
  *
  * Pattern: Dependency Injection - client is injected, orchestrator is agnostic
  * Responsibilities:
- * - Coordinates between ConversationManager and AIClient
+ * - Coordinates between TextConversationManager and TextClient
  * - Handles conversation lifecycle
  * - Provides clean interface for consumers
  */
-import { AIClient, ChatCompletionResult, ChatCompletionOptions } from '../clients/AIClient';
-import { ConversationManager, ConversationManagerOptions } from './ConversationManager';
+import { TextClient, TextCompletionResult, TextCompletionOptions } from '../clients/TextClient';
+import { TextConversationManager, TextConversationManagerOptions } from './TextConversationManager';
 
-export interface OrchestratorOptions extends ConversationManagerOptions {
+export interface TextOrchestratorOptions extends TextConversationManagerOptions {
   // Extend with orchestrator-specific options if needed
 }
 
-export interface ConversationTurnResult {
+export interface TextTurnResult {
   response: string;
   conversationId: string;
   turnNumber: number;
@@ -26,18 +26,18 @@ export interface ConversationTurnResult {
   };
 }
 
-export class AIOrchestrator {
-  private readonly conversationManager: ConversationManager;
-  private client: AIClient | null = null;
+export class TextOrchestrator {
+  private readonly conversationManager: TextConversationManager;
+  private client: TextClient | null = null;
 
-  constructor(options: OrchestratorOptions = {}) {
-    this.conversationManager = new ConversationManager(options);
+  constructor(options: TextOrchestratorOptions = {}) {
+    this.conversationManager = new TextConversationManager(options);
   }
 
   /**
-   * Set the AI client (dependency injection)
+   * Set the text client (dependency injection)
    */
-  setClient(client: AIClient): void {
+  setClient(client: TextClient): void {
     this.client = client;
   }
 
@@ -63,10 +63,10 @@ export class AIOrchestrator {
   async sendMessage(
     conversationId: string,
     userMessage: string,
-    options?: ChatCompletionOptions
-  ): Promise<ConversationTurnResult> {
+    options?: TextCompletionOptions
+  ): Promise<TextTurnResult> {
     if (!this.client) {
-      throw new Error('No AI client configured. Call setClient() first.');
+      throw new Error('No text client configured. Call setClient() first.');
     }
 
     // Check if we can add more turns
@@ -81,7 +81,7 @@ export class AIOrchestrator {
 
     // Get all messages and call the AI
     const messages = this.conversationManager.getMessages(conversationId);
-    const result = await this.client.createChatCompletion(messages, options);
+    const result = await this.client.createCompletion(messages, options);
 
     // Store the assistant's response
     this.conversationManager.addAssistantMessage(conversationId, result.content);
@@ -105,10 +105,10 @@ export class AIOrchestrator {
   async sendSingleMessage(
     userMessage: string,
     systemPrompt?: string,
-    options?: ChatCompletionOptions
-  ): Promise<ChatCompletionResult> {
+    options?: TextCompletionOptions
+  ): Promise<TextCompletionResult> {
     if (!this.client) {
-      throw new Error('No AI client configured. Call setClient() first.');
+      throw new Error('No text client configured. Call setClient() first.');
     }
 
     const messages = [
@@ -116,7 +116,7 @@ export class AIOrchestrator {
       { role: 'user' as const, content: userMessage },
     ];
 
-    return this.client.createChatCompletion(messages, options);
+    return this.client.createCompletion(messages, options);
   }
 
   /**

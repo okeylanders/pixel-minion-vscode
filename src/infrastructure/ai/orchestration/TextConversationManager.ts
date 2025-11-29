@@ -1,5 +1,5 @@
 /**
- * ConversationManager - Manages multi-turn conversation state
+ * TextConversationManager - Manages multi-turn text conversation state
  *
  * Features:
  * - Multi-turn conversation support
@@ -9,27 +9,27 @@
  *
  * Pattern: Maintains conversation state independently of AI client
  */
-import { ChatMessage } from '../clients/AIClient';
+import { TextMessage } from '../clients/TextClient';
 
-export interface Conversation {
+export interface TextConversation {
   id: string;
-  messages: ChatMessage[];
+  messages: TextMessage[];
   turnCount: number;
   createdAt: number;
   lastUpdatedAt: number;
 }
 
-export interface ConversationManagerOptions {
+export interface TextConversationManagerOptions {
   maxTurns?: number;
   systemPrompt?: string;
 }
 
-export class ConversationManager {
-  private conversations: Map<string, Conversation> = new Map();
+export class TextConversationManager {
+  private conversations: Map<string, TextConversation> = new Map();
   private maxTurns: number;
   private readonly defaultSystemPrompt: string;
 
-  constructor(options: ConversationManagerOptions = {}) {
+  constructor(options: TextConversationManagerOptions = {}) {
     this.maxTurns = options.maxTurns ?? 10;
     this.defaultSystemPrompt = options.systemPrompt ?? 'You are a helpful assistant.';
   }
@@ -41,7 +41,7 @@ export class ConversationManager {
    */
   createConversation(systemPrompt?: string): string {
     const id = this.generateId();
-    const conversation: Conversation = {
+    const conversation: TextConversation = {
       id,
       messages: [{
         role: 'system',
@@ -58,7 +58,7 @@ export class ConversationManager {
   /**
    * Get a conversation by ID
    */
-  getConversation(id: string): Conversation | undefined {
+  getConversation(id: string): TextConversation | undefined {
     return this.conversations.get(id);
   }
 
@@ -98,7 +98,7 @@ export class ConversationManager {
   /**
    * Get messages for API call (excludes system message from count)
    */
-  getMessages(conversationId: string): ChatMessage[] {
+  getMessages(conversationId: string): TextMessage[] {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
       throw new Error(`Conversation ${conversationId} not found`);

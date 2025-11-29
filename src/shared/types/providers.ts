@@ -5,7 +5,7 @@
  * Each provider exposes curated model lists per generation type.
  */
 
-import { AIClient } from '../../infrastructure/ai/clients/AIClient';
+import { TextClient } from '../../infrastructure/ai/clients/TextClient';
 
 export type GenerationType = 'image' | 'svg';
 
@@ -28,5 +28,5 @@ export interface ProviderConfig {
 
 export interface AIProvider {
   getConfig(): ProviderConfig;
-  createClient(apiKey: string, model: string): AIClient;
+  createClient(apiKey: string, model: string): TextClient;
 }

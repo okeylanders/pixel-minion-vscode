@@ -39,8 +39,8 @@ jest.mock('../../../application/handlers/domain/SettingsHandler', () => ({
   })),
 }));
 
-jest.mock('../../../application/handlers/domain/AIHandler', () => ({
-  AIHandler: jest.fn().mockImplementation(() => ({
+jest.mock('../../../application/handlers/domain/TextHandler', () => ({
+  TextHandler: jest.fn().mockImplementation(() => ({
     handleConversationRequest: jest.fn(),
     handleClearConversation: jest.fn(),
   })),

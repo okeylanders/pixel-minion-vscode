@@ -7,9 +7,15 @@
  * - Extensible tool system
  */
 
-// Clients
-export type { AIClient, ChatMessage, ChatCompletionOptions, ChatCompletionResult, TokenUsage } from './clients';
-export { OpenRouterClient } from './clients';
+// Text clients
+export type {
+  TextClient,
+  TextMessage,
+  TextCompletionOptions,
+  TextCompletionResult,
+  TokenUsage,
+} from './clients';
+export { OpenRouterTextClient } from './clients';
 
 // Image generation client
 export type {
@@ -22,13 +28,23 @@ export type {
 } from './clients';
 export { OpenRouterImageClient } from './clients';
 
-// Orchestration
-export { AIOrchestrator, ConversationManager } from './orchestration';
-export type { OrchestratorOptions, ConversationTurnResult, Conversation, ConversationManagerOptions } from './orchestration';
+// Text orchestration
+export { TextOrchestrator, TextConversationManager } from './orchestration';
+export type {
+  TextOrchestratorOptions,
+  TextTurnResult,
+  TextConversation,
+  TextConversationManagerOptions,
+} from './orchestration';
 
 // Image orchestration
 export { ImageConversationManager, ImageOrchestrator } from './orchestration';
-export type { ImageConversationState, RehydrationTurn, ImageGenerationOptions, ImageTurnResult } from './orchestration';
+export type {
+  ImageConversationState,
+  RehydrationTurn,
+  ImageGenerationOptions,
+  ImageTurnResult,
+} from './orchestration';
 
 // Tools
 export type { ToolProvider, ToolDefinition, ToolExecutionResult } from './tools';
