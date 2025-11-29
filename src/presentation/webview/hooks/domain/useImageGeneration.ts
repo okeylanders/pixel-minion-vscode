@@ -12,6 +12,7 @@ import {
   createEnvelope,
   AspectRatio,
   GeneratedImage,
+  ConversationTurn,
   ImageGenerationResponsePayload,
   ImageSaveResultPayload,
 } from '@messages';
@@ -25,6 +26,7 @@ export interface ImageGenerationState {
   referenceImages: string[];  // base64 data URLs
   seedInput: string;          // seed input field (empty = auto-generate)
   generatedImages: GeneratedImage[];
+  conversationHistory: ConversationTurn[];  // Full conversation thread
   conversationId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -59,6 +61,7 @@ export interface ImageGenerationPersistence {
   aspectRatio: AspectRatio;
   conversationId: string | null;
   generatedImages: GeneratedImage[];
+  conversationHistory: ConversationTurn[];
 }
 
 // Composed return type
@@ -82,9 +85,14 @@ export function useImageGeneration(
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
     initialState?.generatedImages ?? []
   );
+  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>(
+    initialState?.conversationHistory ?? []
+  );
   const [conversationId, setConversationId] = useState<string | null>(
     initialState?.conversationId ?? null
   );
+  // Track the pending prompt for the current generation (to build history)
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +101,22 @@ export function useImageGeneration(
     const payload = message.payload as ImageGenerationResponsePayload;
     setConversationId(payload.conversationId);
     setGeneratedImages(payload.images);
+
+    // Add to conversation history
+    setPendingPrompt((currentPendingPrompt) => {
+      if (currentPendingPrompt) {
+        const turn: ConversationTurn = {
+          id: `turn-${payload.turnNumber}`,
+          prompt: currentPendingPrompt,
+          images: payload.images,
+          turnNumber: payload.turnNumber,
+          timestamp: Date.now(),
+        };
+        setConversationHistory((prev) => [...prev, turn]);
+      }
+      return null; // Clear pending prompt
+    });
+
     setIsLoading(false);
     setError(null);
   }, []);
@@ -132,6 +156,8 @@ export function useImageGeneration(
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
     setGeneratedImages([]);    // Clear previous images
+    setConversationHistory([]); // Clear history for new conversation
+    setPendingPrompt(prompt);   // Track prompt for history
 
     // Parse seed input - if valid number use it, otherwise let handler auto-generate
     const parsedSeed = seedInput.trim() ? parseInt(seedInput, 10) : undefined;
@@ -166,6 +192,7 @@ export function useImageGeneration(
 
       setIsLoading(true);
       setError(null);
+      setPendingPrompt(chatPrompt);  // Track prompt for history
 
       vscode.postMessage(
         createEnvelope(
@@ -184,6 +211,7 @@ export function useImageGeneration(
   const clearConversation = useCallback(() => {
     setConversationId(null);
     setGeneratedImages([]);
+    setConversationHistory([]);
     setPrompt('');
     setError(null);
   }, []);
@@ -217,6 +245,7 @@ export function useImageGeneration(
     aspectRatio,
     conversationId,
     generatedImages,
+    conversationHistory,
   };
 
   return {
@@ -227,6 +256,7 @@ export function useImageGeneration(
     referenceImages,
     seedInput,
     generatedImages,
+    conversationHistory,
     conversationId,
     isLoading,
     error,

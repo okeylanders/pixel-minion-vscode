@@ -1,0 +1,59 @@
+/**
+ * ConversationThread styles - Chat-style conversation display
+ */
+
+.conversation-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.conversation-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* User prompt bubble */
+.conversation-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--vscode-editor-selectionBackground);
+  border-radius: 8px;
+  border-left: 3px solid var(--vscode-textLink-foreground);
+}
+
+.conversation-prompt-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-textLink-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.conversation-prompt-text {
+  font-size: 13px;
+  color: var(--vscode-foreground);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Images grid for the turn */
+.conversation-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+/* Divider between turns (optional, subtle) */
+.conversation-turn:not(:last-child)::after {
+  content: '';
+  display: block;
+  height: 1px;
+  background: var(--vscode-panel-border);
+  margin-top: 8px;
+  opacity: 0.5;
+}

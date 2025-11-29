@@ -12,7 +12,7 @@ import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration'
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { ImageUploader } from '../image/ImageUploader';
-import { ImageGallery } from '../image/ImageGallery';
+import { ConversationThread } from '../image/ConversationThread';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
 import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
@@ -42,7 +42,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     addReferenceImage,
     removeReferenceImage,
     clearReferenceImages,
-    generatedImages,
+    conversationHistory,
     conversationId,
     isLoading,
     error,
@@ -135,16 +135,16 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         </div>
       )}
 
-      {/* Generated images gallery */}
-      <ImageGallery
-        images={generatedImages}
+      {/* Conversation thread - chat-style display of all turns */}
+      <ConversationThread
+        turns={conversationHistory}
         onSaveImage={handleSaveImage}
         savingImageIds={savingIds}
         savedImageIds={savedIds}
       />
 
       {/* Continue chat input (only show when we have a conversation) */}
-      {conversationId && generatedImages.length > 0 && (
+      {conversationId && conversationHistory.length > 0 && (
         <ContinueChatInput
           onSubmit={continueChat}
           disabled={isLoading}

@@ -37,6 +37,17 @@ export interface GeneratedImage {
   seed: number;          // seed used for generation (for reproducibility)
 }
 
+/**
+ * A single turn in the conversation history
+ */
+export interface ConversationTurn {
+  id: string;
+  prompt: string;
+  images: GeneratedImage[];
+  turnNumber: number;
+  timestamp: number;
+}
+
 export interface ImageGenerationResponsePayload {
   conversationId: string;
   images: GeneratedImage[];
