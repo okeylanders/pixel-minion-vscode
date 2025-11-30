@@ -18,6 +18,7 @@ import {
   SVGSaveRequestPayload,
   SVGSaveResultPayload,
   StatusPayload,
+  TokenUsage,
 } from '@messages';
 import { LoggingService } from '@logging';
 import { SVGOrchestrator } from '@ai';
@@ -28,7 +29,8 @@ export class SVGGenerationHandler {
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
     private readonly svgOrchestrator: SVGOrchestrator,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly applyTokenUsageCallback?: (usage: TokenUsage) => void
   ) {
     this.logger.debug('SVGGenerationHandler initialized');
   }
@@ -55,6 +57,11 @@ export class SVGGenerationHandler {
         { model, aspectRatio, referenceImage },
         conversationId
       );
+
+      // Apply token usage if available
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
 
       // Send response
       this.postMessage(createEnvelope<SVGGenerationResponsePayload>(
@@ -115,6 +122,11 @@ export class SVGGenerationHandler {
         model,
         aspectRatio
       );
+
+      // Apply token usage if available
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
 
       // Send response
       this.postMessage(createEnvelope<SVGGenerationResponsePayload>(
@@ -244,5 +256,11 @@ export class SVGGenerationHandler {
     await vscode.workspace.fs.writeFile(fileUri, buffer);
 
     return fileUri.fsPath;
+  }
+
+  private applyTokenUsage(usage: TokenUsage): void {
+    if (this.applyTokenUsageCallback) {
+      this.applyTokenUsageCallback(usage);
+    }
   }
 }

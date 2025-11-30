@@ -11,6 +11,7 @@ import {
   ImageGenerationClient,
   ImageGenerationResult,
 } from '../clients/ImageGenerationClient';
+import { TokenUsage } from '@messages';
 import { ImageConversationManager, RehydrationTurn } from './ImageConversationManager';
 import { LoggingService } from '@logging';
 
@@ -25,6 +26,7 @@ export interface ImageTurnResult {
   conversationId: string;
   result: ImageGenerationResult;
   turnNumber: number;
+  usage?: TokenUsage;
 }
 
 export class ImageOrchestrator {
@@ -102,10 +104,18 @@ export class ImageOrchestrator {
 
     this.logger.info(`Image generation complete (turn ${conversation.turnNumber})`);
 
+    // Transform client usage to TokenUsage format
+    const usage: TokenUsage | undefined = result.usage ? {
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+    } : undefined;
+
     return {
       conversationId: conversation.id,
       result,
       turnNumber: conversation.turnNumber,
+      usage,
     };
   }
 

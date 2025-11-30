@@ -20,6 +20,7 @@ import {
   ImageSaveResultPayload,
   GeneratedImage,
   StatusPayload,
+  TokenUsage,
 } from '@messages';
 import { LoggingService } from '@logging';
 import { ImageOrchestrator, RehydrationTurn } from '@ai';
@@ -30,7 +31,8 @@ export class ImageGenerationHandler {
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
     private readonly orchestrator: ImageOrchestrator,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly applyTokenUsageCallback?: (usage: TokenUsage) => void
   ) {
     this.logger.debug('ImageGenerationHandler initialized');
   }
@@ -51,6 +53,11 @@ export class ImageGenerationHandler {
         seed,
         referenceImages,
       }, conversationId);
+
+      // Apply token usage if available
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
 
       const images = this.transformToGeneratedImages(
         result.result,
@@ -99,6 +106,11 @@ export class ImageGenerationHandler {
         model,
         aspectRatio
       );
+
+      // Apply token usage if available
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
 
       const images = this.transformToGeneratedImages(
         result.result,
@@ -243,5 +255,11 @@ export class ImageGenerationHandler {
     await vscode.workspace.fs.writeFile(fileUri, buffer);
 
     return fileUri;
+  }
+
+  private applyTokenUsage(usage: TokenUsage): void {
+    if (this.applyTokenUsageCallback) {
+      this.applyTokenUsageCallback(usage);
+    }
   }
 }

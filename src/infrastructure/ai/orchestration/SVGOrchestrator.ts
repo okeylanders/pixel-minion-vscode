@@ -13,7 +13,7 @@
 import { OpenRouterDynamicTextClient } from '../clients/OpenRouterDynamicTextClient';
 import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
-import { AspectRatio } from '@messages';
+import { AspectRatio, TokenUsage } from '@messages';
 
 export interface SVGGenerationOptions {
   model: string;
@@ -25,6 +25,7 @@ export interface SVGTurnResult {
   conversationId: string;
   svgCode: string;
   turnNumber: number;
+  usage?: TokenUsage;
 }
 
 export class SVGOrchestrator {
@@ -103,10 +104,18 @@ export class SVGOrchestrator {
 
     this.logger.info(`SVG generation complete (turn ${conversation.turnNumber})`);
 
+    // Transform client usage to TokenUsage format
+    const usage: TokenUsage | undefined = result.usage ? {
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+    } : undefined;
+
     return {
       conversationId: conversation.id,
       svgCode,
       turnNumber: conversation.turnNumber,
+      usage,
     };
   }
 
