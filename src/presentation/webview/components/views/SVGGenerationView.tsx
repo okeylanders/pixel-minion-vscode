@@ -73,6 +73,18 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     }, 1000);
   }, [saveSVG]);
 
+  const renderSizedPreview = React.useCallback((size: number) => (
+    <div key={size} className="svg-sized-preview">
+      <div
+        className="svg-sized-preview-box"
+        style={{ width: size, height: size }}
+      >
+        <SVGPreview svgCode={svgCode ?? ''} aspectRatio={aspectRatio} />
+      </div>
+      <span className="svg-sized-label">{size}x{size}</span>
+    </div>
+  ), [svgCode, aspectRatio]);
+
   return (
     <div className="svg-generation-view">
       {/* Input well: Model, Aspect Ratio, Prompt, Reference Image, Generate button */}
@@ -132,10 +144,18 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
           {svgCode && (
             <div className="svg-generation-result">
               <div className="svg-result-header">
-                <h3>Generated SVG</h3>
+                <div className="svg-result-title">
+                  <h3>Generated SVG</h3>
+                  <div className="svg-inline-preview">
+                    <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
+                  </div>
+                </div>
                 <div className="svg-result-actions">
                   <SaveButton onClick={handleSave} saving={saving} saved={saved} />
                 </div>
+              </div>
+              <div className="svg-preview-grid">
+                {[32, 64, 128].map(renderSizedPreview)}
               </div>
               <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
               <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
