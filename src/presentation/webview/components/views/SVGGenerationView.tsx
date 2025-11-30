@@ -43,13 +43,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     conversationHistory,
     conversationId,
     isLoading,
-    isEnhancing,
     error,
     generate,
     continueChat,
     saveSVG,
     copySVG,
-    enhancePrompt,
   } = svgGeneration;
 
   // Get the latest turn's usage for display
@@ -116,21 +114,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             rows={3}
           />
 
-          <div className="svg-generation-actions-row">
-            <SingleImageUploader
-              attachment={{ preview: referenceImage, svgText: referenceSvgText }}
-              onAttachmentChange={setReferenceAttachment}
-              disabled={isLoading}
-            />
-            <Button
-              onClick={enhancePrompt}
-              disabled={isLoading || isEnhancing || !prompt.trim()}
-              variant="secondary"
-              className="enhance-prompt-button"
-            >
-              {isEnhancing ? 'Enhancing...' : '🤖 Enhance Prompt'}
-            </Button>
-          </div>
+          <SingleImageUploader
+            attachment={{ preview: referenceImage, svgText: referenceSvgText }}
+            onAttachmentChange={setReferenceAttachment}
+            disabled={isLoading}
+          />
 
           <Button
             onClick={generate}

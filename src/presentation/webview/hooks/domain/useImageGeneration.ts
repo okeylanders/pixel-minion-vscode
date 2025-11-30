@@ -62,6 +62,8 @@ export interface ImageGenerationHandlers {
 }
 
 // 3. Persistence Interface (what gets saved)
+// Note: referenceSvgText and referenceImages are NOT persisted - they're per-request context
+// The conversation history stores referenceSvgText per turn for context
 export interface ImageGenerationPersistence {
   prompt: string;
   model: string;
@@ -69,8 +71,6 @@ export interface ImageGenerationPersistence {
   conversationId: string | null;
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];
-  referenceSvgText: string | null;
-  referenceImages: string[];
 }
 
 // Composed return type
@@ -93,8 +93,9 @@ export function useImageGeneration(
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
-  const [referenceImages, setReferenceImages] = useState<string[]>(initialState?.referenceImages ?? []);
-  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(initialState?.referenceSvgText ?? null);
+  // Reference images are NOT persisted - they're per-request context
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
   const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
   const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
   const [seedInput, setSeedInput] = useState('');
@@ -352,7 +353,7 @@ export function useImageGeneration(
     );
   }, [prompt, vscode]);
 
-  // Persistence object
+  // Persistence object (reference images excluded - they're per-request context)
   const persistedState: ImageGenerationPersistence = {
     prompt,
     model,
@@ -360,8 +361,6 @@ export function useImageGeneration(
     conversationId,
     generatedImages,
     conversationHistory,
-    referenceSvgText,
-    referenceImages,
   };
 
   return {

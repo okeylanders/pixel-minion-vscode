@@ -92,8 +92,8 @@
         },
         "pixelMinion.imageModel": {
           "type": "string",
-          "default": "google/gemini-3-pro-preview",
-          "description": "Selected model for image generation (recommended: Gemini Pro 3)"
+          "default": "google/gemini-2.5-flash-image",
+          "description": "Selected model for image generation (recommended: Nano Banana 10/25)"
         },
         "pixelMinion.svgModel": {
           "type": "string",
