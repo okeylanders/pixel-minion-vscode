@@ -1,6 +1,7 @@
 /**
  * Image Generation Message Payloads
  */
+import { TokenUsage } from './tokenUsage';
 
 export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3';
 
@@ -67,22 +68,14 @@ export interface ConversationTurn {
   images: GeneratedImage[];
   turnNumber: number;
   timestamp: number;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+  usage?: TokenUsage;
 }
 
 export interface ImageGenerationResponsePayload {
   conversationId: string;
   images: GeneratedImage[];
   turnNumber: number;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+  usage?: TokenUsage;
 }
 
 export interface ImageSaveRequestPayload {

@@ -135,6 +135,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
               {latestUsage && (
                 <div className="svg-usage-display">
                   {latestUsage.totalTokens.toLocaleString()} tokens
+                  {latestUsage.costUsd !== undefined && (
+                    <> · {latestUsage.costUsd < 0.01
+                      ? `$${latestUsage.costUsd.toFixed(4)}`
+                      : `$${latestUsage.costUsd.toFixed(2)}`}</>
+                  )}
                 </div>
               )}
             </div>
