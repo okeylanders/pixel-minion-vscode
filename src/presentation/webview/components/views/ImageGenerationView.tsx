@@ -90,103 +90,106 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
   return (
     <div className="image-generation-view">
-      {/* Header: Model + Aspect Ratio + Seed selectors */}
-      <div className="image-generation-header">
-        <ModelSelector
-          models={OPENROUTER_IMAGE_MODELS}
-          selectedModel={model}
-          onModelChange={setModel}
-          disabled={isLoading}
-        />
-        <AspectRatioSelector
-          selectedRatio={aspectRatio}
-          onRatioChange={setAspectRatio}
-          disabled={isLoading}
-        />
-        <Input
-          type="text"
-          value={seedInput}
-          onChange={(e) => setSeedInput(e.target.value)}
-          placeholder="Auto Generate"
-          disabled={isLoading}
-          label="Seed"
-          className="seed-input"
-        />
-      </div>
-
-      {/* Prompt input */}
-      <div className="image-generation-prompt-section">
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe the image you want to generate..."
-          disabled={isLoading}
-          rows={3}
-        />
-
-        <ImageUploader
-          images={referenceImages}
-          onAddImage={addReferenceImage}
-          onRemoveImage={removeReferenceImage}
-          onClear={clearReferenceImages}
-          disabled={isLoading}
-        />
-
-        <Button
-          onClick={generate}
-          disabled={isLoading || !prompt.trim()}
-          variant="primary"
-        >
-          {isLoading ? 'Generating...' : 'Generate'}
-        </Button>
-      </div>
-
-      {/* Error display */}
-      {error && (
-        <div className="image-generation-error">
-          {error}
-        </div>
-      )}
-
-      {/* Divider */}
-      <hr className="image-generation-divider" />
-
-      {/* Conversation header - only show when we have a conversation */}
-      {conversationHistory.length > 0 && (
-        <div className="conversation-header">
-          <div className="conversation-header-info">
-            <span className="conversation-header-title">{getConversationTitle()}</span>
-            <span className="conversation-header-date">
-              {formatDateTime(conversationHistory[0].timestamp)}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="conversation-header-clear"
-            onClick={clearConversation}
-            title="Clear conversation"
+      {/* Input well: Model, Aspect Ratio, Seed, Prompt, Reference Images, Generate button */}
+      <div className="well">
+        {/* Header: Model + Aspect Ratio + Seed selectors */}
+        <div className="image-generation-header">
+          <ModelSelector
+            models={OPENROUTER_IMAGE_MODELS}
+            selectedModel={model}
+            onModelChange={setModel}
             disabled={isLoading}
-          >
-            <span aria-hidden="true">&#128465;</span>
-          </button>
+          />
+          <AspectRatioSelector
+            selectedRatio={aspectRatio}
+            onRatioChange={setAspectRatio}
+            disabled={isLoading}
+          />
+          <Input
+            type="text"
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            placeholder="Auto Generate"
+            disabled={isLoading}
+            label="Seed"
+            className="seed-input"
+          />
         </div>
-      )}
 
-      {/* Scrollable conversation area */}
-      <div className="image-generation-scroll-area">
-        {/* Conversation thread - chat-style display of all turns */}
-        <ConversationThread
-          turns={conversationHistory}
-          onSaveImage={handleSaveImage}
-          savingImageIds={savingIds}
-          savedImageIds={savedIds}
-        />
+        {/* Prompt input */}
+        <div className="image-generation-prompt-section">
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the image you want to generate..."
+            disabled={isLoading}
+            rows={3}
+          />
 
-        {/* Loading indicator - appears at bottom where new content will show */}
-        <LoadingIndicator
-          isLoading={isLoading}
-          defaultMessage="Generating image..."
-        />
+          <ImageUploader
+            images={referenceImages}
+            onAddImage={addReferenceImage}
+            onRemoveImage={removeReferenceImage}
+            onClear={clearReferenceImages}
+            disabled={isLoading}
+          />
+
+          <Button
+            onClick={generate}
+            disabled={isLoading || !prompt.trim()}
+            variant="primary"
+          >
+            {isLoading ? 'Generating...' : 'Generate'}
+          </Button>
+        </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="image-generation-error">
+            {error}
+          </div>
+        )}
+      </div>
+
+      {/* Output well: Conversation header and thread */}
+      <div className="well image-generation-output-well">
+        {/* Conversation header - only show when we have a conversation */}
+        {conversationHistory.length > 0 && (
+          <div className="conversation-header">
+            <div className="conversation-header-info">
+              <span className="conversation-header-title">{getConversationTitle()}</span>
+              <span className="conversation-header-date">
+                {formatDateTime(conversationHistory[0].timestamp)}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="conversation-header-clear"
+              onClick={clearConversation}
+              title="Clear conversation"
+              disabled={isLoading}
+            >
+              <span aria-hidden="true">&#128465;</span>
+            </button>
+          </div>
+        )}
+
+        {/* Scrollable conversation area */}
+        <div className="image-generation-scroll-area">
+          {/* Conversation thread - chat-style display of all turns */}
+          <ConversationThread
+            turns={conversationHistory}
+            onSaveImage={handleSaveImage}
+            savingImageIds={savingIds}
+            savedImageIds={savedIds}
+          />
+
+          {/* Loading indicator - appears at bottom where new content will show */}
+          <LoadingIndicator
+            isLoading={isLoading}
+            defaultMessage="Generating image..."
+          />
+        </div>
       </div>
 
       {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}

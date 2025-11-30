@@ -4,3 +4,6 @@ export { ContinueChatInput } from './ContinueChatInput';
 
 export { SaveButton } from './SaveButton';
 export type { SaveButtonProps } from './SaveButton';
+
+export { OpenRouterAlert } from './OpenRouterAlert';
+export type { OpenRouterAlertProps } from './OpenRouterAlert';

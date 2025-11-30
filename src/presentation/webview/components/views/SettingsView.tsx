@@ -1,13 +1,13 @@
 /**
- * SettingsView - Settings panel with API key management
+ * SettingsView - Settings panel with card sections (Prose Minion style)
  *
  * Features:
- * - Secure API key input (password masked)
+ * - Card sections for API key, models, general settings
+ * - Secure API key input
  * - VSCode settings sync
- * - Status indicators
  */
 import React from 'react';
-import { Input, SecretInput } from '../common';
+import { SecretInput } from '../common';
 import { UseSettingsReturn } from '@hooks';
 
 export interface SettingsViewProps {
@@ -17,7 +17,6 @@ export interface SettingsViewProps {
 export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
   const {
     maxConversationTurns,
-    openRouterModel,
     imageModel,
     svgModel,
     apiKeyConfigured,
@@ -36,70 +35,85 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-md">
-      <div>
-        <h2 style={{ marginBottom: 'var(--spacing-sm)', fontWeight: 600 }}>
-          Settings
-        </h2>
-        <p className="text-muted mb-md">
-          Configure your extension settings and API credentials.
-        </p>
-      </div>
-
+    <>
       {/* API Key Section */}
-      <section>
+      <section className="settings-section">
+        <h3 className="settings-section-title">🔐 OpenRouter API Key (Secure Storage)</h3>
+        <p className="settings-description mb-sm">
+          Your API key is stored securely using OS-level encryption (Keychain/Credential Manager).
+          It will never appear in settings files or be synced to the cloud.
+        </p>
         <SecretInput
-          label="OpenRouter API Key"
-          description="Your API key is stored securely using your operating system's credential manager."
           isConfigured={apiKeyConfigured}
           onSave={saveApiKey}
           onClear={clearApiKey}
           placeholder="sk-or-..."
         />
+        <p className="settings-description mt-sm">
+          Requires an OpenRouter pay-as-you-go account for AI features. OpenRouter routes to
+          leading models with configurable privacy (no logging, no training).
+          Learn more at{' '}
+          <a href="https://openrouter.ai" target="_blank" rel="noopener noreferrer">
+            openrouter.ai
+          </a>
+          .
+        </p>
       </section>
 
-      <div className="divider" />
+      {/* Models Section */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">Models</h3>
 
-      {/* General Settings */}
-      <section className="flex flex-col gap-md">
-        <h3 style={{ fontWeight: 600 }}>General Settings</h3>
+        <label className="settings-label">
+          <span className="settings-label-title">Image Model</span>
+          <input
+            type="text"
+            className="settings-input"
+            value={imageModel}
+            onChange={(e) => updateSetting('imageModel', e.target.value)}
+            placeholder="google/gemini-2.5-flash-image"
+          />
+          <span className="settings-description">
+            Powers text-to-image and image-to-image generation.
+          </span>
+        </label>
 
-        <Input
-          label="Max Conversation Turns"
-          description="Maximum number of turns before a conversation resets."
-          type="number"
-          min={1}
-          max={50}
-          value={maxConversationTurns}
-          onChange={(e) =>
-            updateSetting('maxConversationTurns', parseInt(e.target.value, 10) || 10)
-          }
-        />
-
-        <Input
-          label="OpenRouter Model"
-          description="The AI model to use for conversations."
-          value={openRouterModel}
-          onChange={(e) => updateSetting('openRouterModel', e.target.value)}
-          placeholder="anthropic/claude-sonnet-4"
-        />
-
-        <Input
-          label="Image Model"
-          description="Selected model for image generation."
-          value={imageModel}
-          onChange={(e) => updateSetting('imageModel', e.target.value)}
-          placeholder="google/gemini-2.5-flash-image"
-        />
-
-        <Input
-          label="SVG Model"
-          description="Selected model for SVG generation."
-          value={svgModel}
-          onChange={(e) => updateSetting('svgModel', e.target.value)}
-          placeholder="google/gemini-3-pro-preview"
-        />
+        <label className="settings-label">
+          <span className="settings-label-title">SVG Model</span>
+          <input
+            type="text"
+            className="settings-input"
+            value={svgModel}
+            onChange={(e) => updateSetting('svgModel', e.target.value)}
+            placeholder="google/gemini-3-pro-preview"
+          />
+          <span className="settings-description">
+            Powers SVG code generation from text prompts.
+          </span>
+        </label>
       </section>
-    </div>
+
+      {/* General Section */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">General</h3>
+
+        <label className="settings-label">
+          <span className="settings-label-title">Max Conversation Turns</span>
+          <input
+            type="number"
+            className="settings-input small"
+            min={1}
+            max={50}
+            value={maxConversationTurns}
+            onChange={(e) =>
+              updateSetting('maxConversationTurns', parseInt(e.target.value, 10) || 10)
+            }
+          />
+          <span className="settings-description">
+            Maximum turns before a conversation resets. Higher values use more context.
+          </span>
+        </label>
+      </section>
+    </>
   );
 }

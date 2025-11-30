@@ -110,6 +110,11 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
     );
 
+    // Get the loading animation URI
+    const loadingAnimationUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'assets', 'loading-animation-pixel-minion.gif')
+    );
+
     // Use a nonce for security
     const nonce = this.getNonce();
 
@@ -120,6 +125,11 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: blob:;">
   <title>Pixel Minion</title>
+  <script nonce="${nonce}">
+    window.__PIXEL_MINION__ = {
+      loadingAnimationUri: "${loadingAnimationUri}"
+    };
+  </script>
 </head>
 <body>
   <div id="root"></div>

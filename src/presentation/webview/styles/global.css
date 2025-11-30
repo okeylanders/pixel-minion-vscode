@@ -48,12 +48,52 @@ body {
   overflow: hidden;
 }
 
+/* App Header - Prose Minion style */
 .app-header {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--vscode-editorWidget-border);
+  gap: var(--spacing-md);
+}
+
+.app-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.app-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.app-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--vscode-descriptionForeground);
+}
+
+.app-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-xs);
+}
+
+.app-header-icon {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  color: var(--vscode-foreground);
+}
+
+.token-widget {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-list-highlightForeground, var(--vscode-textLink-foreground));
 }
 
 .app-content {
@@ -134,7 +174,19 @@ body {
   border-radius: var(--border-radius);
 }
 
-/* Settings Overlay - Full view panel */
+/* Well - card-like container for grouping form elements (Prose Minion design) */
+.well {
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+}
+
+.well + .well {
+  margin-top: var(--spacing-sm);
+}
+
+/* Settings Overlay - Prose Minion style */
 .settings-overlay {
   position: absolute;
   top: 0;
@@ -143,16 +195,248 @@ body {
   bottom: 0;
   background-color: var(--vscode-editor-background);
   z-index: 100;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
 }
 
 .settings-overlay-content {
-  flex: 1;
-  padding: var(--spacing-md);
-  overflow-y: auto;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
+/* Settings header with centered icon and title */
+.settings-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-header-content {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.settings-header-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--vscode-foreground);
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.settings-header .settings-close-button {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.settings-close-button {
+  background: var(--vscode-button-background);
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: var(--radius-md);
+  color: var(--vscode-button-foreground);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 6px 12px;
+  transition: background-color 0.15s;
+}
+
+.settings-close-button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+/* Settings sections (cards) */
+.settings-section {
+  margin-top: var(--spacing-sm);
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+}
+
+.settings-section-title {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  font-size: 1.3em;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
+  padding-bottom: var(--spacing-xs);
+}
+
+/* Settings field labels and descriptions */
+.settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-label-title {
+  display: block;
+  font-weight: 600;
+}
+
+.settings-description {
+  display: block;
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.settings-description.mb-sm {
+  margin-bottom: var(--spacing-sm);
+}
+
+.settings-description.mt-sm {
+  margin-top: var(--spacing-sm);
+}
+
+.settings-description a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: underline;
+}
+
+/* Small width input for numbers */
+.settings-input.small {
+  width: 120px;
+}
+
+/* Settings inputs */
+.settings-input {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: var(--radius-md);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+.settings-select {
+  width: 100%;
+  padding: 8px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: var(--radius-md);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  cursor: pointer;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder);
+}
+
+/* Settings button group */
+.settings-button-group {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.settings-button {
+  padding: 6px 12px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.2s ease;
+}
+
+.settings-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.settings-button.secondary {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.settings-button.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* OpenRouter Alert - Warning banner when API key not configured */
+.openrouter-alert {
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin: var(--spacing-md);
+}
+
+.openrouter-alert-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.openrouter-alert-icon {
+  font-size: 1.2rem;
+}
+
+.openrouter-alert-title {
+  font-weight: 600;
+  color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+}
+
+.openrouter-alert-description {
+  color: var(--vscode-foreground);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.9em;
+}
+
+.openrouter-alert-steps {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  color: var(--vscode-foreground);
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.openrouter-alert-steps li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.openrouter-alert-steps a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: underline;
+}
+
+.openrouter-alert-link {
+  background: none;
+  border: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.openrouter-alert-link:hover {
+  color: var(--vscode-textLink-activeForeground);
+}
+
+/* Legacy settings-overlay-header (for backwards compatibility) */
 .settings-overlay-header {
   display: flex;
   align-items: center;
@@ -169,21 +453,6 @@ body {
   font-size: var(--vscode-font-size);
 }
 
-.settings-close-button {
-  background: none;
-  border: none;
-  color: var(--vscode-foreground);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--border-radius);
-  transition: background-color 0.15s;
-}
-
-.settings-close-button:hover {
-  background-color: var(--vscode-toolbar-hoverBackground);
-}
-
 /* Loading Indicator */
 .loading-indicator {
   display: flex;
@@ -193,23 +462,39 @@ body {
   color: var(--vscode-descriptionForeground);
 }
 
-.loading-header {
+/* Vertically stacked loading content */
+.loading-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
 }
 
 .loading-spinner-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
   width: 100%;
 }
 
 .loading-text {
-  flex: 1;
   text-align: center;
+}
+
+/* Animated loading gif */
+.loading-animation {
+  width: 80%;
+  max-width: 400px;
+  border-radius: var(--radius-md);
+}
+
+/* Legacy loading-header (kept for backwards compatibility) */
+.loading-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 .loading-cancel-button {
