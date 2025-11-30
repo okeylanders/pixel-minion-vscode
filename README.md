@@ -12,11 +12,11 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=okeylanders.pixel-minion">
-    <img src="https://img.shields.io/visual-studio-marketplace/v/okeylanders.pixel-minion?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="VS Marketplace Version"/>
+  <a href="https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion">
+    <img src="https://img.shields.io/visual-studio-marketplace/v/OkeyLanders.pixel-minion?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="VS Marketplace Version"/>
   </a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=okeylanders.pixel-minion">
-    <img src="https://img.shields.io/visual-studio-marketplace/i/okeylanders.pixel-minion?style=flat-square&label=Installs&logo=visual-studio-code" alt="VS Marketplace Installs"/>
+  <a href="https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion">
+    <img src="https://img.shields.io/visual-studio-marketplace/i/OkeyLanders.pixel-minion?style=flat-square&label=Installs&logo=visual-studio-code" alt="VS Marketplace Installs"/>
   </a>
   <a href="https://github.com/okeylanders/pixel-minion-vscode/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License"/>
@@ -52,22 +52,22 @@
 
 ---
 
-## Features at a Glance
+## ✨ Features at a Glance
 
 Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
-- **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
-- **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
-- **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
-- **Token Usage Tracking** - Real-time token and cost display per turn
-- **Reference Image Support** - Use existing images and SVGs as context for generation
-- **Settings** - Model selection, API key management, and output configuration
+- ✅ **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
+- ✅ **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
+- ✅ **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
+- ✅ **Token Usage Tracking** - Real-time token and cost display per turn
+- ✅ **Reference Image Support** - Use existing images and SVGs as context for generation
+- ✅ **Settings** - Model selection, API key management, and output configuration
 
 > **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Installation
 
@@ -90,7 +90,7 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
 
 ---
 
-## OpenRouter API Key
+## 🔑 OpenRouter API Key
 
 **Required:** All features require an OpenRouter API key.
 
@@ -113,9 +113,9 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
 
 ---
 
-## Tools Overview
+## 🛠️ Tools Overview
 
-### Image Generation
+### 🖼️ Image Generation
 
 Generate images from text prompts or refine existing images with AI.
 
@@ -164,7 +164,7 @@ Generate images from text prompts or refine existing images with AI.
 
 ---
 
-### SVG Generation
+### ✏️ SVG Generation
 
 Generate vector graphics as code using powerful text models.
 
@@ -216,7 +216,7 @@ Generate vector graphics as code using powerful text models.
 
 ---
 
-## Settings
+## ⚙️ Settings
 
 Click the **gear icon** in the Pixel Minion header for settings:
 
@@ -262,7 +262,7 @@ All settings save automatically and sync with your VS Code preferences.
 
 ---
 
-## Use Cases
+## 🎯 Use Cases
 
 ### For Game Developers
 
@@ -290,7 +290,7 @@ All settings save automatically and sync with your VS Code preferences.
 
 ---
 
-## Technical Details
+## 📖 Technical Details
 
 ### Architecture
 
@@ -313,7 +313,7 @@ Built with **Clean Architecture** principles:
 
 ---
 
-## Tips & Best Practices
+## 💡 Tips & Best Practices
 
 ### Sidebar Width
 
@@ -335,7 +335,7 @@ Built with **Clean Architecture** principles:
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 We welcome contributions! See the codebase for:
 
@@ -346,7 +346,7 @@ We welcome contributions! See the codebase for:
 
 ---
 
-## License
+## 📄 License
 
 **AGPL-3.0 with Commons Clause** - Source-available, no resale, no closed-source derivatives.
 
@@ -360,7 +360,7 @@ See [LICENSE](LICENSE) for complete terms.
 
 ---
 
-## Support Development
+## ☕ Support Development
 
 If Pixel Minion helps your workflow, consider [buying me a coffee](https://buymeacoffee.com/okeylanders)!
 
@@ -368,7 +368,7 @@ If Pixel Minion helps your workflow, consider [buying me a coffee](https://buyme
 
 ---
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
 Built with:
 - [OpenRouter](https://openrouter.ai/) - AI model routing
@@ -381,12 +381,25 @@ Development assisted by:
 
 ---
 
+## 🎨 Part of the Minion Suite
+
+**Pixel Minion** is part of the **Minion Suite** of VS Code extensions:
+
+| Extension | Description |
+|-----------|-------------|
+| **[Prose Minion](https://marketplace.visualstudio.com/items?itemName=OkeyLanders.prose-minion)** | AI-powered writing assistant for VS Code - grammar, style, and prose enhancement |
+| **Pixel Minion** | AI-powered image and SVG generation (you are here!) |
+
+More minions coming soon...
+
+---
+
 <p align="center">
   <strong>Happy Creating!</strong>
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/">Install from Marketplace</a> •
+  <a href="https://marketplace.visualstudio.com/items?itemName=OkeyLanders.pixel-minion">Install from Marketplace</a> •
   <a href="https://github.com/okeylanders/pixel-minion-vscode/issues">Report Issue</a> •
   <a href="https://buymeacoffee.com/okeylanders">Support Development</a>
 </p>
