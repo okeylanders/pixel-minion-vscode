@@ -1,12 +1,10 @@
 import { MessageType, MessageEnvelope } from './base';
-import { AspectRatio } from './imageGeneration';
 
 export interface SettingsPayload {
   maxConversationTurns: number;
   openRouterModel: string;
-  defaultImageModel: string;
-  defaultSVGModel: string;
-  defaultAspectRatio: AspectRatio;
+  imageModel: string;
+  svgModel: string;
 }
 
 export interface UpdateSettingPayload {

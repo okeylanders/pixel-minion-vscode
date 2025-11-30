@@ -90,21 +90,15 @@
           "default": "pixel-minion",
           "description": "Directory (relative to workspace root) where generated images and SVGs are saved"
         },
-        "pixelMinion.defaultImageModel": {
+        "pixelMinion.imageModel": {
           "type": "string",
           "default": "google/gemini-2.5-flash-image",
-          "description": "Default model for image generation"
+          "description": "Selected model for image generation"
         },
-        "pixelMinion.defaultSVGModel": {
+        "pixelMinion.svgModel": {
           "type": "string",
           "default": "google/gemini-3-pro-preview",
-          "description": "Default model for SVG generation"
-        },
-        "pixelMinion.defaultAspectRatio": {
-          "type": "string",
-          "default": "1:1",
-          "enum": ["1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3"],
-          "description": "Default aspect ratio for generated images"
+          "description": "Selected model for SVG generation"
         }
       }
     }

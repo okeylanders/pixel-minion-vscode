@@ -67,13 +67,16 @@ export type UseSVGGenerationReturn = SVGGenerationState & SVGGenerationActions &
 
 export function useSVGGeneration(
   initialState?: Partial<SVGGenerationPersistence>,
-  settingsDefaults?: { defaultSVGModel?: string; defaultAspectRatio?: AspectRatio }
+  sync?: {
+    selectedModel?: string;
+    onModelChange?: (model: string) => void;
+  }
 ): UseSVGGenerationReturn {
   const vscode = useVSCodeApi();
 
   // State
   const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
-  const [model, setModel] = useState(initialState?.model ?? DEFAULT_SVG_MODEL);
+  const [model, setModelState] = useState(initialState?.model ?? (sync?.selectedModel ?? DEFAULT_SVG_MODEL));
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
@@ -90,20 +93,17 @@ export function useSVGGeneration(
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const setModel = useCallback((newModel: string) => {
+    setModelState(newModel);
+    sync?.onModelChange?.(newModel);
+  }, [sync]);
+
   useEffect(() => {
-    if (!settingsDefaults) {
-      return;
-    }
-    if (!conversationId && !svgCode) {
-      if (settingsDefaults.defaultSVGModel) {
-        setModel(settingsDefaults.defaultSVGModel);
-      }
-      if (settingsDefaults.defaultAspectRatio) {
-        setAspectRatio(settingsDefaults.defaultAspectRatio);
-      }
+    if (sync?.selectedModel && !isLoading) {
+      setModelState(sync.selectedModel);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsDefaults?.defaultSVGModel, settingsDefaults?.defaultAspectRatio]);
+  }, [sync?.selectedModel]);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {

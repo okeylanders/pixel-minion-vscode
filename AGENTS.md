@@ -1,21 +1,30 @@
-# CLAUDE.md - AI Agent Guidelines
+# AGENTS.md - Quick Rules for AI Agents
 
-This file provides guidance for AI agents working on this VSCode extension codebase.
+This file distills the key guidance for AI agents working on Pixel Minion. See `CLAUDE.md` for the full architecture guide.
 
-## Project Overview
+## What Changed Recently
+- Runtime/activation: VS Code `^1.93.0` (Node 18 fetch), container/view IDs `pixel-minion` / `pixelMinion.mainView`, commands prefixed `pixelMinion.*`.
+- Settings sync: Settings keys are `pixelMinion.openRouterModel`, `pixelMinion.imageModel`, `pixelMinion.svgModel`, `pixelMinion.maxConversationTurns`. Changes flow both ways (VS Code settings ↔ webview hooks).
+- Model switching: Text client resets on model change; image/SVG keep model/aspect per conversation—start new convo to change. SVG/image rehydrate; text rehydration is infra-ready but webview not wired yet.
+- Rehydration: Image/SVG handlers accept history for continuation after restart. Text handler can rehydrate if history is provided (no UI yet).
 
-**Pixel Minion** is a VSCode extension for AI-powered image and SVG generation using OpenRouter:
+## Golden Rules
+- Keep handlers THIN: routing only; business logic lives in orchestrators.
+- Always use `MessageEnvelope` with `source` and echo-prevention checks (`webview.*` ignored in webview; `extension.*` ignored in extension).
+- Inject services via constructors (logging, secrets, orchestrators with clients pre-set in `extension.ts`).
+- Use path aliases (`@messages`, `@ai`, `@secrets`, `@logging`, `@hooks`, etc.).
+- No `console.log` in extension code—use `LoggingService`.
 
-- **Image Generation Tab** - Text-to-image and image-to-image via OpenRouter image models (Gemini, GPT-5, FLUX)
-- **SVG Generation Tab** - Generate vector graphics as code using text models (Gemini Pro, Claude Opus)
+## Settings and Models
+- Read/write models via settings keys above. No “default” model concept; the selected model is the source of truth.
+- Webview hooks send `UPDATE_SETTING` to persist selections; extension broadcasts `SETTINGS_DATA` on config changes to keep dropdowns in sync.
 
-Tech stack:
-- **TypeScript** for type safety
-- **React 18** for webview UI
-- **Webpack** for bundling (dual entry: extension + webview)
-- **Jest** for testing
-- **Clean Architecture** with layered organization
-- **OpenRouter API** for AI model access
+## Rehydration Cheatsheet
+- Image/SVG: webview sends `history` + `conversationId` + model/aspect; orchestrators rebuild if missing.
+- Text: orchestrator supports `history` but the webview currently does not send it; if you add a text feature, include history in `AI_CONVERSATION_REQUEST`.
+
+## Pending Work
+- TAIO “enhance prompt” flow will reuse the text suite (hidden UI); plan to send history for resilience.
 
 ## Architecture Quick Reference
 

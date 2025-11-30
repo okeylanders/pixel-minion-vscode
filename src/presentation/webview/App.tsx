@@ -54,12 +54,12 @@ export function App(): JSX.Element {
   // Initialize domain hooks with persisted state
   const settings = useSettings(persistedState.settings);
   const imageGeneration = useImageGeneration(persistedState.imageGeneration, {
-    defaultImageModel: settings.defaultImageModel,
-    defaultAspectRatio: settings.defaultAspectRatio,
+    selectedModel: settings.imageModel,
+    onModelChange: (model) => settings.updateSetting('imageModel', model),
   });
   const svgGeneration = useSVGGeneration(persistedState.svgGeneration, {
-    defaultSVGModel: settings.defaultSVGModel,
-    defaultAspectRatio: settings.defaultAspectRatio,
+    selectedModel: settings.svgModel,
+    onModelChange: (model) => settings.updateSetting('svgModel', model),
   });
 
   // Message routing at App level (prose-minion pattern)

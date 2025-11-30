@@ -1,10 +1,15 @@
 # VSCode Extension Template Recommendations
 
 **Date**: 2025-11-29
-**Last Updated**: 2025-11-29
+**Last Updated**: 2025-11-29 (post settings/model sync + runtime/activation fixes)
 **Based on**: Pixel Minion codebase evolution analysis
 **Audience**: Template maintainers and extension developers
 **Status**: ✅ Most recommendations implemented in Pixel Minion, documented for template backport
+
+### Latest Additions (2025-11-29)
+- Bidirectional settings sync: settings as the source of truth for selected models (`imageModel`, `svgModel`, `openRouterModel`, `maxConversationTurns`) flowing VS Code ↔ webview.
+- Runtime/activation: target VS Code `^1.93.0` (Node 18) and declare view/command activation events.
+- Rehydration coverage: image/SVG wired; text suite infrastructure supports rehydration when history is sent (no UI yet).
 
 ## Executive Summary
 
@@ -25,7 +30,7 @@ The template provides basic infrastructure but lacks patterns for:
 | # | Gap | Status | Notes |
 |---|-----|--------|-------|
 | 1 | **Message Routing** - Relies on switch statements instead of Strategy pattern | ✅ Implemented | `MessageRouter` with Strategy pattern |
-| 2 | **State Management** - No guidance on organizing React hooks by domain | ✅ Implemented | Tripartite pattern (State, Actions, Persistence) |
+| 2 | **State Management** - No guidance on organizing React hooks by domain | ✅ Implemented | Tripartite pattern (State, Actions, Persistence + Handlers) |
 | 3 | **Message Architecture** - No envelope pattern, source tracking, or echo prevention | ✅ Implemented | `MessageEnvelope<TPayload>` with source |
 | 4 | **Conversation Patterns** - No examples of multi-turn chat or state threads | ✅ Implemented | Image & SVG conversation threading |
 | 5 | **Loading States** - No consistent pattern for async operation feedback | ✅ Implemented | Three-zone layout pattern |
@@ -34,7 +39,9 @@ The template provides basic infrastructure but lacks patterns for:
 | 8 | **Tab 2 Placeholder** - Empty tab with no example implementation | ✅ Implemented | SVG Generation tab |
 | 9 | **AI Infrastructure** - No pattern for AI client integration | ✅ Implemented | Three-Suite Architecture (NEW) |
 | 10 | **Thin Handlers** - Business logic mixed with message routing | ✅ Implemented | Orchestrator pattern (NEW) |
-| 11 | **Re-hydration** - No pattern for state recovery after restart | ✅ Implemented | Self-contained requests (NEW) |
+| 11 | **Re-hydration** - No pattern for state recovery after restart | ✅ Implemented | Self-contained requests (NEW, image/SVG wired; text infra-ready) |
+| 12 | **Settings Sync** - Settings not reflected in UI selections | ✅ Implemented | Bidirectional VS Code settings ↔ webview hook sync for selected models |
+| 13 | **Runtime/Activation** - Template targets older VS Code, missing activation events | ✅ Implemented | VS Code ^1.93.0, explicit view/command activations |
 
 **Impact**: Developers starting from the template immediately face architectural decisions without guidance, leading to anti-patterns (god components, switch statement proliferation, scattered state management).
 
@@ -169,6 +176,28 @@ export function App() {
 - Easy to trace message flows
 
 **Template Recommendation**: Replace component-level registration example with `useMessageRouter` hook in template's `App.tsx`.
+
+### 1b. Settings Sync Pattern (NEW)
+
+**Problem**: Template settings were one-way and not reflected in UI selections; defaults drift from actual selections.
+
+**Solution**:
+- Use settings keys for the selected models (`imageModel`, `svgModel`, `openRouterModel`, `maxConversationTurns`).
+- Webview hooks send `UPDATE_SETTING` on dropdown changes.
+- Extension listens for configuration changes and rebroadcasts `SETTINGS_DATA` so UI stays in sync with VS Code settings (including external edits).
+- Text client resets on model change; image/SVG keep their model/aspect per conversation (start new convo to change).
+
+**Template Recommendation**: Ship a bidirectional settings example (config-change listener + hook wiring). Avoid “default model” settings; use “selected model” as the single source of truth.
+
+### 1c. Runtime/Activation Pattern (NEW)
+
+**Problem**: Template targeted older VS Code runtimes and missed activation events for the webview.
+
+**Solution**:
+- Require VS Code `^1.93.0` (Node 18 fetch).
+- Declare activation events (`onView:<viewId>`, commands) and keep IDs consistent across container/view/commands.
+
+**Template Recommendation**: Update `engines.vscode`, `activationEvents`, and naming in the template starter.
 
 ---
 

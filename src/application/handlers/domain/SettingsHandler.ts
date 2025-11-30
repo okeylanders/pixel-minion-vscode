@@ -158,9 +158,8 @@ export class SettingsHandler {
     return {
       maxConversationTurns: config.get<number>('maxConversationTurns', legacyConfig.get('maxConversationTurns', 10)),
       openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'anthropic/claude-sonnet-4')),
-      defaultImageModel: config.get<string>('defaultImageModel', 'google/gemini-2.5-flash-image'),
-      defaultSVGModel: config.get<string>('defaultSVGModel', 'google/gemini-3-pro-preview'),
-      defaultAspectRatio: config.get<string>('defaultAspectRatio', '1:1') as SettingsPayload['defaultAspectRatio'],
+      imageModel: config.get<string>('imageModel', 'google/gemini-2.5-flash-image'),
+      svgModel: config.get<string>('svgModel', 'google/gemini-3-pro-preview'),
     };
   }
 }

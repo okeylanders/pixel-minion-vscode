@@ -54,9 +54,8 @@ describe('SettingsHandler', () => {
       const settings: Record<string, unknown> = {
         maxConversationTurns: 10,
         openRouterModel: 'anthropic/claude-sonnet-4',
-        defaultImageModel: 'google/gemini-2.5-flash-image',
-        defaultSVGModel: 'google/gemini-3-pro-preview',
-        defaultAspectRatio: '1:1',
+        imageModel: 'google/gemini-2.5-flash-image',
+        svgModel: 'google/gemini-3-pro-preview',
       };
       return settings[key] ?? defaultValue;
     });
@@ -80,9 +79,8 @@ describe('SettingsHandler', () => {
           payload: {
             maxConversationTurns: 10,
             openRouterModel: 'anthropic/claude-sonnet-4',
-            defaultImageModel: 'google/gemini-2.5-flash-image',
-            defaultSVGModel: 'google/gemini-3-pro-preview',
-            defaultAspectRatio: '1:1',
+            imageModel: 'google/gemini-2.5-flash-image',
+            svgModel: 'google/gemini-3-pro-preview',
           },
           correlationId: 'correlation-123',
         })

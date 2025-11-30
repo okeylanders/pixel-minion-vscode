@@ -18,9 +18,8 @@ export interface PersistenceState {
   settings?: {
     maxConversationTurns: number;
     openRouterModel: string;
-    defaultImageModel: string;
-    defaultSVGModel: string;
-    defaultAspectRatio: AspectRatio;
+    imageModel: string;
+    svgModel: string;
   };
   imageGeneration?: ImageGenerationPersistence;
   svgGeneration?: SVGGenerationPersistence;

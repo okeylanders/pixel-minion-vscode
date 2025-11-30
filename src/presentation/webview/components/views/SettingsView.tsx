@@ -18,6 +18,8 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
   const {
     maxConversationTurns,
     openRouterModel,
+    imageModel,
+    svgModel,
     apiKeyConfigured,
     isLoading,
     updateSetting,
@@ -80,6 +82,22 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           value={openRouterModel}
           onChange={(e) => updateSetting('openRouterModel', e.target.value)}
           placeholder="anthropic/claude-sonnet-4"
+        />
+
+        <Input
+          label="Image Model"
+          description="Selected model for image generation."
+          value={imageModel}
+          onChange={(e) => updateSetting('imageModel', e.target.value)}
+          placeholder="google/gemini-2.5-flash-image"
+        />
+
+        <Input
+          label="SVG Model"
+          description="Selected model for SVG generation."
+          value={svgModel}
+          onChange={(e) => updateSetting('svgModel', e.target.value)}
+          placeholder="google/gemini-3-pro-preview"
         />
       </section>
     </div>

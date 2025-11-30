@@ -292,6 +292,7 @@ export class MessageHandler {
     this.textHandler.updateMaxTurns(settings.maxConversationTurns);
     // Reset text client so model changes take effect on next request
     this.textHandler.resetClient();
+    // Forward selected models to orchestrators if needed in future
   }
 
   private resetClients(): void {

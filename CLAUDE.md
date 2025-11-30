@@ -84,10 +84,11 @@ Each suite consists of three layers:
 
 #### Text Suite
 
-- **Purpose**: Chat/conversation functionality
-- **Client**: `OpenRouterTextClient` (static model set at construction)
+- **Purpose**: Chat/conversation functionality (no UI tab today; used for helpers)
+- **Client**: `OpenRouterTextClient` (static model set at construction; reset when model changes)
 - **Messages**: `TextMessage[]` with role-based structure
 - **State**: `TextConversation` with turn counting and max turns limit
+- **Rehydration**: Supported in infrastructure (handler/orchestrator) but currently not wired from the webview
 - **Default**: `max_tokens: 16384`
 
 #### Image Suite
@@ -96,7 +97,7 @@ Each suite consists of three layers:
 - **Client**: `OpenRouterImageClient`
 - **Messages**: `ImageConversationMessage[]` with multimodal content
 - **State**: Tracks prompts, generated images, seeds, aspect ratio
-- **Special**: Re-hydration support for conversation continuation
+- **Special**: Re-hydration support for conversation continuation; keeps model/aspect per conversation (changing settings does not retarget an in-flight thread)
 
 #### SVG Suite
 
@@ -104,7 +105,7 @@ Each suite consists of three layers:
 - **Client**: `OpenRouterDynamicTextClient` (model set via `setModel()`)
 - **Messages**: `TextMessage[]` with multimodal content (images optional)
 - **State**: Tracks prompts, SVG code, aspect ratio
-- **Special**: Extracts SVG code from markdown responses
+- **Special**: Extracts SVG code from markdown responses; re-hydration supported and uses stored model/aspect per conversation
 
 ### Dependency Injection Pattern
 
@@ -226,6 +227,17 @@ import { HelloWorldHandler } from '@handlers/domain/HelloWorldHandler';
 import { Button } from '@components/common';       // React components
 import { useSettings } from '@hooks/domain/useSettings';
 ```
+
+### Settings Synchronization
+
+- Config keys use the `pixelMinion.*` namespace. Model selections are `pixelMinion.imageModel`, `pixelMinion.svgModel`, and `pixelMinion.openRouterModel` (text).
+- Settings changes flow both ways: VS Code settings → webview (via SETTINGS_DATA broadcast on config change) and webview → VS Code (via `UPDATE_SETTING` from hooks).
+- Text model changes reset the text client so the next turn uses the new model. Image/SVG conversations keep their initial model/aspect; start a new conversation to change it.
+
+### Runtime/Activation
+
+- Requires VS Code `^1.93.0` (Node 18) for built-in `fetch`.
+- Activation events use `onView:pixelMinion.mainView` and pixelMinion commands; container/view IDs are `pixel-minion`/`pixelMinion.mainView`.
 
 ## Common Tasks
 
