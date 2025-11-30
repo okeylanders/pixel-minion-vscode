@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="assets/pixel-minion-logo-animated-bw.svg" alt="Pixel Minion" width="128"/>
+  <img src="assets/pixel-minion-icon.png" alt="Pixel Minion" width="128"/>
 </p>
 
 # Changelog
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
-## [0.1.0] - 2025-11-30
+## [1.0.0] - 2025-11-30
 
 ### Overview
 

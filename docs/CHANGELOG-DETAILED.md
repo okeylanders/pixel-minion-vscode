@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assets/pixel-minion-logo-animated-bw.svg" alt="Pixel Minion" width="128"/>
+  <img src="../assets/pixel-minion-icon.png" alt="Pixel Minion" width="128"/>
 </p>
 
 # Changelog (Detailed)
@@ -9,7 +9,7 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2025-11-30
+## [1.0.0] - 2025-11-30
 
 ### Overview
 
