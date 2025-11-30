@@ -53,7 +53,13 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
 
     // Handle messages from webview
     webviewView.webview.onDidReceiveMessage(
-      (message) => this.messageHandler?.handleMessage(message),
+      async (message) => {
+        try {
+          await this.messageHandler?.handleMessage(message);
+        } catch (error) {
+          this.logger.error('Error handling webview message', error);
+        }
+      },
       undefined,
       []
     );
