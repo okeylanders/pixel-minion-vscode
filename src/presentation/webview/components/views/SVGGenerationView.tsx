@@ -125,7 +125,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             disabled={isLoading || !prompt.trim()}
             variant="primary"
           >
-            {isLoading ? 'Generating...' : 'Generate'}
+            {isLoading ? 'Generating...' : '⚡ Generate'}
           </Button>
         </div>
 

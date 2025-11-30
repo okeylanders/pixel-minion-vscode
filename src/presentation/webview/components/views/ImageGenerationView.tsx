@@ -158,7 +158,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             disabled={isLoading || !prompt.trim()}
             variant="primary"
           >
-            {isLoading ? 'Generating...' : 'Generate'}
+            {isLoading ? 'Generating...' : '⚡ Generate'}
           </Button>
         </div>
 
