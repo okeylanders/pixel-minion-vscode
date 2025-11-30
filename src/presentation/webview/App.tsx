@@ -31,6 +31,7 @@ import {
   useMessageRouter,
   useImageGeneration,
   useSVGGeneration,
+  useTokenTracking,
 } from './hooks';
 
 // Define available tabs with icons (Prose Minion style)
@@ -83,6 +84,7 @@ export function App(): JSX.Element {
 
   // Initialize domain hooks with persisted state
   const settings = useSettings(persistedState.settings);
+  const tokenTracking = useTokenTracking(persistedState.tokenTracking);
   const imageGeneration = useImageGeneration(persistedState.imageGeneration, {
     selectedModel: settings.imageModel,
     onModelChange: (model) => settings.updateSetting('imageModel', model),
@@ -106,6 +108,9 @@ export function App(): JSX.Element {
     // Settings messages
     [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
+
+    // Token tracking messages
+    [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
 
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),
@@ -132,12 +137,14 @@ export function App(): JSX.Element {
       settings: settings.persistedState,
       imageGeneration: imageGeneration.persistedState,
       svgGeneration: svgGeneration.persistedState,
+      tokenTracking: tokenTracking.persistedState,
     });
   }, [
     activeTab,
     settings.persistedState,
     imageGeneration.persistedState,
     svgGeneration.persistedState,
+    tokenTracking.persistedState,
     saveState,
   ]);
 
@@ -155,7 +162,10 @@ export function App(): JSX.Element {
 
   return (
     <div className="app-container">
-      <AppHeader />
+      <AppHeader
+        tokenCount={tokenTracking.usage.totalTokens}
+        tokenCost={tokenTracking.usage.costUsd ?? 0}
+      />
 
       <TabBar
         tabs={TABS}
