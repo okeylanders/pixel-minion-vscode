@@ -64,6 +64,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
         messages: messages.map(m => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.7,
         max_tokens: options?.maxTokens ?? 16384,
+        usage: { include: true },  // Request native token counts and cost
       }),
       signal: options?.signal,
     });
@@ -77,6 +78,11 @@ export class OpenRouterDynamicTextClient implements TextClient {
     const data = await response.json();
     const choice = data.choices?.[0];
 
+    this.logger.debug('OpenRouter response received', {
+      hasUsage: !!data.usage,
+      usage: data.usage,  // Log full usage object to see available fields
+    });
+
     if (!choice) {
       throw new Error('No completion choice returned from OpenRouter');
     }
@@ -85,9 +91,13 @@ export class OpenRouterDynamicTextClient implements TextClient {
       content: choice.message?.content ?? '',
       finishReason: choice.finish_reason,
       usage: data.usage ? {
-        promptTokens: data.usage.prompt_tokens,
-        completionTokens: data.usage.completion_tokens,
-        totalTokens: data.usage.total_tokens,
+        // Prefer native token counts if available, fall back to normalized
+        promptTokens: data.usage.native_tokens_prompt ?? data.usage.prompt_tokens ?? 0,
+        completionTokens: data.usage.native_tokens_completion ?? data.usage.completion_tokens ?? 0,
+        totalTokens: (data.usage.native_tokens_prompt ?? data.usage.prompt_tokens ?? 0) +
+                     (data.usage.native_tokens_completion ?? data.usage.completion_tokens ?? 0),
+        // Cost may be in different fields depending on OpenRouter version
+        costUsd: data.usage.cost ?? data.usage.total_cost,
       } : undefined,
       id: data.id,
     };

@@ -1,8 +1,8 @@
 /**
  * SVG Generation Message Payloads
  */
-
 import { AspectRatio } from './imageGeneration';
+import { TokenUsage } from './tokenUsage';
 
 export interface SVGGenerationRequestPayload {
   prompt: string;
@@ -16,6 +16,7 @@ export interface SVGConversationHistoryTurn {
   prompt: string;
   svgCode: string;
   turnNumber?: number;
+  usage?: TokenUsage;
 }
 
 export interface SVGGenerationContinuePayload {
@@ -30,6 +31,7 @@ export interface SVGGenerationResponsePayload {
   conversationId: string;
   svgCode: string;
   turnNumber: number;
+  usage?: TokenUsage;
 }
 
 export interface SVGSaveRequestPayload {

@@ -79,3 +79,12 @@
   display: flex;
   gap: 8px;
 }
+
+/* Token usage display - subtle, right-aligned */
+.svg-usage-display {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  text-align: right;
+  padding-right: 4px;
+  opacity: 0.8;
+}

@@ -207,7 +207,7 @@ export function App(): JSX.Element {
                 Close
               </button>
             </header>
-            <SettingsView settings={settings} />
+            <SettingsView settings={settings} tokenTracking={tokenTracking} />
           </div>
         </div>
       )}

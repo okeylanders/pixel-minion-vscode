@@ -39,6 +39,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     referenceImage,
     setReferenceImage,
     svgCode,
+    conversationHistory,
     conversationId,
     isLoading,
     error,
@@ -47,6 +48,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     saveSVG,
     copySVG,
   } = svgGeneration;
+
+  // Get the latest turn's usage for display
+  const latestUsage = conversationHistory.length > 0
+    ? conversationHistory[conversationHistory.length - 1].usage
+    : undefined;
 
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -126,6 +132,16 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
               </div>
               <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
               <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
+              {latestUsage && (
+                <div className="svg-usage-display">
+                  {latestUsage.totalTokens.toLocaleString()} tokens
+                  {latestUsage.costUsd !== undefined && (
+                    <> · {latestUsage.costUsd < 0.01
+                      ? `$${latestUsage.costUsd.toFixed(4)}`
+                      : `$${latestUsage.costUsd.toFixed(2)}`}</>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

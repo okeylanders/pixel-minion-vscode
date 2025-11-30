@@ -8,13 +8,14 @@
  */
 import React from 'react';
 import { SecretInput } from '../common';
-import { UseSettingsReturn } from '@hooks';
+import { UseSettingsReturn, UseTokenTrackingReturn } from '@hooks';
 
 export interface SettingsViewProps {
   settings: UseSettingsReturn;
+  tokenTracking: UseTokenTrackingReturn;
 }
 
-export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
+export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JSX.Element {
   const {
     maxConversationTurns,
     imageModel,
@@ -113,6 +114,21 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
             Maximum turns before a conversation resets. Higher values use more context.
           </span>
         </label>
+      </section>
+
+      {/* Token Usage Section */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">Token Usage</h3>
+        <p className="settings-description mb-sm">
+          Displays running token totals in the header. Resets manually or on reload.
+        </p>
+        <button
+          type="button"
+          className="reset-token-button"
+          onClick={tokenTracking.resetTokens}
+        >
+          Reset Token Usage
+        </button>
       </section>
     </>
   );

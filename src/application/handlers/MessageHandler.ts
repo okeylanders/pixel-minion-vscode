@@ -77,7 +77,8 @@ export class MessageHandler {
     this.imageGenerationHandler = new ImageGenerationHandler(
       postMessage,
       imageOrchestrator,
-      logger
+      logger,
+      (usage) => this.applyTokenUsage(usage)
     );
 
     // Create SVG generation orchestrator and inject dynamic text client
@@ -86,7 +87,8 @@ export class MessageHandler {
     this.svgGenerationHandler = new SVGGenerationHandler(
       postMessage,
       svgOrchestrator,
-      logger
+      logger,
+      (usage) => this.applyTokenUsage(usage)
     );
 
     // Register routes

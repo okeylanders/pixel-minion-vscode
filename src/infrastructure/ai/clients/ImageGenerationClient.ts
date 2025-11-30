@@ -6,6 +6,7 @@
  * - Response format (images array instead of text content)
  * - Message structure (multimodal content with image_url)
  */
+import { TokenUsage } from './TextClient';
 
 /**
  * Multimodal message content for image generation
@@ -50,11 +51,7 @@ export interface GeneratedImageData {
 export interface ImageGenerationResult {
   images: GeneratedImageData[];
   seed: number;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+  usage?: TokenUsage;
 }
 
 /**

@@ -31,6 +31,7 @@ export interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  costUsd?: number;
 }
 
 export interface TextCompletionResult {

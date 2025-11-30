@@ -127,6 +127,7 @@ export function useImageGeneration(
           images: payload.images,
           turnNumber: payload.turnNumber,
           timestamp: Date.now(),
+          usage: payload.usage,
         };
         setConversationHistory((prev) => [...prev, turn]);
       }
