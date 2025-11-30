@@ -16,7 +16,7 @@
     "url": "https://github.com/okeylanders/pixel-minion-vscode/issues"
   },
   "homepage": "https://github.com/okeylanders/pixel-minion-vscode#readme",
-  "icon": "assets/pixel-minion.png",
+  "icon": "assets/pixel-minion-icon.png",
   "galleryBanner": {
     "color": "#1a1a1a",
     "theme": "dark"
