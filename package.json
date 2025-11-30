@@ -92,13 +92,13 @@
         },
         "pixelMinion.imageModel": {
           "type": "string",
-          "default": "google/gemini-2.5-flash-image",
-          "description": "Selected model for image generation"
+          "default": "google/gemini-3-pro-preview",
+          "description": "Selected model for image generation (recommended: Gemini Pro 3)"
         },
         "pixelMinion.svgModel": {
           "type": "string",
           "default": "google/gemini-3-pro-preview",
-          "description": "Selected model for SVG generation"
+          "description": "Selected model for SVG generation (recommended: Gemini Pro 3)"
         }
       }
     }

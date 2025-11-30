@@ -68,7 +68,7 @@ export function useSettings(
     initialState?.openRouterModel ?? 'anthropic/claude-sonnet-4'
   );
   const [imageModel, setImageModel] = useState(
-    initialState?.imageModel ?? 'google/gemini-2.5-flash-image'
+    initialState?.imageModel ?? 'google/gemini-3-pro-image-preview'
   );
   const [svgModel, setSvgModel] = useState(
     initialState?.svgModel ?? 'google/gemini-3-pro-preview'
