@@ -56,13 +56,13 @@
 
 Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
-- 🖼️ [**Image Generation**](#image-generation) - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
-- ✏️ [**SVG Generation**](#svg-generation) - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
-- 🎨 [**AI SVG Edits**](#svg-colorize) - Colorize, simplify, animate, or remove elements from existing SVGs
-- 💬 **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
-- 📊 [**Token Usage Tracking**](#settings) - Real-time token and cost display per turn
+- 🖼️ [**Image Generation**](#image-generation) - Text-to-image and image-to-image generation with [seed control](#image-seeds) and prompt enhance.
+- ✏️ [**SVG Generation**](#svg-generation) - Create vector graphics with [multi-size preview](#svg-preview-sizes) and [code extraction](#svg-easy-code-extract)
+- 🎨 [**AI SVG Edits**](#svg-colorize) - [Colorize](#svg-colorize), simplify, [animate](#svg-animate), or remove elements from existing SVGs
+- 💬 [**Multi-Turn Conversations**](#image-multiturn) - Refine your images and SVGs through iterative prompts
+- 📊 [**Token Usage Tracking**](#settings-token-usage) - Real-time token and cost display per turn
 - 🔗 [**Reference Image Support**](#image-generation) - Use existing images and SVGs as context for generation
-- ⚙️ [**Settings**](#settings) - Model selection, API key management, and output configuration
+- ⚙️ [**Settings**](#settings) - [Model selection](#settings-model-override), API key management, and [debugging](#settings-debugging)
 
 > **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
 
