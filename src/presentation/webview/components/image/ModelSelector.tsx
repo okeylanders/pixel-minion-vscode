@@ -33,7 +33,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         {models.map((model) => (
           <option key={model.id} value={model.id}>
             {model.displayName}
-            {model.inputCost !== undefined && ` ($${model.inputCost}/${model.outputCost})`}
           </option>
         ))}
       </select>
