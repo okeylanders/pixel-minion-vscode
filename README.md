@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  Generate images and vector graphics directly in your editor using cutting-edge AI models via OpenRouter.
+  Generate images and svgs ( vector graphics ) directly in your editor using cutting-edge AI models like Flux, Nano Banana, Chat GPT, and more via OpenRouter.
 </p>
 
 <p align="center">
@@ -27,18 +27,24 @@
 </p>
 
 ---
+<p align="center">
+<details>
+<summary><strong>📸 Screenshot Gallery</strong> (click to expand)</summary>
 
-## What's New in v0.1.0
+<p align="center">
+  <img src="screenshots/image-generation-multiturn.png" alt="Image Generation" width="600"/>
+</p>
 
-> **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
->
-> **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
->
-> **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
->
-> **Token Usage Tracking** - Real-time token and cost display per turn
->
-> **Reference Image Support** - Use existing images or SVGs as context for generation
+<p align="center">
+  <img src="screenshots/svg-book-colorize-with-code.png" alt="SVG Colorize" width="600"/>
+</p>
+
+<p align="center">
+  <img src="screenshots/svg-code-view.png" alt="SVG Code View" width="600"/>
+</p>
+
+</details>
+</p>
 
 ---
 
@@ -46,15 +52,14 @@
 
 Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
-- **Image Generation** - Text-to-image and image-to-image via OpenRouter image models
-- **SVG Generation** - Generate vector graphics as code using text models
+- **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
+- **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
+- **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
+- **Token Usage Tracking** - Real-time token and cost display per turn
+- **Reference Image Support** - Use existing images and SVGs as context for generation
 - **Settings** - Model selection, API key management, and output configuration
 
 > **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
-
-<p align="center">
-  <img src="screenshots/image-generation-multiturn.png" alt="Image Generation" width="400"/>
-</p>
 
 ---
 
@@ -62,7 +67,7 @@ Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
 ### Installation
 
-1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/) (coming soon)
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/)
 2. Open the Pixel Minion panel from the activity bar (icon in sidebar)
 3. Configure your OpenRouter API key in Settings (gear icon)
 4. Start generating!
@@ -98,10 +103,9 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
    - Your key is securely stored in your OS keychain
    - Changes save automatically
 
-3. **Choose Your Models** (optional):
-   - Select different models for Image and SVG generation
-   - Balance cost vs. quality based on your needs
-   - Default models work great out of the box
+<p align="center">
+  <img src="screenshots/settings-apikey.png" alt="Image Generation Controls" width="500"/>
+</p>
 
 ---
 
@@ -119,7 +123,7 @@ Generate images from text prompts or refine existing images with AI.
 
 - **Text-to-Image** - Describe what you want, get an image
 - **Image-to-Image** - Upload reference images for context
-- **SVG Context** - Attach SVG files as text context for the AI
+- **SVG Context** - Attach SVG files in Image-to-Image
 - **Multi-Turn Conversations** - Refine results through iterative prompts
 - **Aspect Ratio Control** - Choose from 1:1, 16:9, 9:16, 4:3, 3:4
 - **Seed Control** - Set a seed for reproducible results
@@ -149,6 +153,11 @@ Generate images from text prompts or refine existing images with AI.
 </p>
 <p align="center"><em>Refine your images through multi-turn conversations</em></p>
 
+<p align="center">
+  <img src="screenshots/image-result-card.png" alt="Multi-turn Refinement" width="500"/>
+</p>
+<p align="center"><em>Copy Randomly Generated Seed to Clipboard | Click To Save Image To Open Project</em></p>
+
 ---
 
 ### SVG Generation
@@ -167,14 +176,15 @@ Generate vector graphics as code using powerful text models.
 - **Code View** - View and copy the raw SVG code
 - **Multi-Turn Conversations** - Refine your SVG through iteration
 - **Token Usage** - See tokens and cost per generation
+- **Easy Debug View** - Click "Bug" in top right corner to launch output and view errors or console messages.
 
 **Available Models:**
 
 | Model | Description |
 |-------|-------------|
-| **GPT-5.1 Codex** | Default - OpenAI's code-optimized model |
-| **Gemini Pro 3.0** | Google's latest text model |
-| **Claude Opus 4.5** | Anthropic's frontier model |
+| **GPT-5.1 Codex** | Default - OpenAI's code-optimized model / **Recommended** |
+| **Gemini Pro 3.0** | Google's latest text model / *Runner up* |
+| **Claude Opus 4.5** | Anthropic's frontier model / Ok |
 
 **Best Practices:**
 
@@ -187,6 +197,16 @@ Generate vector graphics as code using powerful text models.
   <img src="screenshots/svg-multisize-thumbnails.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
 <p align="center"><em>Preview your SVG at 32px, 64px, and 128px to verify scalability</em></p>
+
+<p align="center">
+  <img src="screenshots/svg-code-view.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Easily Review/Copy Code From Generated SVG </em></p>
+
+<p align="center">
+  <img src="screenshots/animate-svgs.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Animate SVGs</em></p>
 
 ---
 
@@ -201,7 +221,6 @@ Click the **gear icon** in the Pixel Minion header for settings:
 ### General Settings
 
 - **OpenRouter API Key** - Securely stored in OS keychain
-- **Output Directory** - Where generated files are saved (default: `pixel-minion/`)
 
 ### Model Selection
 
@@ -210,13 +229,38 @@ Click the **gear icon** in the Pixel Minion header for settings:
 
 All settings save automatically and sync with your VS Code preferences.
 
+<p align="center">
+  <img src="screenshots/settings-models.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Manually Override Model IDs from Dropdowns</em></p>
+
+<p align="center">
+  <img src="screenshots/header-icons.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>View Debug Window by Clicking the Bug</em></p>
+
+<p align="center">
+  <img src="screenshots/output-logs.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Clear Output Logging</em></p>
+
+<p align="center">
+  <img src="screenshots/header-token-counter.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Keep Track of Tokens & Cost</em></p>
+
+<p align="center">
+  <img src="screenshots/settings-token-usage.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Reset Token Usage In Settings</em></p>
+
 ---
 
 ## Use Cases
 
 ### For Game Developers
 
-- Generate sprites and game assets
+- Generate sprites
 - Create icons at multiple sizes
 - Prototype visual concepts quickly
 
@@ -253,7 +297,7 @@ Built with **Clean Architecture** principles:
 ### Privacy & Security
 
 - **Secure API Key Storage** - Keys stored in OS keychain (Keychain Access, Credential Manager, libsecret) via VS Code SecretStorage
-- **No Logging** - Your prompts and images stay in your workspace
+- **No Logging** - Extension communicates directly with OpenRouter and does not log to any other parties.
 - **No Training** - Configure OpenRouter models to opt-out of training data
 
 ### Requirements

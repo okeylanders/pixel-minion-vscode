@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>Colorized Animated Retro Glitch Skull Monitor</title>
+  <defs>
+    <linearGradient id="frameGradient" x1="0" y1="112" x2="0" y2="784" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8c2a13"/>
+      <stop offset="1" stop-color="#5b1409"/>
+    </linearGradient>
+    <linearGradient id="standGradient" x1="0" y1="784" x2="0" y2="944" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a33a18"/>
+      <stop offset="1" stop-color="#6a1d0c"/>
+    </linearGradient>
+  </defs>
+  <style>
+    #glitch-pixels .pixel {
+      animation: blink 1.4s infinite ease-in-out;
+    }
+    #glitch-pixels .delay-1 { animation-delay: 0.2s; }
+    #glitch-pixels .delay-2 { animation-delay: 0.4s; }
+    #glitch-pixels .delay-3 { animation-delay: 0.6s; }
+    #glitch-pixels .delay-4 { animation-delay: 0.8s; }
+    #glitch-pixels .delay-5 { animation-delay: 1s; }
+    #glitch-pixels .burnt { fill: #7a1d0f; }
+    #glitch-pixels .orange { fill: #ff6b2d; }
+    #glitch-pixels .white { fill: #ffffff; }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.1; }
+    }
+  </style>
+  <g id="monitor-frame">
+    <path fill="url(#frameGradient)" fill-rule="evenodd" d="M112 112C67.8 112 32 147.8 32 192V704C32 748.2 67.8 784 112 784H912C956.2 784 992 748.2 992 704V192C992 147.8 956.2 112 912 112H112ZM112 192H912V704H112V192Z"/>
+    <rect x="432" y="784" width="160" height="80" fill="#7a1d0f"/>
+    <path fill="url(#standGradient)" d="M312 864H712C729.6 864 744 878.4 744 896V912H280V896C280 878.4 294.4 864 312 864Z"/>
+  </g>
+  <g id="glitch-pixels">
+    <rect class="pixel delay-1 burnt" x="160" y="240" width="40" height="40"/>
+    <rect class="pixel delay-3 orange" x="210" y="240" width="40" height="40"/>
+    <rect class="pixel delay-2 white" x="160" y="290" width="40" height="40"/>
+    <rect class="pixel delay-4 burnt" x="260" y="290" width="40" height="40"/>
+    <rect class="pixel delay-5 orange" x="160" y="340" width="40" height="40"/>
+    <rect class="pixel delay-2 white" x="210" y="450" width="40" height="40"/>
+    <rect class="pixel delay-3 burnt" x="160" y="550" width="40" height="40"/>
+    <rect class="pixel delay-1 orange" x="210" y="550" width="40" height="40"/>
+    <rect class="pixel delay-4 white" x="260" y="600" width="40" height="40"/>
+    <rect class="pixel delay-2 burnt" x="160" y="600" width="40" height="40"/>
+    <rect class="pixel delay-1 white" x="360" y="220" width="40" height="40"/>
+    <rect class="pixel delay-3 burnt" x="610" y="220" width="40" height="40"/>
+    <rect class="pixel delay-5 orange" x="660" y="220" width="40" height="40"/>
+    <rect class="pixel delay-2 white" x="810" y="240" width="40" height="40"/>
+    <rect class="pixel delay-4 burnt" x="760" y="240" width="40" height="40"/>
+    <rect class="pixel delay-1 orange" x="810" y="290" width="40" height="40"/>
+    <rect class="pixel delay-3 white" x="710" y="340" width="40" height="40"/>
+    <rect class="pixel delay-5 burnt" x="810" y="450" width="40" height="40"/>
+    <rect class="pixel delay-2 orange" x="810" y="550" width="40" height="40"/>
+    <rect class="pixel delay-1 white" x="760" y="550" width="40" height="40"/>
+    <rect class="pixel delay-4 burnt" x="710" y="600" width="40" height="40"/>
+    <rect class="pixel delay-3 orange" x="810" y="600" width="40" height="40"/>
+    <rect class="pixel delay-5 white" x="760" y="650" width="40" height="40"/>
+  </g>
+  <g id="skull" fill="#ffffff">
+    <path fill-rule="evenodd" d="M512 260C406 260 320 346 320 452C320 520 350 570 390 600L390 630C390 660 410 680 440 680H584C614 680 634 660 634 630L634 600C674 570 704 520 704 452C704 346 618 260 512 260ZM432 400C405 400 384 421 384 448C384 475 405 496 432 496C459 496 480 475 480 448C480 421 459 400 432 400ZM592 400C565 400 544 421 544 448C544 475 565 496 592 496C619 496 640 475 640 448C640 421 619 400 592 400ZM512 520L482 570H542L512 520Z">
+      <animateTransform attributeName="transform" attributeType="XML" type="translate" values="0 -12; 0 12; 0 -12" dur="6s" repeatCount="indefinite"/>
+    </path>
+  </g>
+</svg>
