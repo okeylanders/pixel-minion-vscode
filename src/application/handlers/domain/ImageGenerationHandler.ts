@@ -41,7 +41,7 @@ export class ImageGenerationHandler {
    * Handle new image generation request
    */
   async handleGenerationRequest(message: MessageEnvelope<ImageGenerationRequestPayload>): Promise<void> {
-    const { prompt, model, aspectRatio, referenceImages, conversationId, seed } = message.payload;
+    const { prompt, model, aspectRatio, referenceImages, referenceSvgText, conversationId, seed } = message.payload;
     this.logger.info(`Image generation request: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
@@ -52,6 +52,7 @@ export class ImageGenerationHandler {
         aspectRatio,
         seed,
         referenceImages,
+        referenceSvgText,
       }, conversationId);
 
       // Apply token usage if available
@@ -88,7 +89,7 @@ export class ImageGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<ImageGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio, referenceSvgText } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
@@ -98,6 +99,7 @@ export class ImageGenerationHandler {
       const rehydrationHistory: RehydrationTurn[] | undefined = history?.map(h => ({
         prompt: h.prompt,
         images: h.images,
+        referenceSvgText: h.referenceSvgText,
       }));
 
       const result = await this.orchestrator.continueConversation(
@@ -105,7 +107,8 @@ export class ImageGenerationHandler {
         prompt,
         rehydrationHistory,
         model,
-        aspectRatio
+        aspectRatio,
+        referenceSvgText
       );
 
       // Apply token usage if available

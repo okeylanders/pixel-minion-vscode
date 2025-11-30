@@ -19,6 +19,7 @@ export interface SVGGenerationOptions {
   model: string;
   aspectRatio: AspectRatio;
   referenceImage?: string;  // base64 encoded image
+  referenceSvgText?: string; // raw SVG content
 }
 
 export interface SVGTurnResult {
@@ -87,7 +88,7 @@ export class SVGOrchestrator {
     this.client.setModel(options.model);
 
     // Add user message (handles multimodal if reference image provided)
-    this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage);
+    this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage, options.referenceSvgText);
 
     // Call the text client with conversation messages
     const result = await this.client.createCompletion(conversation.messages);
@@ -128,7 +129,8 @@ export class SVGOrchestrator {
     prompt: string,
     history?: SVGRehydrationTurn[],
     model?: string,
-    aspectRatio?: AspectRatio
+    aspectRatio?: AspectRatio,
+    referenceSvgText?: string
   ): Promise<SVGTurnResult> {
     let conversation = this.conversationManager.get(conversationId);
 
@@ -145,6 +147,7 @@ export class SVGOrchestrator {
     return this.generateSVG(prompt, {
       model: conversation.model,
       aspectRatio: conversation.aspectRatio,
+      referenceSvgText,
     }, conversationId);
   }
 

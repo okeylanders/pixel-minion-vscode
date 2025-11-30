@@ -7,8 +7,8 @@ import React, { useRef, useCallback } from 'react';
 import '../../styles/components/image-uploader.css';
 
 export interface ImageUploaderProps {
-  images: string[];  // Array of base64 data URLs
-  onAddImage: (dataUrl: string) => void;
+  images: string[];  // Array of base64 data URLs (for preview)
+  onAddImage: (dataUrl: string, svgText?: string | null) => void;
   onRemoveImage: (index: number) => void;
   onClear: () => void;
   disabled?: boolean;
@@ -32,10 +32,20 @@ export function ImageUploader({
     for (const file of Array.from(files)) {
       if (images.length >= maxImages) break;
 
+      // Always read data URL for preview
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          onAddImage(reader.result);
+          if (file.type === 'image/svg+xml') {
+            const textReader = new FileReader();
+            textReader.onload = () => {
+              const svgText = typeof textReader.result === 'string' ? textReader.result : null;
+              onAddImage(reader.result as string, svgText);
+            };
+            textReader.readAsText(file);
+          } else {
+            onAddImage(reader.result);
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -77,7 +87,7 @@ export function ImageUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
         multiple
         onChange={handleFileChange}
         style={{ display: 'none' }}

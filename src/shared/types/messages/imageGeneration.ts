@@ -20,6 +20,7 @@ export interface ImageGenerationRequestPayload {
   model: string;
   aspectRatio: AspectRatio;
   referenceImages?: string[];  // base64 encoded
+  referenceSvgText?: string;   // raw SVG text (if attachment was SVG)
   conversationId?: string;     // for continuation
   seed?: number;               // optional seed for reproducibility (auto-generated if not provided)
 }
@@ -33,6 +34,7 @@ export interface ConversationHistoryTurn {
     data: string;      // base64 data URL
     seed: number;
   }>;
+  referenceSvgText?: string;
 }
 
 export interface ImageGenerationContinuePayload {
@@ -48,6 +50,7 @@ export interface ImageGenerationContinuePayload {
    */
   model?: string;
   aspectRatio?: AspectRatio;
+  referenceSvgText?: string;
 }
 
 export interface GeneratedImage {
@@ -69,6 +72,7 @@ export interface ConversationTurn {
   turnNumber: number;
   timestamp: number;
   usage?: TokenUsage;
+  referenceSvgText?: string;
 }
 
 export interface ImageGenerationResponsePayload {

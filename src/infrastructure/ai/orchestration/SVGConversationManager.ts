@@ -25,6 +25,7 @@ export interface SVGRehydrationTurn {
   prompt: string;
   svgCode: string;
   turnNumber?: number;
+  referenceSvgText?: string;
 }
 
 /**
@@ -107,24 +108,32 @@ export class SVGConversationManager {
   addUserMessage(
     conversationId: string,
     prompt: string,
-    referenceImage?: string
+    referenceImage?: string,
+    referenceSvgText?: string
   ): void {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
       throw new Error(`Conversation ${conversationId} not found`);
     }
 
-    // Build message content - multimodal if reference image provided
+    // Build message content
     let content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
 
-    if (referenceImage) {
-      // Multimodal message with text and image
+    // If an SVG text is provided, append it to the prompt as text.
+    if (referenceSvgText) {
+      const svgAppendix = `\n\nReference SVG:\n${referenceSvgText}`;
+      content = referenceImage
+        ? [
+            { type: 'text', text: `${prompt}${svgAppendix}` },
+            { type: 'image_url', image_url: { url: referenceImage } },
+          ]
+        : `${prompt}${svgAppendix}`;
+    } else if (referenceImage) {
       content = [
         { type: 'text', text: prompt },
         { type: 'image_url', image_url: { url: referenceImage } }
       ];
     } else {
-      // Simple text message
       content = prompt;
     }
 
@@ -196,9 +205,12 @@ export class SVGConversationManager {
     });
 
     for (const turn of history) {
+      const promptWithSvg = turn.referenceSvgText
+        ? `${turn.prompt}\n\nReference SVG:\n${turn.referenceSvgText}`
+        : turn.prompt;
       conversation.messages.push({
         role: 'user',
-        content: turn.prompt
+        content: promptWithSvg
       });
       conversation.messages.push({
         role: 'assistant',

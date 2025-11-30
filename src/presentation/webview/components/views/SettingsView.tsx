@@ -72,10 +72,10 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
             className="settings-input"
             value={imageModel}
             onChange={(e) => updateSetting('imageModel', e.target.value)}
-            placeholder="google/gemini-2.5-flash-image"
+            placeholder="google/gemini-3-pro-image-preview"
           />
           <span className="settings-description">
-            Powers text-to-image and image-to-image generation.
+            Powers text-to-image and image-to-image generation. Recommended: Gemini Pro 3.
           </span>
         </label>
 
@@ -86,10 +86,10 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
             className="settings-input"
             value={svgModel}
             onChange={(e) => updateSetting('svgModel', e.target.value)}
-            placeholder="google/gemini-3-pro-preview"
+            placeholder="openai/gpt-5.1-codex"
           />
           <span className="settings-description">
-            Powers SVG code generation from text prompts.
+            Powers SVG code generation from text prompts. Recommended: GPT-5.1 Codex or Gemini Pro 3.
           </span>
         </label>
       </section>

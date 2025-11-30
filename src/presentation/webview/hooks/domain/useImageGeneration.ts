@@ -25,6 +25,8 @@ export interface ImageGenerationState {
   model: string;
   aspectRatio: AspectRatio;
   referenceImages: string[];  // base64 data URLs
+  referenceSvgText: string | null; // raw SVG text attachment
+  referenceSvgWarning: string | null;
   seedInput: string;          // seed input field (empty = auto-generate)
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];  // Full conversation thread
@@ -39,7 +41,7 @@ export interface ImageGenerationActions {
   setModel: (model: string) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
   setSeedInput: (seed: string) => void;
-  addReferenceImage: (dataUrl: string) => void;
+  addReferenceImage: (dataUrl: string, svgText?: string | null) => void;
   removeReferenceImage: (index: number) => void;
   clearReferenceImages: () => void;
   generate: () => void;           // New generation (clears conversation)
@@ -63,6 +65,8 @@ export interface ImageGenerationPersistence {
   conversationId: string | null;
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];
+  referenceSvgText: string | null;
+  referenceImages: string[];
 }
 
 // Composed return type
@@ -85,7 +89,10 @@ export function useImageGeneration(
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
-  const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [referenceImages, setReferenceImages] = useState<string[]>(initialState?.referenceImages ?? []);
+  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(initialState?.referenceSvgText ?? null);
+  const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
+  const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
   const [seedInput, setSeedInput] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
     initialState?.generatedImages ?? []
@@ -128,6 +135,7 @@ export function useImageGeneration(
           turnNumber: payload.turnNumber,
           timestamp: Date.now(),
           usage: payload.usage,
+          referenceSvgText: referenceSvgText ?? undefined,
         };
         setConversationHistory((prev) => [...prev, turn]);
       }
@@ -151,16 +159,47 @@ export function useImageGeneration(
   }, []);
 
   // Actions
-  const addReferenceImage = useCallback((dataUrl: string) => {
-    setReferenceImages((prev) => [...prev, dataUrl]);
-  }, []);
+  const addReferenceImage = useCallback((dataUrl: string, svgText?: string | null) => {
+    if (svgText) {
+      setReferenceImages((prev) => {
+        const withoutOldSvg = referenceSvgIndex !== null ? prev.filter((_, i) => i !== referenceSvgIndex) : prev;
+        const next = [...withoutOldSvg, dataUrl];
+        setReferenceSvgIndex(next.length - 1);
+        return next;
+      });
+      setReferenceSvgText(svgText);
+      const sizeBytes = new Blob([svgText]).size;
+      setReferenceSvgWarning(
+        sizeBytes > 16 * 1024
+          ? 'Reference SVG is large (>16KB). Responses may truncate.'
+          : 'SVG will be sent as text context (not as image).'
+      );
+    } else {
+      setReferenceImages((prev) => [...prev, dataUrl]);
+    }
+  }, [referenceSvgIndex]);
 
   const removeReferenceImage = useCallback((index: number) => {
-    setReferenceImages((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+    setReferenceImages((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (referenceSvgIndex !== null) {
+        if (index === referenceSvgIndex) {
+          setReferenceSvgIndex(null);
+          setReferenceSvgText(null);
+          setReferenceSvgWarning(null);
+        } else if (index < referenceSvgIndex) {
+          setReferenceSvgIndex(referenceSvgIndex - 1);
+        }
+      }
+      return next;
+    });
+  }, [referenceSvgIndex]);
 
   const clearReferenceImages = useCallback(() => {
     setReferenceImages([]);
+    setReferenceSvgText(null);
+    setReferenceSvgWarning(null);
+    setReferenceSvgIndex(null);
   }, []);
 
   const generate = useCallback(() => {
@@ -179,21 +218,26 @@ export function useImageGeneration(
     // Parse seed input - if valid number use it, otherwise let handler auto-generate
     const parsedSeed = seedInput.trim() ? parseInt(seedInput, 10) : undefined;
     const seed = parsedSeed !== undefined && !isNaN(parsedSeed) ? parsedSeed : undefined;
+    const promptForApi = referenceSvgText
+      ? `${prompt}\n\nReference SVG:\n${referenceSvgText}`
+      : prompt;
+    const imagesForApi = referenceImages.filter((_, i) => i !== referenceSvgIndex);
 
     vscode.postMessage(
       createEnvelope(
         MessageType.IMAGE_GENERATION_REQUEST,
         'webview.imageGeneration',
         {
-          prompt,
+          prompt: promptForApi,
           model,
           aspectRatio,
-          referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+          referenceImages: imagesForApi.length > 0 && !referenceSvgText ? imagesForApi : (imagesForApi.length > 0 && referenceSvgText ? imagesForApi : undefined),
+          referenceSvgText: referenceSvgText ?? undefined,
           seed,
         }
       )
     );
-  }, [prompt, model, aspectRatio, referenceImages, seedInput, vscode]);
+  }, [prompt, model, aspectRatio, referenceImages, referenceSvgText, referenceSvgIndex, seedInput, vscode]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -218,23 +262,31 @@ export function useImageGeneration(
           data: img.data,
           seed: img.seed,
         })),
+        referenceSvgText: turn.referenceSvgText,
       }));
+
+      const promptForApi = referenceSvgText
+        ? `${chatPrompt}\n\nReference SVG:\n${referenceSvgText}`
+        : chatPrompt;
+      const imagesForApi = referenceImages.filter((_, i) => i !== referenceSvgIndex);
 
       vscode.postMessage(
         createEnvelope(
           MessageType.IMAGE_GENERATION_CONTINUE,
           'webview.imageGeneration',
           {
-            prompt: chatPrompt,
+            prompt: promptForApi,
             conversationId,
             history,
             model,
             aspectRatio,
+            referenceImages: imagesForApi.length > 0 && !referenceSvgText ? imagesForApi : (imagesForApi.length > 0 && referenceSvgText ? imagesForApi : undefined),
+            referenceSvgText: referenceSvgText ?? undefined,
           }
         )
       );
     },
-    [conversationId, conversationHistory, model, aspectRatio, vscode]
+    [conversationId, conversationHistory, model, aspectRatio, referenceImages, referenceSvgText, referenceSvgIndex, vscode]
   );
 
   const clearConversation = useCallback(() => {
@@ -275,6 +327,8 @@ export function useImageGeneration(
     conversationId,
     generatedImages,
     conversationHistory,
+    referenceSvgText,
+    referenceImages,
   };
 
   return {
@@ -283,6 +337,8 @@ export function useImageGeneration(
     model,
     aspectRatio,
     referenceImages,
+    referenceSvgText,
+    referenceSvgWarning,
     seedInput,
     generatedImages,
     conversationHistory,

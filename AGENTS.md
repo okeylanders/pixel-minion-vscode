@@ -97,7 +97,7 @@ Each suite consists of three layers:
 - **Client**: `OpenRouterTextClient` (static model set at construction)
 - **Messages**: `TextMessage[]` with role-based structure
 - **State**: `TextConversation` with turn counting and max turns limit
-- **Default**: `max_tokens: 16384`
+- **Default**: `max_tokens: 48000`
 
 #### Image Suite
 
@@ -1599,7 +1599,7 @@ export class OpenRouterTextClient implements TextClient {
     options?: TextCompletionOptions
   ): Promise<TextCompletionResult> {
     // ... OpenRouter API call with this.model
-    // Default: max_tokens: 16384
+    // Default: max_tokens: 48000
   }
 }
 ```
@@ -1640,7 +1640,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
   async createCompletion(messages, options?): Promise<TextCompletionResult> {
     const apiKey = await this.secretStorage.getApiKey();
     // ... OpenRouter API call with this.currentModel
-    // Default: max_tokens: 16384
+    // Default: max_tokens: 48000
   }
 }
 ```
@@ -1765,7 +1765,7 @@ const conversationId = textOrchestrator.startConversation(systemPrompt);
 const result = await textOrchestrator.sendMessage(
   conversationId,
   userMessage,
-  { temperature: 0.7, maxTokens: 16384 }
+  { temperature: 0.7, maxTokens: 48000 }
 );
 
 // Single message (no conversation state)
@@ -1851,6 +1851,6 @@ interface ImageGenerationClient {
 
 ### Default Parameters
 
-- **Text clients**: `max_tokens: 16384`, `temperature: 0.7`
-- **Image clients**: Uses OpenRouter defaults per model
-- **SVG clients**: `max_tokens: 16384`, `temperature: 0.7`
+- Text clients: `max_tokens: 16384`, `temperature: 0.7`
+- SVG clients: `max_tokens: 16384`, `temperature: 0.7`
+- Image clients: Uses OpenRouter defaults per model

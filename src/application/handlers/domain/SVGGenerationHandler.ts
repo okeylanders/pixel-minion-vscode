@@ -39,7 +39,7 @@ export class SVGGenerationHandler {
    * Handle new SVG generation request
    */
   async handleGenerationRequest(message: MessageEnvelope<SVGGenerationRequestPayload>): Promise<void> {
-    const { prompt, model, aspectRatio, referenceImage, conversationId } = message.payload;
+    const { prompt, model, aspectRatio, referenceImage, referenceSvgText, conversationId } = message.payload;
     this.logger.info(`SVG generation request: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -54,7 +54,7 @@ export class SVGGenerationHandler {
       // Use orchestrator for generation
       const result = await this.svgOrchestrator.generateSVG(
         prompt,
-        { model, aspectRatio, referenceImage },
+        { model, aspectRatio, referenceImage, referenceSvgText },
         conversationId
       );
 
@@ -103,7 +103,7 @@ export class SVGGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<SVGGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio, referenceSvgText } = message.payload;
     this.logger.info(`SVG generation continue: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -121,7 +121,8 @@ export class SVGGenerationHandler {
         prompt,
         history,
         model,
-        aspectRatio
+        aspectRatio,
+        referenceSvgText
       );
 
       // Apply token usage if available
@@ -182,19 +183,20 @@ export class SVGGenerationHandler {
     this.logger.info(`Saving SVG: ${suggestedFilename}`);
 
     try {
-      const filePath = await this.saveSVG(svgCode, suggestedFilename);
+      const fileUri = await this.saveSVG(svgCode, suggestedFilename);
 
       this.postMessage(createEnvelope<SVGSaveResultPayload>(
         MessageType.SVG_SAVE_RESULT,
         'extension.svgGeneration',
         {
           success: true,
-          filePath,
+          filePath: fileUri.fsPath,
         },
         message.correlationId
       ));
 
-      this.logger.info(`SVG saved successfully: ${filePath}`);
+      await vscode.commands.executeCommand('vscode.open', fileUri);
+      this.logger.info(`SVG saved and opened: ${fileUri.fsPath}`);
     } catch (error) {
       this.logger.error('SVG save failed', error);
       this.postMessage(createEnvelope<SVGSaveResultPayload>(
@@ -212,7 +214,7 @@ export class SVGGenerationHandler {
   /**
    * Save SVG to workspace
    */
-  private async saveSVG(svgCode: string, suggestedFilename: string): Promise<string> {
+  private async saveSVG(svgCode: string, suggestedFilename: string): Promise<vscode.Uri> {
     // Get workspace folder
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -257,7 +259,7 @@ export class SVGGenerationHandler {
     // Write file
     await vscode.workspace.fs.writeFile(fileUri, buffer);
 
-    return fileUri.fsPath;
+    return fileUri;
   }
 
   private applyTokenUsage(usage: TokenUsage): void {

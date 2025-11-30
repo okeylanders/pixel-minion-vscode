@@ -34,6 +34,7 @@ export interface RehydrationTurn {
     data: string;
     seed: number;
   }>;
+  referenceSvgText?: string;
 }
 
 export class ImageConversationManager {
@@ -88,7 +89,8 @@ export class ImageConversationManager {
   addUserMessage(
     conversationId: string,
     prompt: string,
-    referenceImages?: string[]
+    referenceImages?: string[],
+    referenceSvgText?: string
   ): void {
     const conversation = this.conversations.get(conversationId);
     if (!conversation) {
@@ -96,7 +98,7 @@ export class ImageConversationManager {
     }
 
     const content: ImageMessageContent[] = [
-      { type: 'text', text: prompt }
+      { type: 'text', text: referenceSvgText ? `${prompt}\n\nReference SVG:\n${referenceSvgText}` : prompt }
     ];
 
     // Add reference images if provided
@@ -158,7 +160,7 @@ export class ImageConversationManager {
     for (const turn of history) {
       // Add user message with prompt and images as context
       const userContent: ImageMessageContent[] = [
-        { type: 'text', text: turn.prompt }
+        { type: 'text', text: turn.referenceSvgText ? `${turn.prompt}\n\nReference SVG:\n${turn.referenceSvgText}` : turn.prompt }
       ];
 
       for (const img of turn.images) {

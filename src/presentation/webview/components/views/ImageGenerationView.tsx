@@ -39,6 +39,8 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     seedInput,
     setSeedInput,
     referenceImages,
+    referenceSvgText,
+    referenceSvgWarning,
     addReferenceImage,
     removeReferenceImage,
     clearReferenceImages,
@@ -133,6 +135,11 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             onClear={clearReferenceImages}
             disabled={isLoading}
           />
+          {referenceSvgText && (
+            <div className="image-generation-svg-note">
+              {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
+            </div>
+          )}
 
           <Button
             onClick={generate}

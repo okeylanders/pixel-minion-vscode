@@ -9,6 +9,7 @@ export interface SVGGenerationRequestPayload {
   model: string;
   aspectRatio: AspectRatio;
   referenceImage?: string;     // base64 encoded (single image)
+  referenceSvgText?: string;   // raw SVG text (if attachment is SVG)
   conversationId?: string;
 }
 
@@ -16,6 +17,7 @@ export interface SVGConversationHistoryTurn {
   prompt: string;
   svgCode: string;
   turnNumber?: number;
+  referenceSvgText?: string;
   usage?: TokenUsage;
 }
 
@@ -25,6 +27,7 @@ export interface SVGGenerationContinuePayload {
   history?: SVGConversationHistoryTurn[];
   model?: string;
   aspectRatio?: AspectRatio;
+  referenceSvgText?: string;
 }
 
 export interface SVGGenerationResponsePayload {
