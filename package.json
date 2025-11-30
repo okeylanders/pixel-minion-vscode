@@ -10,54 +10,64 @@
     "url": "https://github.com/your-username/pixel-minion-vscode.git"
   },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:pixelMinion.mainView",
+    "onCommand:pixelMinion.openSettings",
+    "onCommand:pixelMinion.showOutput",
+    "onCommand:pixelMinion.helloWorld"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "template-extension",
+          "id": "pixel-minion",
           "title": "Pixel Minion",
           "icon": "assets/icon.svg"
         }
       ]
     },
     "views": {
-      "template-extension": [
+      "pixel-minion": [
         {
           "type": "webview",
-          "id": "templateExtension.mainView",
+          "id": "pixelMinion.mainView",
           "name": "Main View"
         }
       ]
     },
     "commands": [
       {
-        "command": "templateExtension.openSettings",
+        "command": "pixelMinion.openSettings",
         "title": "Pixel Minion: Settings",
         "icon": "$(gear)"
       },
       {
-        "command": "templateExtension.showOutput",
+        "command": "pixelMinion.showOutput",
         "title": "Pixel Minion: Show Output",
         "icon": "$(output)"
+      },
+      {
+        "command": "pixelMinion.helloWorld",
+        "title": "Pixel Minion: Hello World",
+        "icon": "$(comment-discussion)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "templateExtension.showOutput",
-          "when": "view == templateExtension.mainView",
+          "command": "pixelMinion.showOutput",
+          "when": "view == pixelMinion.mainView",
           "group": "navigation@1"
         },
         {
-          "command": "templateExtension.openSettings",
-          "when": "view == templateExtension.mainView",
+          "command": "pixelMinion.openSettings",
+          "when": "view == pixelMinion.mainView",
           "group": "navigation@2"
         }
       ]
@@ -65,12 +75,12 @@
     "configuration": {
       "title": "Pixel Minion",
       "properties": {
-        "templateExtension.maxConversationTurns": {
+        "pixelMinion.maxConversationTurns": {
           "type": "number",
           "default": 10,
           "description": "Maximum number of conversation turns to maintain in context"
         },
-        "templateExtension.openRouterModel": {
+        "pixelMinion.openRouterModel": {
           "type": "string",
           "default": "anthropic/claude-sonnet-4",
           "description": "OpenRouter model ID to use for AI features"

@@ -12,9 +12,18 @@ export interface SVGGenerationRequestPayload {
   conversationId?: string;
 }
 
+export interface SVGConversationHistoryTurn {
+  prompt: string;
+  svgCode: string;
+  turnNumber?: number;
+}
+
 export interface SVGGenerationContinuePayload {
   prompt: string;
   conversationId: string;
+  history?: SVGConversationHistoryTurn[];
+  model?: string;
+  aspectRatio?: AspectRatio;
 }
 
 export interface SVGGenerationResponsePayload {

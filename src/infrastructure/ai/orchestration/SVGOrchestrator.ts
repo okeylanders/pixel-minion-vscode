@@ -11,7 +11,7 @@
  * Note: Uses OpenRouterDynamicTextClient which allows model to be set per request
  */
 import { OpenRouterDynamicTextClient } from '../clients/OpenRouterDynamicTextClient';
-import { SVGConversationManager, SVGConversationState } from './SVGConversationManager';
+import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
 import { AspectRatio } from '@messages';
 
@@ -115,9 +115,17 @@ export class SVGOrchestrator {
    */
   async continueSVG(
     conversationId: string,
-    prompt: string
+    prompt: string,
+    history?: SVGRehydrationTurn[],
+    model?: string,
+    aspectRatio?: AspectRatio
   ): Promise<SVGTurnResult> {
-    const conversation = this.conversationManager.get(conversationId);
+    let conversation = this.conversationManager.get(conversationId);
+
+    if (!conversation && history?.length && model && aspectRatio) {
+      this.logger.info(`Re-hydrating SVG conversation ${conversationId} from history (${history.length} turns)`);
+      conversation = this.conversationManager.rehydrate(conversationId, model, aspectRatio, history);
+    }
 
     if (!conversation) {
       throw new Error(`Conversation ${conversationId} not found. Please start a new generation.`);

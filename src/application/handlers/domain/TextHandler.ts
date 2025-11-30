@@ -19,7 +19,9 @@ import { LoggingService } from '@logging';
 
 export class TextHandler {
   private readonly orchestrator: TextOrchestrator;
-  private readonly configSection = 'templateExtension';
+  private readonly configSection = 'pixelMinion';
+  private readonly defaultSystemPrompt = 'You are a helpful assistant integrated into a VSCode extension. Help users with their coding tasks.';
+  private currentModel?: string;
 
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
@@ -32,7 +34,7 @@ export class TextHandler {
 
     this.orchestrator = new TextOrchestrator({
       maxTurns,
-      systemPrompt: 'You are a helpful assistant integrated into a VSCode extension. Help users with their coding tasks.',
+      systemPrompt: this.defaultSystemPrompt,
     });
     this.logger.debug(`TextHandler initialized with maxTurns: ${maxTurns}`);
   }
@@ -41,7 +43,7 @@ export class TextHandler {
    * Handle text conversation request
    */
   async handleConversationRequest(message: MessageEnvelope<AIConversationRequestPayload>): Promise<void> {
-    const { message: userMessage, conversationId } = message.payload;
+    const { message: userMessage, conversationId, history, model, systemPrompt } = message.payload;
     this.logger.info(`Text conversation request: ${userMessage.substring(0, 50)}...`);
 
     // Send loading status
@@ -54,10 +56,27 @@ export class TextHandler {
 
     try {
       // Ensure client is configured
-      await this.ensureClientConfigured();
+      await this.ensureClientConfigured(model);
 
       // Get or create conversation
-      const activeConversationId = conversationId ?? this.orchestrator.startConversation();
+      let activeConversationId = conversationId;
+      if (conversationId) {
+        if (!this.orchestrator.hasConversation(conversationId)) {
+          if (history?.length) {
+            this.logger.info(`Rehydrating text conversation ${conversationId} from history (${history.length} turns)`);
+            this.orchestrator.rehydrateConversation(conversationId, history, systemPrompt ?? this.defaultSystemPrompt);
+          } else {
+            this.logger.warn(`Conversation ${conversationId} missing; starting new conversation`);
+            activeConversationId = this.orchestrator.startConversation(systemPrompt ?? this.defaultSystemPrompt);
+          }
+        }
+      } else {
+        activeConversationId = this.orchestrator.startConversation(systemPrompt ?? this.defaultSystemPrompt);
+      }
+
+      if (!activeConversationId) {
+        throw new Error('Failed to initialize conversation');
+      }
       this.logger.debug(`Using conversation: ${activeConversationId}`);
 
       // Send the message
@@ -76,6 +95,10 @@ export class TextHandler {
         },
         message.correlationId
       ));
+
+      if (result.usage) {
+        this.applyTokenUsage(result.usage);
+      }
     } catch (error) {
       this.logger.error('Text request failed', error);
       this.postMessage(createEnvelope(
@@ -110,8 +133,8 @@ export class TextHandler {
   /**
    * Ensure the text client is configured with API key
    */
-  private async ensureClientConfigured(): Promise<void> {
-    if (this.orchestrator.hasClient()) {
+  private async ensureClientConfigured(requestedModel?: string): Promise<void> {
+    if (this.orchestrator.hasClient() && (!requestedModel || requestedModel === this.currentModel)) {
       return;
     }
 
@@ -122,10 +145,12 @@ export class TextHandler {
     }
 
     const config = vscode.workspace.getConfiguration(this.configSection);
-    const model = config.get<string>('openRouterModel', 'anthropic/claude-sonnet-4');
+    const legacyConfig = vscode.workspace.getConfiguration('templateExtension');
+    const model = requestedModel ?? config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'anthropic/claude-sonnet-4'));
 
     const client = new OpenRouterTextClient(apiKey, model);
     this.orchestrator.setClient(client);
+    this.currentModel = model;
     this.logger.info(`Text client configured with model: ${model}`);
   }
 
@@ -142,6 +167,7 @@ export class TextHandler {
    */
   resetClient(): void {
     this.logger.info('Resetting text client');
+    this.currentModel = undefined;
     this.orchestrator.setClient(null as unknown as never); // Force re-initialization on next request
   }
 

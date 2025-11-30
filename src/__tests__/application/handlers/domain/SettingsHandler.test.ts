@@ -35,14 +35,17 @@ const mockConfig = {
 describe('SettingsHandler', () => {
   let postMessage: jest.Mock;
   let handler: SettingsHandler;
+  let onSettingsChanged: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
     postMessage = jest.fn();
+    onSettingsChanged = jest.fn();
     handler = new SettingsHandler(
       postMessage,
       mockSecretStorage as never,
-      mockLogger as never
+      mockLogger as never,
+      onSettingsChanged
     );
 
     // Setup default config mock behavior
@@ -51,6 +54,9 @@ describe('SettingsHandler', () => {
       const settings: Record<string, unknown> = {
         maxConversationTurns: 10,
         openRouterModel: 'anthropic/claude-sonnet-4',
+        defaultImageModel: 'google/gemini-2.5-flash-image',
+        defaultSVGModel: 'google/gemini-3-pro-preview',
+        defaultAspectRatio: '1:1',
       };
       return settings[key] ?? defaultValue;
     });
@@ -74,6 +80,9 @@ describe('SettingsHandler', () => {
           payload: {
             maxConversationTurns: 10,
             openRouterModel: 'anthropic/claude-sonnet-4',
+            defaultImageModel: 'google/gemini-2.5-flash-image',
+            defaultSVGModel: 'google/gemini-3-pro-preview',
+            defaultAspectRatio: '1:1',
           },
           correlationId: 'correlation-123',
         })
@@ -100,6 +109,7 @@ describe('SettingsHandler', () => {
         vscode.ConfigurationTarget.Global
       );
       expect(mockLogger.info).toHaveBeenCalledWith('Updating setting: maxConversationTurns');
+      expect(onSettingsChanged).toHaveBeenCalled();
     });
 
     it('should handle update errors', async () => {

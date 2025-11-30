@@ -160,7 +160,7 @@ interface HelloWorldPersistence {
 
 1. **Add to package.json** `contributes.configuration`:
    ```json
-   "templateExtension.newSetting": {
+  "pixelMinion.newSetting": {
      "type": "string",
      "default": "value",
      "description": "Description of the setting"

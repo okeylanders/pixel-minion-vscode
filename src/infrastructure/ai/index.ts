@@ -53,6 +53,7 @@ export type {
   SVGConversationState,
   SVGGenerationOptions,
   SVGTurnResult,
+  SVGRehydrationTurn,
 } from './orchestration';
 
 // Tools

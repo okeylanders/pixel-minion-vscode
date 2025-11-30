@@ -4,7 +4,7 @@
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import {
   MessageType,
@@ -13,6 +13,7 @@ import {
   AspectRatio,
   SVGGenerationResponsePayload,
   SVGSaveResultPayload,
+  SVGConversationHistoryTurn,
 } from '@messages';
 import { DEFAULT_SVG_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 
@@ -23,6 +24,7 @@ export interface SVGGenerationState {
   aspectRatio: AspectRatio;
   referenceImage: string | null;  // Single image, nullable
   svgCode: string | null;
+  conversationHistory: SVGConversationHistoryTurn[];
   conversationId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -55,6 +57,7 @@ export interface SVGGenerationPersistence {
   aspectRatio: AspectRatio;
   conversationId: string | null;
   svgCode: string | null;
+  conversationHistory: SVGConversationHistoryTurn[];
 }
 
 // Composed return type
@@ -63,7 +66,8 @@ export type UseSVGGenerationReturn = SVGGenerationState & SVGGenerationActions &
 };
 
 export function useSVGGeneration(
-  initialState?: Partial<SVGGenerationPersistence>
+  initialState?: Partial<SVGGenerationPersistence>,
+  settingsDefaults?: { defaultSVGModel?: string; defaultAspectRatio?: AspectRatio }
 ): UseSVGGenerationReturn {
   const vscode = useVSCodeApi();
 
@@ -77,17 +81,46 @@ export function useSVGGeneration(
   const [svgCode, setSvgCode] = useState<string | null>(
     initialState?.svgCode ?? null
   );
+  const [conversationHistory, setConversationHistory] = useState<SVGConversationHistoryTurn[]>(
+    initialState?.conversationHistory ?? []
+  );
   const [conversationId, setConversationId] = useState<string | null>(
     initialState?.conversationId ?? null
   );
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!settingsDefaults) {
+      return;
+    }
+    if (!conversationId && !svgCode) {
+      if (settingsDefaults.defaultSVGModel) {
+        setModel(settingsDefaults.defaultSVGModel);
+      }
+      if (settingsDefaults.defaultAspectRatio) {
+        setAspectRatio(settingsDefaults.defaultAspectRatio);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsDefaults?.defaultSVGModel, settingsDefaults?.defaultAspectRatio]);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
     const payload = message.payload as SVGGenerationResponsePayload;
     setConversationId(payload.conversationId);
     setSvgCode(payload.svgCode);
+    setPendingPrompt((currentPrompt) => {
+      if (currentPrompt) {
+        const turn: SVGConversationHistoryTurn = {
+          prompt: currentPrompt,
+          svgCode: payload.svgCode,
+          turnNumber: payload.turnNumber,
+        };
+        setConversationHistory((prev) => [...prev, turn]);
+      }
+      return null;
+    });
     setIsLoading(false);
     setError(null);
   }, []);
@@ -115,6 +148,8 @@ export function useSVGGeneration(
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
     setSvgCode(null);          // Clear previous SVG
+    setConversationHistory([]); // Clear history
+    setPendingPrompt(prompt);
 
     vscode.postMessage(
       createEnvelope(
@@ -144,6 +179,13 @@ export function useSVGGeneration(
 
       setIsLoading(true);
       setError(null);
+      setPendingPrompt(chatPrompt);
+
+      const history: SVGConversationHistoryTurn[] = conversationHistory.map((turn) => ({
+        prompt: turn.prompt,
+        svgCode: turn.svgCode,
+        turnNumber: turn.turnNumber,
+      }));
 
       vscode.postMessage(
         createEnvelope(
@@ -152,11 +194,14 @@ export function useSVGGeneration(
           {
             prompt: chatPrompt,
             conversationId,
+            history,
+            model,
+            aspectRatio,
           }
         )
       );
     },
-    [conversationId, vscode]
+    [conversationHistory, conversationId, model, aspectRatio, vscode]
   );
 
   const clearConversation = useCallback(() => {
@@ -205,6 +250,7 @@ export function useSVGGeneration(
     aspectRatio,
     conversationId,
     svgCode,
+    conversationHistory,
   };
 
   return {
@@ -214,6 +260,7 @@ export function useSVGGeneration(
     aspectRatio,
     referenceImage,
     svgCode,
+    conversationHistory,
     conversationId,
     isLoading,
     error,

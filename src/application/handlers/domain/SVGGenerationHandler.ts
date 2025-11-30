@@ -95,7 +95,7 @@ export class SVGGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<SVGGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
     this.logger.info(`SVG generation continue: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -108,7 +108,13 @@ export class SVGGenerationHandler {
 
     try {
       // Use orchestrator for continuation
-      const result = await this.svgOrchestrator.continueSVG(conversationId, prompt);
+      const result = await this.svgOrchestrator.continueSVG(
+        conversationId,
+        prompt,
+        history,
+        model,
+        aspectRatio
+      );
 
       // Send response
       this.postMessage(createEnvelope<SVGGenerationResponsePayload>(

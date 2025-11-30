@@ -25,6 +25,7 @@ import {
   TokenUsage,
   TokenUsageUpdatePayload,
   createEnvelope,
+  SettingsPayload,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
 import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
@@ -57,12 +58,18 @@ export class MessageHandler {
 
     // Initialize domain handlers with token usage callback
     this.helloWorldHandler = new HelloWorldHandler(postMessage, logger);
-    this.settingsHandler = new SettingsHandler(postMessage, secretStorage, logger);
     this.textHandler = new TextHandler(
       postMessage,
       secretStorage,
       logger,
       (usage) => this.applyTokenUsage(usage)
+    );
+    this.settingsHandler = new SettingsHandler(
+      postMessage,
+      secretStorage,
+      logger,
+      (settings) => this.handleSettingsChanged(settings),
+      () => this.resetClients()
     );
     // Create image generation orchestrator and inject client
     const imageOrchestrator = new ImageOrchestrator(logger);
@@ -266,5 +273,28 @@ export class MessageHandler {
     if (!handled) {
       this.logger.warn(`No handler registered for message type: ${message.type}`);
     }
+  }
+
+  /**
+   * React to configuration changes (invoked by WebviewViewProvider)
+   */
+  handleConfigurationChanged(): void {
+    const settings = this.settingsHandler.getCurrentSettings();
+    this.handleSettingsChanged(settings);
+    this.postMessage(createEnvelope<SettingsPayload>(
+      MessageType.SETTINGS_DATA,
+      'extension.settings',
+      settings
+    ));
+  }
+
+  private handleSettingsChanged(settings: SettingsPayload): void {
+    this.textHandler.updateMaxTurns(settings.maxConversationTurns);
+    // Reset text client so model changes take effect on next request
+    this.textHandler.resetClient();
+  }
+
+  private resetClients(): void {
+    this.textHandler.resetClient();
   }
 }

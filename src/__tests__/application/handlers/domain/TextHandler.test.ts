@@ -16,8 +16,10 @@ import * as vscode from 'vscode';
 jest.mock('@ai', () => ({
   TextOrchestrator: jest.fn().mockImplementation(() => ({
     hasClient: jest.fn().mockReturnValue(false),
+    hasConversation: jest.fn().mockReturnValue(false),
     setClient: jest.fn(),
     startConversation: jest.fn().mockReturnValue('conv-123'),
+    rehydrateConversation: jest.fn(),
     sendMessage: jest.fn().mockResolvedValue({
       response: 'Text response',
       conversationId: 'conv-123',
@@ -189,6 +191,30 @@ describe('TextHandler', () => {
       await handler.handleConversationRequest(message);
 
       expect(mockOrchestrator.startConversation).toHaveBeenCalled();
+    });
+
+    it('rehydrates missing conversation when history provided', async () => {
+      const { TextOrchestrator } = require('@ai');
+      const mockOrchestrator = TextOrchestrator.mock.results[0].value;
+      mockOrchestrator.hasConversation.mockReturnValue(false);
+
+      const message = createEnvelope<AIConversationRequestPayload>(
+        MessageType.AI_CONVERSATION_REQUEST,
+        'webview.ai',
+        {
+          message: 'Continue',
+          conversationId: 'conv-999',
+          history: [{ role: 'user', content: 'Hi' }, { role: 'assistant', content: 'Hello' }],
+        }
+      );
+
+      await handler.handleConversationRequest(message);
+
+      expect(mockOrchestrator.rehydrateConversation).toHaveBeenCalledWith(
+        'conv-999',
+        expect.any(Array),
+        expect.any(String)
+      );
     });
   });
 

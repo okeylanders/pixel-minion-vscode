@@ -18,12 +18,14 @@ import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 
 export class SettingsHandler {
-  private readonly configSection = 'templateExtension';
+  private readonly configSection = 'pixelMinion';
 
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
     private readonly secretStorage: SecretStorageService,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly onSettingsChanged?: (settings: SettingsPayload) => void,
+    private readonly onSecretsChanged?: () => void
   ) {}
 
   /**
@@ -31,12 +33,7 @@ export class SettingsHandler {
    */
   async handleRequestSettings(message: MessageEnvelope): Promise<void> {
     this.logger.debug('Fetching current settings');
-    const config = vscode.workspace.getConfiguration(this.configSection);
-
-    const settings: SettingsPayload = {
-      maxConversationTurns: config.get<number>('maxConversationTurns', 10),
-      openRouterModel: config.get<string>('openRouterModel', 'anthropic/claude-sonnet-4'),
-    };
+    const settings = this.getCurrentSettings();
 
     this.postMessage(createEnvelope<SettingsPayload>(
       MessageType.SETTINGS_DATA,
@@ -56,6 +53,9 @@ export class SettingsHandler {
     try {
       this.logger.info(`Updating setting: ${key}`);
       await config.update(key, value, vscode.ConfigurationTarget.Global);
+
+      const updatedSettings = this.getCurrentSettings();
+      this.onSettingsChanged?.(updatedSettings);
 
       // Send updated settings back
       await this.handleRequestSettings(message);
@@ -95,6 +95,7 @@ export class SettingsHandler {
     try {
       this.logger.info('Saving API key to secure storage');
       await this.secretStorage.setApiKey(message.payload.apiKey);
+      this.onSecretsChanged?.();
 
       // Send updated status
       this.postMessage(createEnvelope<ApiKeyStatusPayload>(
@@ -124,6 +125,7 @@ export class SettingsHandler {
     try {
       this.logger.info('Clearing API key from secure storage');
       await this.secretStorage.deleteApiKey();
+      this.onSecretsChanged?.();
 
       // Send updated status
       this.postMessage(createEnvelope<ApiKeyStatusPayload>(
@@ -144,5 +146,21 @@ export class SettingsHandler {
         message.correlationId
       ));
     }
+  }
+
+  /**
+   * Build the current settings payload from configuration
+   */
+  getCurrentSettings(): SettingsPayload {
+    const config = vscode.workspace.getConfiguration(this.configSection);
+    const legacyConfig = vscode.workspace.getConfiguration('templateExtension');
+
+    return {
+      maxConversationTurns: config.get<number>('maxConversationTurns', legacyConfig.get('maxConversationTurns', 10)),
+      openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'anthropic/claude-sonnet-4')),
+      defaultImageModel: config.get<string>('defaultImageModel', 'google/gemini-2.5-flash-image'),
+      defaultSVGModel: config.get<string>('defaultSVGModel', 'google/gemini-3-pro-preview'),
+      defaultAspectRatio: config.get<string>('defaultAspectRatio', '1:1') as SettingsPayload['defaultAspectRatio'],
+    };
   }
 }

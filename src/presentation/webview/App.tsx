@@ -53,8 +53,14 @@ export function App(): JSX.Element {
 
   // Initialize domain hooks with persisted state
   const settings = useSettings(persistedState.settings);
-  const imageGeneration = useImageGeneration(persistedState.imageGeneration);
-  const svgGeneration = useSVGGeneration(persistedState.svgGeneration);
+  const imageGeneration = useImageGeneration(persistedState.imageGeneration, {
+    defaultImageModel: settings.defaultImageModel,
+    defaultAspectRatio: settings.defaultAspectRatio,
+  });
+  const svgGeneration = useSVGGeneration(persistedState.svgGeneration, {
+    defaultSVGModel: settings.defaultSVGModel,
+    defaultAspectRatio: settings.defaultAspectRatio,
+  });
 
   // Message routing at App level (prose-minion pattern)
   // Handlers stay registered even when views unmount

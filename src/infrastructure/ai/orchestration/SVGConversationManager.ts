@@ -21,6 +21,12 @@ export interface SVGConversationState {
   turnNumber: number;
 }
 
+export interface SVGRehydrationTurn {
+  prompt: string;
+  svgCode: string;
+  turnNumber?: number;
+}
+
 /**
  * SVG system prompt - instructs the AI to generate clean SVG code
  */
@@ -162,5 +168,47 @@ export class SVGConversationManager {
   clearAll(): void {
     this.conversations.clear();
     this.logger.debug('Cleared all SVG conversations');
+  }
+
+  /**
+   * Re-hydrate a conversation from persisted history
+   */
+  rehydrate(
+    conversationId: string,
+    model: string,
+    aspectRatio: AspectRatio,
+    history: SVGRehydrationTurn[]
+  ): SVGConversationState {
+    const conversation: SVGConversationState = {
+      id: conversationId,
+      messages: [],
+      model,
+      aspectRatio,
+      turnNumber: 0,
+    };
+
+    // Seed with system prompt
+    const dimensions = ASPECT_RATIO_DIMENSIONS[aspectRatio];
+    const systemPrompt = `${SVG_SYSTEM_PROMPT}\n\nFor this conversation, use viewBox="0 0 ${dimensions.width} ${dimensions.height}" for the ${aspectRatio} aspect ratio.`;
+    conversation.messages.push({
+      role: 'system',
+      content: systemPrompt
+    });
+
+    for (const turn of history) {
+      conversation.messages.push({
+        role: 'user',
+        content: turn.prompt
+      });
+      conversation.messages.push({
+        role: 'assistant',
+        content: turn.svgCode
+      });
+      conversation.turnNumber++;
+    }
+
+    this.conversations.set(conversationId, conversation);
+    this.logger.info(`Re-hydrated SVG conversation ${conversationId} with ${conversation.turnNumber} turns`);
+    return conversation;
   }
 }

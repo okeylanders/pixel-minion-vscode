@@ -3,6 +3,12 @@ import { MessageType, MessageEnvelope } from './base';
 export interface AIConversationRequestPayload {
   message: string;
   conversationId?: string;
+  history?: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+  model?: string;
+  systemPrompt?: string;
 }
 
 export interface AIConversationResponsePayload {

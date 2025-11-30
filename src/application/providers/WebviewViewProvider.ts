@@ -16,7 +16,7 @@ import { LoggingService } from '@logging';
 import { MessageType, createEnvelope } from '@messages';
 
 export class WebviewViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'templateExtension.mainView';
+  public static readonly viewType = 'pixelMinion.mainView';
 
   private _view?: vscode.WebviewView;
   private messageHandler?: MessageHandler;
@@ -66,6 +66,18 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     });
 
     this.logger.info('Webview view resolved successfully');
+  }
+
+  /**
+   * React to configuration changes and forward updates to the message handler.
+   */
+  public handleConfigurationChanged(event: vscode.ConfigurationChangeEvent): void {
+    if (!event.affectsConfiguration('pixelMinion')) {
+      return;
+    }
+
+    this.logger.info('Configuration changed - dispatching to message handler');
+    this.messageHandler?.handleConfigurationChanged();
   }
 
   /**

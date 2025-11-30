@@ -12,12 +12,16 @@ import {
   createEnvelope,
   SettingsPayload,
   ApiKeyStatusPayload,
+  AspectRatio,
 } from '@messages';
 
 // 1. State Interface
 export interface SettingsState {
   maxConversationTurns: number;
   openRouterModel: string;
+  defaultImageModel: string;
+  defaultSVGModel: string;
+  defaultAspectRatio: AspectRatio;
   apiKeyConfigured: boolean;
   isLoading: boolean;
 }
@@ -44,6 +48,9 @@ export interface SettingsHandlers {
 export interface SettingsPersistence {
   maxConversationTurns: number;
   openRouterModel: string;
+  defaultImageModel: string;
+  defaultSVGModel: string;
+  defaultAspectRatio: AspectRatio;
 }
 
 export type UseSettingsReturn = SettingsState & SettingsActions & SettingsHandlers & {
@@ -62,6 +69,15 @@ export function useSettings(
   const [openRouterModel, setOpenRouterModel] = useState(
     initialState?.openRouterModel ?? 'anthropic/claude-sonnet-4'
   );
+  const [defaultImageModel, setDefaultImageModel] = useState(
+    initialState?.defaultImageModel ?? 'google/gemini-2.5-flash-image'
+  );
+  const [defaultSVGModel, setDefaultSVGModel] = useState(
+    initialState?.defaultSVGModel ?? 'google/gemini-3-pro-preview'
+  );
+  const [defaultAspectRatio, setDefaultAspectRatio] = useState(
+    initialState?.defaultAspectRatio ?? '1:1'
+  );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,6 +86,9 @@ export function useSettings(
     const payload = message.payload as SettingsPayload;
     setMaxConversationTurns(payload.maxConversationTurns);
     setOpenRouterModel(payload.openRouterModel);
+    setDefaultImageModel(payload.defaultImageModel);
+    setDefaultSVGModel(payload.defaultSVGModel);
+    setDefaultAspectRatio(payload.defaultAspectRatio);
     setIsLoading(false);
   }, []);
 
@@ -93,6 +112,12 @@ export function useSettings(
         setMaxConversationTurns(value as number);
       } else if (key === 'openRouterModel') {
         setOpenRouterModel(value as string);
+      } else if (key === 'defaultImageModel') {
+        setDefaultImageModel(value as string);
+      } else if (key === 'defaultSVGModel') {
+        setDefaultSVGModel(value as string);
+      } else if (key === 'defaultAspectRatio') {
+        setDefaultAspectRatio(value as AspectRatio);
       }
     },
     [vscode]
@@ -137,12 +162,18 @@ export function useSettings(
   const persistedState: SettingsPersistence = {
     maxConversationTurns,
     openRouterModel,
+    defaultImageModel,
+    defaultSVGModel,
+    defaultAspectRatio,
   };
 
   return {
     // State
     maxConversationTurns,
     openRouterModel,
+    defaultImageModel,
+    defaultSVGModel,
+    defaultAspectRatio,
     apiKeyConfigured,
     isLoading,
     // Actions

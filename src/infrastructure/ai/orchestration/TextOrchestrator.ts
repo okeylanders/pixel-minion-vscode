@@ -58,6 +58,24 @@ export class TextOrchestrator {
   }
 
   /**
+   * Check if a conversation exists
+   */
+  hasConversation(conversationId: string): boolean {
+    return this.conversationManager.hasConversation(conversationId);
+  }
+
+  /**
+   * Rehydrate a conversation from history
+   */
+  rehydrateConversation(
+    conversationId: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }>,
+    systemPrompt?: string
+  ): void {
+    this.conversationManager.rehydrate(conversationId, history, systemPrompt);
+  }
+
+  /**
    * Send a message in a conversation and get a response
    */
   async sendMessage(

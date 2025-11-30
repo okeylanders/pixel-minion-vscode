@@ -4,7 +4,7 @@
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import {
   MessageType,
@@ -71,7 +71,8 @@ export type UseImageGenerationReturn = ImageGenerationState & ImageGenerationAct
 };
 
 export function useImageGeneration(
-  initialState?: Partial<ImageGenerationPersistence>
+  initialState?: Partial<ImageGenerationPersistence>,
+  settingsDefaults?: { defaultImageModel?: string; defaultAspectRatio?: AspectRatio }
 ): UseImageGenerationReturn {
   const vscode = useVSCodeApi();
 
@@ -96,6 +97,21 @@ export function useImageGeneration(
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Reset defaults when settings change (only when idle)
+  useEffect(() => {
+    if (!settingsDefaults) {
+      return;
+    }
+    if (!conversationId && generatedImages.length === 0) {
+      if (settingsDefaults.defaultImageModel) {
+        setModel(settingsDefaults.defaultImageModel);
+      }
+      if (settingsDefaults.defaultAspectRatio) {
+        setAspectRatio(settingsDefaults.defaultAspectRatio);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsDefaults?.defaultImageModel, settingsDefaults?.defaultAspectRatio]);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {

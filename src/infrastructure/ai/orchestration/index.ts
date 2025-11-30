@@ -12,6 +12,6 @@ export type { ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrato
 
 // SVG orchestration
 export { SVGConversationManager } from './SVGConversationManager';
-export type { SVGConversationState } from './SVGConversationManager';
+export type { SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 export { SVGOrchestrator } from './SVGOrchestrator';
 export type { SVGGenerationOptions, SVGTurnResult } from './SVGOrchestrator';

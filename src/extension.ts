@@ -54,7 +54,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Register commands
   const helloCommand = vscode.commands.registerCommand(
-    'templateExtension.helloWorld',
+    'pixelMinion.helloWorld',
     () => {
       loggingService.info('Hello command executed');
       vscode.window.showInformationMessage('Hello from Pixel Minion!');
@@ -63,7 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Settings icon command - sends message to webview to open settings overlay
   const settingsCommand = vscode.commands.registerCommand(
-    'templateExtension.openSettings',
+    'pixelMinion.openSettings',
     () => {
       loggingService.info('Opening settings overlay');
       provider.openSettings();
@@ -72,7 +72,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Output icon command - shows the output channel
   const outputCommand = vscode.commands.registerCommand(
-    'templateExtension.showOutput',
+    'pixelMinion.showOutput',
     () => {
       loggingService.info('Showing output channel');
       loggingService.show();
@@ -81,9 +81,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration('templateExtension')) {
-      loggingService.info('Configuration changed');
-    }
+    provider.handleConfigurationChanged(e);
   });
 
   // Add all disposables to context subscriptions

@@ -63,6 +63,13 @@ export class TextConversationManager {
   }
 
   /**
+   * Check if a conversation exists
+   */
+  hasConversation(id: string): boolean {
+    return this.conversations.has(id);
+  }
+
+  /**
    * Add a user message and increment turn count
    * @returns false if max turns exceeded
    */
@@ -133,6 +140,37 @@ export class TextConversationManager {
    */
   clearAll(): void {
     this.conversations.clear();
+  }
+
+  /**
+   * Rehydrate a conversation from history (after restart)
+   */
+  rehydrate(
+    conversationId: string,
+    history: Array<{ role: 'user' | 'assistant'; content: string }>,
+    systemPrompt?: string
+  ): TextConversation {
+    const conversation: TextConversation = {
+      id: conversationId,
+      messages: [{
+        role: 'system',
+        content: systemPrompt ?? this.defaultSystemPrompt,
+      }],
+      turnCount: 0,
+      createdAt: Date.now(),
+      lastUpdatedAt: Date.now(),
+    };
+
+    for (const turn of history) {
+      conversation.messages.push({ role: turn.role, content: turn.content });
+      if (turn.role === 'user') {
+        conversation.turnCount++;
+      }
+      conversation.lastUpdatedAt = Date.now();
+    }
+
+    this.conversations.set(conversationId, conversation);
+    return conversation;
   }
 
   /**
