@@ -169,11 +169,11 @@ export function useImageGeneration(
       });
       setReferenceSvgText(svgText);
       const sizeBytes = new Blob([svgText]).size;
-      if (sizeBytes > 16 * 1024) {
-        setReferenceSvgWarning('Reference SVG is large (>16KB). Responses may truncate.');
-      } else {
-        setReferenceSvgWarning('SVG will be sent as text context (not as image).');
-      }
+      setReferenceSvgWarning(
+        sizeBytes > 16 * 1024
+          ? 'Reference SVG is large (>16KB). Responses may truncate. This seems to work better.'
+          : 'SVG will be sent as text context (not as image).'
+      );
     } else {
       setReferenceImages((prev) => [...prev, dataUrl]);
     }

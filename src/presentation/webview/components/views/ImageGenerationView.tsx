@@ -137,10 +137,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           />
           {referenceSvgText && (
             <div className="image-generation-svg-note">
-              SVG attachment will be sent as text context (not as image).
-              {referenceSvgWarning && (
-                <div className="image-generation-svg-warning">{referenceSvgWarning}</div>
-              )}
+              {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
             </div>
           )}
 
