@@ -1851,6 +1851,6 @@ interface ImageGenerationClient {
 
 ### Default Parameters
 
-- Text clients: `max_tokens: 48000`, `temperature: 0.7`
-- SVG clients: `max_tokens: 48000`, `temperature: 0.7`
+- Text clients: `max_tokens: 16384`, `temperature: 0.7`
+- SVG clients: `max_tokens: 16384`, `temperature: 0.7`
 - Image clients: Uses OpenRouter defaults per model

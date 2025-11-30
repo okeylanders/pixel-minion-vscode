@@ -97,8 +97,8 @@
         },
         "pixelMinion.svgModel": {
           "type": "string",
-          "default": "google/gemini-3-pro-preview",
-          "description": "Selected model for SVG generation (recommended: Gemini Pro 3)"
+          "default": "openai/gpt-5.1-codex",
+          "description": "Selected model for SVG generation (recommended: GPT-5.1 Codex or Gemini Pro 3)"
         }
       }
     }

@@ -38,4 +38,4 @@ export const OPENROUTER_CONFIG: ProviderConfig = {
 export const DEFAULT_IMAGE_MODEL = 'google/gemini-3-pro-image-preview';
 
 /** Default model for SVG generation */
-export const DEFAULT_SVG_MODEL = OPENROUTER_SVG_MODELS[0].id;
+export const DEFAULT_SVG_MODEL = 'openai/gpt-5.1-codex';
