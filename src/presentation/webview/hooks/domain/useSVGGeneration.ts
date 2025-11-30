@@ -116,6 +116,7 @@ export function useSVGGeneration(
           prompt: currentPrompt,
           svgCode: payload.svgCode,
           turnNumber: payload.turnNumber,
+          usage: payload.usage,
         };
         setConversationHistory((prev) => [...prev, turn]);
       }

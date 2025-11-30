@@ -73,6 +73,7 @@ export class ImageGenerationHandler {
           conversationId: result.conversationId,
           images,
           turnNumber: result.turnNumber,
+          usage: result.usage,
         },
         message.correlationId
       ));
@@ -126,6 +127,7 @@ export class ImageGenerationHandler {
           conversationId: result.conversationId,
           images,
           turnNumber: result.turnNumber,
+          usage: result.usage,
         },
         message.correlationId
       ));

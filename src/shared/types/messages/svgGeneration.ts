@@ -16,6 +16,11 @@ export interface SVGConversationHistoryTurn {
   prompt: string;
   svgCode: string;
   turnNumber?: number;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 export interface SVGGenerationContinuePayload {
@@ -30,6 +35,11 @@ export interface SVGGenerationResponsePayload {
   conversationId: string;
   svgCode: string;
   turnNumber: number;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 export interface SVGSaveRequestPayload {

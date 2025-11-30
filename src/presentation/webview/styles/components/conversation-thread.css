@@ -53,6 +53,15 @@
   gap: 12px;
 }
 
+/* Token usage display - subtle, right-aligned */
+.conversation-turn-usage {
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground);
+  text-align: right;
+  padding-right: 4px;
+  opacity: 0.8;
+}
+
 /* Divider between turns (optional, subtle) */
 .conversation-turn:not(:last-child)::after {
   content: '';

@@ -16,6 +16,15 @@ export interface ConversationThreadProps {
   savedImageIds?: Set<string>;
 }
 
+/**
+ * Format token usage for display
+ */
+function formatUsage(usage: ConversationTurn['usage']): string | null {
+  if (!usage) return null;
+  const tokens = usage.totalTokens.toLocaleString();
+  return `${tokens} tokens`;
+}
+
 export const ConversationThread: React.FC<ConversationThreadProps> = ({
   turns,
   onSaveImage,
@@ -48,6 +57,13 @@ export const ConversationThread: React.FC<ConversationThreadProps> = ({
               />
             ))}
           </div>
+
+          {/* Token usage */}
+          {turn.usage && (
+            <div className="conversation-turn-usage">
+              {formatUsage(turn.usage)}
+            </div>
+          )}
         </div>
       ))}
     </div>

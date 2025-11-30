@@ -67,12 +67,22 @@ export interface ConversationTurn {
   images: GeneratedImage[];
   turnNumber: number;
   timestamp: number;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 export interface ImageGenerationResponsePayload {
   conversationId: string;
   images: GeneratedImage[];
   turnNumber: number;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 export interface ImageSaveRequestPayload {

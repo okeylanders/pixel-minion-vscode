@@ -71,6 +71,7 @@ export class SVGGenerationHandler {
           conversationId: result.conversationId,
           svgCode: result.svgCode,
           turnNumber: result.turnNumber,
+          usage: result.usage,
         },
         message.correlationId
       ));
@@ -136,6 +137,7 @@ export class SVGGenerationHandler {
           conversationId: result.conversationId,
           svgCode: result.svgCode,
           turnNumber: result.turnNumber,
+          usage: result.usage,
         },
         message.correlationId
       ));
