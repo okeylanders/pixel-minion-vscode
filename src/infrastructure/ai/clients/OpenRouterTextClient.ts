@@ -41,7 +41,7 @@ export class OpenRouterTextClient implements TextClient {
         // Content can be either string or multimodal array - pass as-is
         messages: messages.map(m => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 48000,
+        max_tokens: options?.maxTokens ?? 16384,
         usage: { include: true },  // Request native token counts and cost
       }),
       signal: options?.signal,
