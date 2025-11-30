@@ -228,21 +228,8 @@ export class ImageGenerationHandler {
 
   private async saveImage(dataUrl: string, mimeType: string, suggestedFilename: string): Promise<vscode.Uri> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      throw new Error('No workspace folder open');
-    }
 
-    const workspaceRoot = workspaceFolders[0].uri;
-    const config = vscode.workspace.getConfiguration(this.configSection);
-    const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
-    const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
-
-    try {
-      await vscode.workspace.fs.createDirectory(outputDirUri);
-    } catch {
-      // Directory may already exist
-    }
-
+    // Generate filename if not provided
     let filename = suggestedFilename;
     if (!filename) {
       const extension = mimeType === 'image/png' ? 'png' : 'jpg';
@@ -250,7 +237,39 @@ export class ImageGenerationHandler {
       filename = `image-${timestamp}.${extension}`;
     }
 
-    const fileUri = vscode.Uri.joinPath(outputDirUri, filename);
+    let fileUri: vscode.Uri;
+
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      // No workspace open - show save dialog
+      const extension = mimeType === 'image/png' ? 'png' : 'jpg';
+      const result = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(filename),
+        filters: {
+          'Images': [extension],
+          'All Files': ['*'],
+        },
+        saveLabel: 'Save Image',
+      });
+
+      if (!result) {
+        throw new Error('Save cancelled');
+      }
+      fileUri = result;
+    } else {
+      // Workspace available - save to output directory
+      const workspaceRoot = workspaceFolders[0].uri;
+      const config = vscode.workspace.getConfiguration(this.configSection);
+      const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
+      const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
+
+      try {
+        await vscode.workspace.fs.createDirectory(outputDirUri);
+      } catch {
+        // Directory may already exist
+      }
+
+      fileUri = vscode.Uri.joinPath(outputDirUri, filename);
+    }
     const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/);
     if (!match) {
       throw new Error('Invalid image data URL');

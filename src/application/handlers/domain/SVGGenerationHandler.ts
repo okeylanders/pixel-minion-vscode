@@ -212,31 +212,10 @@ export class SVGGenerationHandler {
   }
 
   /**
-   * Save SVG to workspace
+   * Save SVG to workspace or user-selected location
    */
   private async saveSVG(svgCode: string, suggestedFilename: string): Promise<vscode.Uri> {
-    // Get workspace folder
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      throw new Error('No workspace folder open');
-    }
-
-    const workspaceRoot = workspaceFolders[0].uri;
-
-    // Get output directory from settings
-    const config = vscode.workspace.getConfiguration(this.configSection);
-    const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
-
-    // Create output directory URI
-    const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
-
-    // Ensure directory exists
-    try {
-      await vscode.workspace.fs.createDirectory(outputDirUri);
-    } catch (error) {
-      // Directory might already exist, that's okay
-      this.logger.debug('Output directory creation skipped (may already exist)');
-    }
 
     // Generate filename if not provided
     let filename = suggestedFilename;
@@ -250,8 +229,40 @@ export class SVGGenerationHandler {
       filename += '.svg';
     }
 
-    // Create file URI
-    const fileUri = vscode.Uri.joinPath(outputDirUri, filename);
+    let fileUri: vscode.Uri;
+
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      // No workspace open - show save dialog
+      const result = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(filename),
+        filters: {
+          'SVG Files': ['svg'],
+          'All Files': ['*'],
+        },
+        saveLabel: 'Save SVG',
+      });
+
+      if (!result) {
+        throw new Error('Save cancelled');
+      }
+      fileUri = result;
+    } else {
+      // Workspace available - save to output directory
+      const workspaceRoot = workspaceFolders[0].uri;
+      const config = vscode.workspace.getConfiguration(this.configSection);
+      const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
+      const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
+
+      // Ensure directory exists
+      try {
+        await vscode.workspace.fs.createDirectory(outputDirUri);
+      } catch (error) {
+        // Directory might already exist, that's okay
+        this.logger.debug('Output directory creation skipped (may already exist)');
+      }
+
+      fileUri = vscode.Uri.joinPath(outputDirUri, filename);
+    }
 
     // Convert SVG string to buffer
     const buffer = Buffer.from(svgCode, 'utf-8');
