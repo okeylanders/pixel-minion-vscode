@@ -56,12 +56,13 @@
 
 Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
-- ✅ **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
-- ✅ **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
-- ✅ **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
-- ✅ **Token Usage Tracking** - Real-time token and cost display per turn
-- ✅ **Reference Image Support** - Use existing images and SVGs as context for generation
-- ✅ **Settings** - Model selection, API key management, and output configuration
+- 🖼️ [**Image Generation**](#image-generation) - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
+- ✏️ [**SVG Generation**](#svg-generation) - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
+- 🎨 [**AI SVG Edits**](#svg-colorize) - Colorize, simplify, animate, or remove elements from existing SVGs
+- 💬 **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
+- 📊 [**Token Usage Tracking**](#settings) - Real-time token and cost display per turn
+- 🔗 [**Reference Image Support**](#image-generation) - Use existing images and SVGs as context for generation
+- ⚙️ [**Settings**](#settings) - Model selection, API key management, and output configuration
 
 > **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
 
@@ -115,6 +116,8 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
 
 ## 🛠️ Tools Overview
 
+<a id="image-generation"></a>
+
 ### 🖼️ Image Generation
 
 Generate images from text prompts or refine existing images with AI.
@@ -152,17 +155,21 @@ Generate images from text prompts or refine existing images with AI.
 - Iterate with the chat input for refinements
 - Try different seeds for variety
 
+<a id="image-multiturn"></a>
 <p align="center">
   <img src="screenshots/image-multiturn-refinement.png" alt="Multi-turn Refinement" width="500"/>
 </p>
 <p align="center"><em>Refine your images through multi-turn conversations</em></p>
 
+<a id="image-seeds"></a>
 <p align="center">
   <img src="screenshots/image-result-card.png" alt="Multi-turn Refinement" width="500"/>
 </p>
 <p align="center"><em>Copy Randomly Generated Seed to Clipboard | Click To Save Image To Open Project</em></p>
 
 ---
+
+<a id="svg-generation"></a>
 
 ### ✏️ SVG Generation
 
@@ -176,7 +183,7 @@ Generate vector graphics as code using powerful text models.
 
 - **Text-to-SVG** - Describe the vector graphic you want
 - **SVG-to-SVG** - Make AI Edits to Existing SVGs: Colorize, Simplify, Animate, Remove Elements, etc.
-- **Reference Image** - Upload an image for the AI to vectorize or reference
+- **Reference Image** - Upload an image for the AI to vectorize or reference. ( this is not perfect - ha )
 - **Multi-Size Preview** - See your SVG at 32px, 64px, and 128px
 - **Code View** - View and copy the raw SVG code
 - **Multi-Turn Conversations** - Refine your SVG through iteration
@@ -199,22 +206,44 @@ Generate vector graphics as code using powerful text models.
 - Use the preview sizes to check scalability
 - Copy the code for use in your projects
 
+<a id="svg-warning"></a>
+
+> [!WARNING]
+> ⚠️ **Not all SVGs are created equal!**
+>
+> Some SVGs are "fake" — they wrap bitmaps or embedded images that text models will attempt to extract and interpret. Results vary on these. Multi-turn conversations help refine the output.
+>
+> *Fun fact: I created, animated, and colored the Pixel Minion icon entirely in this tool!* ✨
+
+<a id="svg-preview-sizes"></a>
 <p align="center">
   <img src="screenshots/svg-multisize-thumbnails.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
 <p align="center"><em>Preview your SVG at 32px, 64px, and 128px to verify scalability</em></p>
 
+<a id="svg-easy-code-extract"></a>
 <p align="center">
   <img src="screenshots/svg-code-view.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
 <p align="center"><em>Easily Review/Copy Code From Generated SVG </em></p>
 
+<a id="svg-animate"></a>
 <p align="center">
   <img src="screenshots/animate-svgs.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
 <p align="center"><em>Animate SVGs</em></p>
 
+<a id="svg-colorize"></a>
+<p align="center">
+  <img src="screenshots/svg-colorize-1-of-2.png" alt="SVG Colorize Before" width="250" style="vertical-align: top"/>
+  <img src="screenshots/svg-colorize-2-of-2.png" alt="SVG Colorize After" width="250" style="vertical-align: top"/>
+</p>
+<p align="center"><em>Edit / Colorize SVGs</em></p>
+
+
 ---
+
+<a id="settings"></a>
 
 ## ⚙️ Settings
 
@@ -235,11 +264,13 @@ Click the **gear icon** in the Pixel Minion header for settings:
 
 All settings save automatically and sync with your VS Code preferences.
 
+<a id="settings-model-override"></a>
 <p align="center">
   <img src="screenshots/settings-models.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
 <p align="center"><em>Manually Override Model IDs from Dropdowns</em></p>
 
+<a id="settings-debugging"></a>
 <p align="center">
   <img src="screenshots/header-icons.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
@@ -250,6 +281,7 @@ All settings save automatically and sync with your VS Code preferences.
 </p>
 <p align="center"><em>Clear Output Logging</em></p>
 
+<a id="settings-token-usage"></a>
 <p align="center">
   <img src="screenshots/header-token-counter.png" alt="SVG Multi-Size Preview" width="500"/>
 </p>
