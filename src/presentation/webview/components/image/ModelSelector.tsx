@@ -20,6 +20,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onModelChange,
   disabled = false,
 }) => {
+  const hasSelected = models.some((m) => m.id === selectedModel);
+  const options = hasSelected
+    ? models
+    : [...models, { id: selectedModel, displayName: `Custom: ${selectedModel}` }];
+
   return (
     <div className="model-selector">
       <label htmlFor="model-select">Model</label>
@@ -30,7 +35,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         disabled={disabled}
         className="model-select"
       >
-        {models.map((model) => (
+        {options.map((model) => (
           <option key={model.id} value={model.id}>
             {model.displayName}
           </option>

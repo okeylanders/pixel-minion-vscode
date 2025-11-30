@@ -19,6 +19,7 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'google/gemini-3-pro-preview', displayName: 'Gemini Pro 3.0', inputCost: 1.25, outputCost: 10.00 },
   { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
+  { id: 'openai/gpt-5.1-codex', displayName: 'OpenAI: GPT-5.1 Codex' },
 ];
 
 export const OPENROUTER_CONFIG: ProviderConfig = {
