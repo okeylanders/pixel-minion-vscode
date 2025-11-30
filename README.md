@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.svg" alt="Pixel Minion" width="128"/>
+  <img src="assets/pixel-minion.png" alt="Pixel Minion" width="128"/>
 </p>
 
 <p align="center">

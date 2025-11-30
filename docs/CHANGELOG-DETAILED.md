@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../assets/pixel-minion.png" alt="Pixel Minion" width="128"/>
+</p>
+
 # Changelog (Detailed)
 
 All notable changes to the Pixel Minion VS Code extension will be documented in this file.
