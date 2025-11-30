@@ -1,10 +1,10 @@
 {
   "name": "pixel-minion",
-  "displayName": "Pixel Minion",
-  "description": "AI-powered image and SVG generation inside VSCode. Generate images and vector graphics directly in your editor using Gemini, GPT-5, Claude, and FLUX models via OpenRouter.",
-  "version": "0.1.0",
+  "displayName": "Pixel Minion: AI Image & SVG Generator Toolkit",
+  "description": "AI-powered image and SVG generation inside VSCode. Generate images and vector graphics directly in your editor using Gemini ( Nano Banana ), GPT-5, Claude, and FLUX models via OpenRouter.",
+  "version": "1.0.0",
   "license": "SEE LICENSE IN LICENSE",
-  "publisher": "okeylanders",
+  "publisher": "OkeyLanders",
   "author": {
     "name": "Okey Landers"
   },
@@ -32,6 +32,11 @@
   "keywords": [
     "ai",
     "image generation",
+    "image generator",
+    "image editor",
+    "svg editor",
+    "vector editors",
+    "ai svg generator",
     "svg",
     "vector graphics",
     "openrouter",
@@ -40,7 +45,11 @@
     "claude",
     "flux",
     "text-to-image",
-    "generative ai"
+    "generative ai",
+    "image-to-image",
+    "nano banana",
+    "flux pro",
+    "chatgpt"
   ],
   "preview": true,
   "activationEvents": [
@@ -65,7 +74,7 @@
         {
           "type": "webview",
           "id": "pixelMinion.mainView",
-          "name": "Main View"
+          "name": "AI Imaging Tools"
         }
       ]
     },

@@ -28,6 +28,14 @@
 
 ---
 <p align="center">
+  <img src="screenshots/hero-1-image-conversation.png" alt="Image Generation" width="600"/>
+</p>
+
+<p align="center">
+  <img src="screenshots/hero-2-svg-conversation.png" alt="Image Generation" width="600"/>
+</p>
+---
+<p align="center">
 <details>
 <summary><strong>📸 Screenshot Gallery</strong> (click to expand)</summary>
 
@@ -37,10 +45,6 @@
 
 <p align="center">
   <img src="screenshots/svg-book-colorize-with-code.png" alt="SVG Colorize" width="600"/>
-</p>
-
-<p align="center">
-  <img src="screenshots/svg-code-view.png" alt="SVG Code View" width="600"/>
 </p>
 
 </details>
@@ -171,6 +175,7 @@ Generate vector graphics as code using powerful text models.
 **Key Features:**
 
 - **Text-to-SVG** - Describe the vector graphic you want
+- **SVG-to-SVG** - Make AI Edits to Existing SVGs: Colorize, Simplify, Animate, Remove Elements, etc.
 - **Reference Image** - Upload an image for the AI to vectorize or reference
 - **Multi-Size Preview** - See your SVG at 32px, 64px, and 128px
 - **Code View** - View and copy the raw SVG code
@@ -189,6 +194,7 @@ Generate vector graphics as code using powerful text models.
 **Best Practices:**
 
 - Be specific about colors, shapes, and style
+- Do not attach large SVGs; SVGs with embedded images don't work.
 - Reference standard SVG elements if you know them
 - Use the preview sizes to check scalability
 - Copy the code for use in your projects
