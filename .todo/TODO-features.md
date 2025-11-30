@@ -8,7 +8,7 @@
 - Settings panel dropdown polish (consistent selectors for models/aspect). (Deferred V 1.1 )
 - Prompt library (save/reuse prompts). (Deferred V 1.1 )
 - Model switch midstream behavior (decide if conversations adopt new model).  (Deferred V 1.1 )
-- SVG attachment handling for SVG generator (attach prior SVG as text in outgoing prompt). ( PENDING )
+- SVG attachment handling for SVG/Image generator (attach prior SVG as text in outgoing prompt). ( DONE )
 - TAIO “Enhance” flow (hidden text suite) with history-based rehydration. ( PENDING )
 
 ## Notes

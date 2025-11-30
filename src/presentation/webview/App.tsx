@@ -105,6 +105,16 @@ export function App(): JSX.Element {
     [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleGenerationResponse,
     [MessageType.SVG_SAVE_RESULT]: svgGeneration.handleSaveResult,
 
+    // Prompt Enhancement messages - route based on type
+    [MessageType.ENHANCE_PROMPT_RESPONSE]: (msg) => {
+      const payload = msg.payload as { type?: string };
+      if (payload.type === 'image') {
+        imageGeneration.handleEnhanceResponse(msg);
+      } else if (payload.type === 'svg') {
+        svgGeneration.handleEnhanceResponse(msg);
+      }
+    },
+
     // Settings messages
     [MessageType.SETTINGS_DATA]: settings.handleSettingsData,
     [MessageType.API_KEY_STATUS]: settings.handleApiKeyStatus,
@@ -121,6 +131,10 @@ export function App(): JSX.Element {
       if (source.includes('image') || source.includes('Image')) {
         imageGeneration.handleError(msg);
       } else if (source.includes('svg') || source.includes('SVG')) {
+        svgGeneration.handleError(msg);
+      } else if (source.includes('enhance')) {
+        // Route enhance errors based on active tab or to both
+        imageGeneration.handleError(msg);
         svgGeneration.handleError(msg);
       } else {
         // Default: send to both (they'll handle based on their loading state)

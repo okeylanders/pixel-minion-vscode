@@ -1,286 +1,300 @@
-# VSCode Extension Template
+<p align="center">
+  <img src="assets/icon.svg" alt="Pixel Minion" width="128"/>
+</p>
 
-A well-architected VSCode extension template with AI integration, following Clean Architecture principles.
+<p align="center">
+  <strong>AI-powered image and SVG generation inside VS Code</strong>
+</p>
 
-## Features
+<p align="center">
+  Generate images and vector graphics directly in your editor using cutting-edge AI models via OpenRouter.
+</p>
 
-- **Clean Architecture** - Organized layers: presentation, application, domain, infrastructure
-- **Message Envelope Pattern** - Type-safe communication between extension and webview
-- **AI Integration** - Client-agnostic AI orchestration with OpenRouter support
-- **Token Tracking** - Real-time token usage accumulation and display
-- **Secure API Key Storage** - Uses VSCode's SecretStorage (OS-level encryption)
-- **LoggingService** - Centralized logging to VSCode Output channel
-- **System Prompts** - PromptLoader for loading prompts from resources
-- **Tabbed Webview UI** - React-based UI with VSCode theming
-- **State Persistence** - Webview state survives panel hide/show
-- **Comprehensive Tests** - 82 tests covering application and infrastructure layers
+---
 
-## Quick Start
+## What's New in v0.1.0
 
-```bash
-# Install dependencies
-npm install
+> **Image Generation** - Text-to-image and image-to-image generation powered by Gemini, GPT-5, and FLUX models
+>
+> **SVG Generation** - Create vector graphics as code using text models (Gemini Pro, Claude Opus, GPT-5.1 Codex)
+>
+> **Multi-Turn Conversations** - Refine your images and SVGs through iterative prompts
+>
+> **Token Usage Tracking** - Real-time token and cost display per turn
+>
+> **Reference Image Support** - Use existing images or SVGs as context for generation
 
-# Start development mode (watches for changes)
-npm run watch
+---
 
-# Press F5 in VSCode to launch Extension Development Host
-```
+## Features at a Glance
 
-## Project Structure
+Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
-```
-src/
-├── extension.ts                    # Extension entry point
-├── shared/
-│   └── types/
-│       └── messages/               # Message envelope types
-├── application/
-│   ├── providers/                  # WebviewViewProvider
-│   └── handlers/                   # Message handlers
-│       └── domain/                 # Domain-specific handlers
-├── domain/
-│   └── models/                     # Domain entities
-├── infrastructure/
-│   ├── ai/
-│   │   ├── clients/               # AI client abstraction
-│   │   ├── orchestration/         # Conversation management
-│   │   └── tools/                 # Tool providers
-│   ├── logging/                    # LoggingService (OutputChannel)
-│   ├── resources/                  # PromptLoader for system prompts
-│   └── secrets/                    # Secure storage
-├── presentation/
-│   └── webview/
-│       ├── components/             # React components
-│       ├── hooks/                  # React hooks (tripartite pattern)
-│       └── styles/                 # CSS with VSCode theming
-└── __tests__/                      # Jest tests (mirrors src structure)
-```
+- **Image Generation** - Text-to-image and image-to-image via OpenRouter image models
+- **SVG Generation** - Generate vector graphics as code using text models
+- **Settings** - Model selection, API key management, and output configuration
 
-## Architecture
+> **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
 
-### Clean Architecture Layers
+---
 
-1. **Presentation** - React components, hooks, styles
-2. **Application** - Message handlers, view providers
-3. **Domain** - Business logic, entities
-4. **Infrastructure** - External services (AI, secrets, logging, resources)
+## Getting Started
 
-Dependencies flow inward: Presentation → Application → Domain ← Infrastructure
+### Installation
 
-### Message Envelope Pattern
+1. Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/) (coming soon)
+2. Open the Pixel Minion panel from the activity bar (icon in sidebar)
+3. Configure your OpenRouter API key in Settings (gear icon)
+4. Start generating!
 
-All extension ↔ webview communication uses typed envelopes:
+### Quick Start
 
-```typescript
-interface MessageEnvelope<TPayload> {
-  type: MessageType;        // Enum value
-  source: MessageSource;    // 'extension.domain' or 'webview.domain'
-  payload: TPayload;        // Type-safe payload
-  timestamp: number;
-  correlationId?: string;
-}
-```
+1. **Choose a tab** - Image or SVG generation
+2. **Enter a prompt** - Describe what you want to create
+3. **Select options** - Model, aspect ratio, seed (optional)
+4. **Generate** - Click the Generate button
+5. **Refine** - Use the chat input to iterate on results
 
-### Tripartite Hook Pattern
+**Accessing Settings:**
 
-Domain hooks export three interfaces:
+Click the **gear icon** in the Pixel Minion panel header to open settings.
 
-```typescript
-// State (read-only)
-interface HelloWorldState {
-  text: string;
-  renderedMarkdown: string;
-  isLoading: boolean;
-}
+---
 
-// Actions (write operations)
-interface HelloWorldActions {
-  setText: (text: string) => void;
-  submitText: () => void;
-}
+## OpenRouter API Key
 
-// Persistence (what gets saved)
-interface HelloWorldPersistence {
-  text: string;
-  renderedMarkdown: string;
-}
-```
+**Required:** All features require an OpenRouter API key.
 
-## How-To Guides
+### Setting Up OpenRouter
 
-### Add a New View/Tab
+1. **Get an API Key**:
+   - Visit [openrouter.ai](https://openrouter.ai/)
+   - Create a pay-as-you-go account
+   - Generate an API key
 
-1. **Create message types** in `src/shared/types/messages/`:
-   ```typescript
-   // newFeature.ts
-   export interface NewFeaturePayload { ... }
-   export type NewFeatureMessage = MessageEnvelope<NewFeaturePayload>;
-   ```
+2. **Add Your Key**:
+   - Click the **gear icon** in Pixel Minion's panel header
+   - Paste your key in the "OpenRouter API Key" field
+   - Your key is securely stored in your OS keychain
+   - Changes save automatically
 
-2. **Add MessageType enum values** in `base.ts`:
-   ```typescript
-   NEW_FEATURE_REQUEST = 'NEW_FEATURE_REQUEST',
-   NEW_FEATURE_RESULT = 'NEW_FEATURE_RESULT',
-   ```
+3. **Choose Your Models** (optional):
+   - Select different models for Image and SVG generation
+   - Balance cost vs. quality based on your needs
+   - Default models work great out of the box
 
-3. **Create domain handler** in `src/application/handlers/domain/`:
-   ```typescript
-   export class NewFeatureHandler {
-     constructor(private postMessage: (msg: MessageEnvelope) => void) {}
-     async handleRequest(message: MessageEnvelope<NewFeaturePayload>) { ... }
-   }
-   ```
+---
 
-4. **Register handler** in `MessageHandler.ts`:
-   ```typescript
-   this.router.register(MessageType.NEW_FEATURE_REQUEST,
-     (msg) => this.newFeatureHandler.handleRequest(msg));
-   ```
+## Tools Overview
 
-5. **Create domain hook** in `src/presentation/webview/hooks/domain/`:
-   ```typescript
-   export function useNewFeature(): UseNewFeatureReturn { ... }
-   ```
+### Image Generation
 
-6. **Create view component** in `src/presentation/webview/components/views/`:
-   ```typescript
-   export function NewFeatureView({ newFeature }: Props) { ... }
-   ```
+Generate images from text prompts or refine existing images with AI.
 
-7. **Add tab** in `App.tsx`:
-   ```typescript
-   const TABS: Tab[] = [
-     ...existing,
-     { id: 'newFeature', label: 'New Feature' },
-   ];
-   ```
+**Key Features:**
 
-### Add a New Setting
+- **Text-to-Image** - Describe what you want, get an image
+- **Image-to-Image** - Upload reference images for context
+- **SVG Context** - Attach SVG files as text context for the AI
+- **Multi-Turn Conversations** - Refine results through iterative prompts
+- **Aspect Ratio Control** - Choose from 1:1, 16:9, 9:16, 4:3, 3:4
+- **Seed Control** - Set a seed for reproducible results
+- **Enhance Prompt** - AI-powered prompt enhancement button
+- **Token Usage** - See tokens and cost per generation
 
-1. **Add to package.json** `contributes.configuration`:
-   ```json
-  "pixelMinion.newSetting": {
-     "type": "string",
-     "default": "value",
-     "description": "Description of the setting"
-   }
-   ```
+**Available Models:**
 
-2. **Update SettingsPayload** in messages:
-   ```typescript
-   interface SettingsPayload {
-     ...existing,
-     newSetting: string;
-   }
-   ```
+| Model | Description |
+|-------|-------------|
+| **Nano Banana 10/25** | Recommended - Gemini 2.5 Flash Image |
+| **Nano Banana 8/25** | Gemini 2.5 Flash Image Preview |
+| **Nano Banana Pro** | Gemini 3 Pro Image Preview |
+| **GPT-5 Image Mini** | OpenAI's efficient image model |
+| **GPT-5 Image** | OpenAI's premium image model |
+| **FLUX.2 Pro/Flex** | Black Forest Labs models |
 
-3. **Update SettingsHandler** to read/write the setting
+**Best Practices:**
 
-4. **Update useSettings hook** with state and actions
+- Start with a clear, descriptive prompt
+- Use reference images for style guidance
+- Iterate with the chat input for refinements
+- Try different seeds for variety
 
-5. **Update SettingsView** with UI control
+---
 
-### Extend the AI Layer
+### SVG Generation
 
-**Add a new AI client:**
+Generate vector graphics as code using powerful text models.
 
-```typescript
-// src/infrastructure/ai/clients/AnthropicClient.ts
-export class AnthropicClient implements AIClient {
-  async createChatCompletion(messages, options) { ... }
-}
-```
+**Key Features:**
 
-**Add new tools:**
+- **Text-to-SVG** - Describe the vector graphic you want
+- **Reference Image** - Upload an image for the AI to vectorize or reference
+- **Multi-Size Preview** - See your SVG at 32px, 64px, and 128px
+- **Code View** - View and copy the raw SVG code
+- **Multi-Turn Conversations** - Refine your SVG through iteration
+- **Token Usage** - See tokens and cost per generation
 
-```typescript
-// src/infrastructure/ai/tools/SearchToolProvider.ts
-export class SearchToolProvider implements ToolProvider {
-  listAvailableTools() { return [...]; }
-  executeTool(name, params) { ... }
-}
-```
+**Available Models:**
 
-## API Key Security
+| Model | Description |
+|-------|-------------|
+| **GPT-5.1 Codex** | Default - OpenAI's code-optimized model |
+| **Gemini Pro 3.0** | Google's latest text model |
+| **Claude Opus 4.5** | Anthropic's frontier model |
 
-API keys are stored using VSCode's SecretStorage API:
-- **macOS**: Keychain
-- **Windows**: Credential Manager
-- **Linux**: libsecret
+**Best Practices:**
 
-Keys are **never**:
-- Stored in settings.json
-- Synced to cloud
-- Sent back to the webview (only boolean status)
+- Be specific about colors, shapes, and style
+- Reference standard SVG elements if you know them
+- Use the preview sizes to check scalability
+- Copy the code for use in your projects
 
-## Logging
+---
 
-All extension code uses `LoggingService` instead of `console.log`:
+## Settings
 
-```typescript
-// Inject via constructor
-constructor(private readonly logger: LoggingService) {}
+Click the **gear icon** in the Pixel Minion header for settings:
 
-// Use log levels
-this.logger.debug('Detailed info for development');
-this.logger.info('General operational events');
-this.logger.warn('Potential issues');
-this.logger.error('Failures', error);
-```
+### General Settings
 
-Logs appear in VSCode's Output panel under "Extension Template".
+- **OpenRouter API Key** - Securely stored in OS keychain
+- **Output Directory** - Where generated files are saved (default: `pixel-minion/`)
 
-## Scripts
+### Model Selection
 
-| Script | Description |
-|--------|-------------|
-| `npm run watch` | Development mode with auto-rebuild |
-| `npm run build` | Production build |
-| `npm test` | Run Jest tests |
-| `npm run lint` | Run ESLint |
-| `npm run package` | Create .vsix package |
+- **Image Model** - Model for image generation (recommended: Nano Banana 10/25)
+- **SVG Model** - Model for SVG generation (recommended: GPT-5.1 Codex)
 
-## Testing
+All settings save automatically and sync with your VS Code preferences.
 
-The template includes 82 tests across 8 test suites:
+---
 
-| Layer | Tests | Coverage |
-|-------|-------|----------|
-| MessageRouter | 9 | Strategy pattern routing |
-| MessageHandler | 8 | Message dispatch, token accumulation |
-| HelloWorldHandler | 5 | Markdown rendering |
-| SettingsHandler | 9 | Settings and API key management |
-| AIHandler | 8 | Conversation handling |
-| SecretStorageService | 10 | Secure storage operations |
-| LoggingService | 12 | OutputChannel logging |
-| PromptLoader | 11 | Resource loading |
+## Use Cases
 
-```bash
-# Run all tests
-npm test
+### For Game Developers
 
-# Run tests in watch mode
-npm run test:watch
+- Generate sprites and game assets
+- Create icons at multiple sizes
+- Prototype visual concepts quickly
 
-# Generate coverage report
-npm run test:coverage
-```
+### For Web Developers
 
-## VSCode Theming
+- Generate SVG icons and illustrations
+- Create placeholder images
+- Prototype UI graphics
 
-All components use VSCode CSS variables for automatic theme support:
+### For Designers
 
-```css
-.my-component {
-  color: var(--vscode-foreground);
-  background: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-editorWidget-border);
-}
-```
+- Quickly iterate on visual concepts
+- Generate reference images
+- Create scalable vector graphics
 
-See `src/presentation/webview/styles/variables.css` for available variables.
+### For Content Creators
+
+- Generate images for articles and posts
+- Create custom illustrations
+- Prototype visual ideas
+
+---
+
+## Technical Details
+
+### Architecture
+
+Built with **Clean Architecture** principles:
+
+- Separation of concerns across layers
+- Message-based communication
+- Extensible provider system
+
+### Privacy & Security
+
+- **Secure API Key Storage** - Keys stored in OS keychain (Keychain Access, Credential Manager, libsecret) via VS Code SecretStorage
+- **No Logging** - Your prompts and images stay in your workspace
+- **No Training** - Configure OpenRouter models to opt-out of training data
+
+### Requirements
+
+- VS Code 1.93.0 or higher
+- OpenRouter API account
+
+---
+
+## Tips & Best Practices
+
+### Sidebar Width
+
+- **Widen your sidebar** - Pixel Minion has rich UI elements; give it room to breathe
+- Drag the sidebar edge to ~400-600px for optimal layout
+
+### Prompting Tips
+
+- Be descriptive and specific
+- Mention style, colors, composition
+- Use reference images for better results
+- Iterate with refinement prompts
+
+### Cost Management
+
+- Use the token display to track costs
+- Choose efficient models for prototyping
+- Use premium models for final outputs
+
+---
+
+## Contributing
+
+We welcome contributions! See the codebase for:
+
+- Clean Architecture with TypeScript
+- React-based webview UI
+- Jest testing framework
+- ESLint for code quality
+
+---
 
 ## License
 
-MIT
+**AGPL-3.0 with Commons Clause** - Source-available, no resale, no closed-source derivatives.
+
+This means:
+- Free to use for personal and open-source projects
+- Full source code available
+- Modify and share under the same terms
+- Cannot resell or create proprietary derivatives
+
+See [LICENSE](LICENSE) for complete terms.
+
+---
+
+## Support Development
+
+If Pixel Minion helps your workflow, consider [buying me a coffee](https://buymeacoffee.com/okeylanders)!
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/okeylanders)
+
+---
+
+## Acknowledgments
+
+Built with:
+- [OpenRouter](https://openrouter.ai/) - AI model routing
+- [VS Code Extension API](https://code.visualstudio.com/api) - Platform
+- [React](https://react.dev/) - UI framework
+
+Development assisted by:
+- [Claude Code](https://www.anthropic.com/claude) - AI pair programming
+- [Cline](https://github.com/cline/cline) - AI coding assistant for VS Code
+
+---
+
+<p align="center">
+  <strong>Happy Creating!</strong>
+</p>
+
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/">Install from Marketplace</a> •
+  <a href="https://github.com/okeylanders/pixel-minion-vscode/issues">Report Issue</a> •
+  <a href="https://buymeacoffee.com/okeylanders">Support Development</a>
+</p>

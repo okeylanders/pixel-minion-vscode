@@ -16,6 +16,7 @@ import {
   ConversationHistoryTurn,
   ImageGenerationResponsePayload,
   ImageSaveResultPayload,
+  EnhancePromptResponsePayload,
 } from '@messages';
 import { DEFAULT_IMAGE_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 
@@ -32,6 +33,7 @@ export interface ImageGenerationState {
   conversationHistory: ConversationTurn[];  // Full conversation thread
   conversationId: string | null;
   isLoading: boolean;
+  isEnhancing: boolean;
   error: string | null;
 }
 
@@ -48,16 +50,20 @@ export interface ImageGenerationActions {
   continueChat: (prompt: string) => void;  // Continue existing conversation
   clearConversation: () => void;
   saveImage: (image: GeneratedImage) => void;
+  enhancePrompt: () => void;      // Enhance current prompt using AI
 }
 
 // 2b. Message Handlers Interface (for App-level routing)
 export interface ImageGenerationHandlers {
   handleGenerationResponse: (message: MessageEnvelope) => void;
   handleSaveResult: (message: MessageEnvelope) => void;
+  handleEnhanceResponse: (message: MessageEnvelope) => void;
   handleError: (message: MessageEnvelope) => void;
 }
 
 // 3. Persistence Interface (what gets saved)
+// Note: referenceSvgText and referenceImages are NOT persisted - they're per-request context
+// The conversation history stores referenceSvgText per turn for context
 export interface ImageGenerationPersistence {
   prompt: string;
   model: string;
@@ -65,8 +71,6 @@ export interface ImageGenerationPersistence {
   conversationId: string | null;
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];
-  referenceSvgText: string | null;
-  referenceImages: string[];
 }
 
 // Composed return type
@@ -89,8 +93,9 @@ export function useImageGeneration(
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
-  const [referenceImages, setReferenceImages] = useState<string[]>(initialState?.referenceImages ?? []);
-  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(initialState?.referenceSvgText ?? null);
+  // Reference images are NOT persisted - they're per-request context
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
   const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
   const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
   const [seedInput, setSeedInput] = useState('');
@@ -106,6 +111,7 @@ export function useImageGeneration(
   // Track the pending prompt for the current generation (to build history)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setModel = useCallback((newModel: string) => {
     setModelState(newModel);
@@ -153,8 +159,15 @@ export function useImageGeneration(
     }
   }, []);
 
+  const handleEnhanceResponse = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as EnhancePromptResponsePayload;
+    setPrompt(payload.enhancedPrompt);
+    setIsEnhancing(false);
+  }, []);
+
   const handleError = useCallback((message: MessageEnvelope) => {
     setIsLoading(false);
+    setIsEnhancing(false);
     setError((message.payload as { message: string }).message);
   }, []);
 
@@ -319,7 +332,28 @@ export function useImageGeneration(
     [vscode]
   );
 
-  // Persistence object
+  const enhancePrompt = useCallback(() => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt to enhance');
+      return;
+    }
+
+    setIsEnhancing(true);
+    setError(null);
+
+    vscode.postMessage(
+      createEnvelope(
+        MessageType.ENHANCE_PROMPT_REQUEST,
+        'webview.enhance',
+        {
+          prompt: prompt.trim(),
+          type: 'image',
+        }
+      )
+    );
+  }, [prompt, vscode]);
+
+  // Persistence object (reference images excluded - they're per-request context)
   const persistedState: ImageGenerationPersistence = {
     prompt,
     model,
@@ -327,8 +361,6 @@ export function useImageGeneration(
     conversationId,
     generatedImages,
     conversationHistory,
-    referenceSvgText,
-    referenceImages,
   };
 
   return {
@@ -344,6 +376,7 @@ export function useImageGeneration(
     conversationHistory,
     conversationId,
     isLoading,
+    isEnhancing,
     error,
     // Actions
     setPrompt,
@@ -357,9 +390,11 @@ export function useImageGeneration(
     continueChat,
     clearConversation,
     saveImage,
+    enhancePrompt,
     // Message Handlers (for App-level routing)
     handleGenerationResponse,
     handleSaveResult,
+    handleEnhanceResponse,
     handleError,
     // Persistence
     persistedState,

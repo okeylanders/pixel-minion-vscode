@@ -65,10 +65,10 @@ export function useSettings(
     initialState?.maxConversationTurns ?? 10
   );
   const [openRouterModel, setOpenRouterModel] = useState(
-    initialState?.openRouterModel ?? 'anthropic/claude-sonnet-4'
+    initialState?.openRouterModel ?? 'openai/gpt-5.1'
   );
   const [imageModel, setImageModel] = useState(
-    initialState?.imageModel ?? 'google/gemini-3-pro-image-preview'
+    initialState?.imageModel ?? 'google/gemini-2.5-flash-image'
   );
   const [svgModel, setSvgModel] = useState(
     initialState?.svgModel ?? 'openai/gpt-5.1-codex'

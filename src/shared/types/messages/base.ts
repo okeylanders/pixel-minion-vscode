@@ -52,6 +52,10 @@ export enum MessageType {
   SVG_GENERATION_CLEAR = 'SVG_GENERATION_CLEAR',
   SVG_SAVE_REQUEST = 'SVG_SAVE_REQUEST',
   SVG_SAVE_RESULT = 'SVG_SAVE_RESULT',
+
+  // Prompt Enhancement
+  ENHANCE_PROMPT_REQUEST = 'ENHANCE_PROMPT_REQUEST',
+  ENHANCE_PROMPT_RESPONSE = 'ENHANCE_PROMPT_RESPONSE',
 }
 
 export type MessageSource =
@@ -60,11 +64,13 @@ export type MessageSource =
   | 'extension.ai'
   | 'extension.imageGeneration'
   | 'extension.svgGeneration'
+  | 'extension.enhance'
   | 'webview.helloWorld'
   | 'webview.settings'
   | 'webview.ai'
   | 'webview.imageGeneration'
-  | 'webview.svgGeneration';
+  | 'webview.svgGeneration'
+  | 'webview.enhance';
 
 /**
  * Message Envelope - wraps all messages with metadata

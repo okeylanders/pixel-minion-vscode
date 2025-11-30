@@ -133,3 +133,16 @@
   color: var(--vscode-notificationsWarningIcon-foreground);
   font-size: 12px;
 }
+
+/* Actions row: Reference image + Enhance button */
+.image-generation-actions-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.image-generation-actions-row .enhance-prompt-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

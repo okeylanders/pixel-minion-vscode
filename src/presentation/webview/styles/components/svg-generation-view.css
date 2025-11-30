@@ -48,6 +48,19 @@
   gap: 12px;
 }
 
+/* Actions row: Reference image + Enhance button */
+.svg-generation-actions-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.svg-generation-actions-row .enhance-prompt-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .svg-generation-error {
   padding: 8px 12px;
   background: var(--vscode-inputValidation-errorBackground);

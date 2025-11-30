@@ -146,7 +146,7 @@ export class TextHandler {
 
     const config = vscode.workspace.getConfiguration(this.configSection);
     const legacyConfig = vscode.workspace.getConfiguration('templateExtension');
-    const model = requestedModel ?? config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'anthropic/claude-sonnet-4'));
+    const model = requestedModel ?? config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'openai/gpt-5.1'));
 
     const client = new OpenRouterTextClient(apiKey, model);
     this.orchestrator.setClient(client);

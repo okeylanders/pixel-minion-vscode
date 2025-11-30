@@ -72,10 +72,10 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
             className="settings-input"
             value={imageModel}
             onChange={(e) => updateSetting('imageModel', e.target.value)}
-            placeholder="google/gemini-3-pro-image-preview"
+            placeholder="google/gemini-2.5-flash-image"
           />
           <span className="settings-description">
-            Powers text-to-image and image-to-image generation. Recommended: Gemini Pro 3.
+            Powers text-to-image and image-to-image generation. Recommended: Nano Banana 10/25.
           </span>
         </label>
 

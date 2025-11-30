@@ -47,11 +47,13 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     conversationHistory,
     conversationId,
     isLoading,
+    isEnhancing,
     error,
     generate,
     continueChat,
     clearConversation,
     saveImage,
+    enhancePrompt,
   } = imageGeneration;
 
   // Format the conversation start time
@@ -128,13 +130,23 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             rows={3}
           />
 
-          <ImageUploader
-            images={referenceImages}
-            onAddImage={addReferenceImage}
-            onRemoveImage={removeReferenceImage}
-            onClear={clearReferenceImages}
-            disabled={isLoading}
-          />
+          <div className="image-generation-actions-row">
+            <ImageUploader
+              images={referenceImages}
+              onAddImage={addReferenceImage}
+              onRemoveImage={removeReferenceImage}
+              onClear={clearReferenceImages}
+              disabled={isLoading}
+            />
+            <Button
+              onClick={enhancePrompt}
+              disabled={isLoading || isEnhancing || !prompt.trim()}
+              variant="secondary"
+              className="enhance-prompt-button"
+            >
+              {isEnhancing ? 'Enhancing...' : '🤖 Enhance Prompt'}
+            </Button>
+          </div>
           {referenceSvgText && (
             <div className="image-generation-svg-note">
               {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
