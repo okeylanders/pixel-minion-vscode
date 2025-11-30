@@ -484,8 +484,8 @@ body {
 
 /* Animated loading gif */
 .loading-animation {
-  max-width: 200px;
-  max-height: 200px;
+  width: 80%;
+  max-width: 400px;
   border-radius: var(--radius-md);
 }
 
