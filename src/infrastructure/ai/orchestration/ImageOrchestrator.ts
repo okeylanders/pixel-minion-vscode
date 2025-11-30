@@ -20,6 +20,7 @@ export interface ImageGenerationOptions {
   aspectRatio: string;
   seed?: number;
   referenceImages?: string[];
+  referenceSvgText?: string;
 }
 
 export interface ImageTurnResult {
@@ -88,7 +89,7 @@ export class ImageOrchestrator {
     this.logger.debug(`Generating image for conversation ${conversation.id} (seed: ${seed})`);
 
     // Add user message
-    this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImages);
+    this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImages, options.referenceSvgText);
     conversation.lastSeed = seed;
 
     // Call the client
@@ -128,7 +129,8 @@ export class ImageOrchestrator {
     prompt: string,
     history?: RehydrationTurn[],
     model?: string,
-    aspectRatio?: string
+    aspectRatio?: string,
+    referenceSvgText?: string
   ): Promise<ImageTurnResult> {
     let conversation = this.conversationManager.get(conversationId);
 
@@ -147,6 +149,7 @@ export class ImageOrchestrator {
       model: conversation.model,
       aspectRatio: conversation.aspectRatio,
       seed: conversation.lastSeed,
+      referenceSvgText,
     }, conversationId);
   }
 
