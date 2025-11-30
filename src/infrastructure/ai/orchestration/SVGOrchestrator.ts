@@ -109,6 +109,7 @@ export class SVGOrchestrator {
       promptTokens: result.usage.promptTokens,
       completionTokens: result.usage.completionTokens,
       totalTokens: result.usage.totalTokens,
+      costUsd: result.usage.costUsd,
     } : undefined;
 
     return {
