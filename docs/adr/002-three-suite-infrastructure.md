@@ -45,7 +45,7 @@ Suite
 - **ConversationManager**: `TextConversationManager`
 - **Messages**: `TextMessage[]` with `role` ('system' | 'user' | 'assistant')
 - **State**: Tracks turn count, enforces max turns limit
-- **Default**: `max_tokens: 16384`
+- **Default**: `max_tokens: 48000`
 
 #### 2. Image Suite
 
@@ -234,7 +234,7 @@ async handleContinueRequest(message) {
 
 ### Default Parameters
 
-- **Text clients**: `max_tokens: 16384` (sufficient for most chat/SVG responses)
+- **Text clients**: `max_tokens: 48000` (expanded headroom for chat/SVG responses)
 - **Image clients**: Uses OpenRouter model defaults
 - **Temperature**: `0.7` (balanced creativity/consistency)
 
