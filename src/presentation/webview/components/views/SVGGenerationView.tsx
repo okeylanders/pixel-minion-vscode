@@ -62,74 +62,79 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
 
   return (
     <div className="svg-generation-view">
-      {/* Header: Model + Aspect Ratio selectors */}
-      <div className="svg-generation-header">
-        <ModelSelector
-          models={OPENROUTER_SVG_MODELS}
-          selectedModel={model}
-          onModelChange={setModel}
-          disabled={isLoading}
-        />
-        <AspectRatioSelector
-          selectedRatio={aspectRatio}
-          onRatioChange={setAspectRatio}
-          disabled={isLoading}
-        />
-      </div>
-
-      {/* Prompt input */}
-      <div className="svg-generation-prompt-section">
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Describe the SVG you want to create..."
-          disabled={isLoading}
-          rows={3}
-        />
-
-        <SingleImageUploader
-          image={referenceImage}
-          onImageChange={setReferenceImage}
-          disabled={isLoading}
-        />
-
-        <Button
-          onClick={generate}
-          disabled={isLoading || !prompt.trim()}
-          variant="primary"
-        >
-          {isLoading ? 'Generating...' : 'Generate'}
-        </Button>
-      </div>
-
-      {/* Error display */}
-      {error && (
-        <div className="svg-generation-error">
-          {error}
+      {/* Input well: Model, Aspect Ratio, Prompt, Reference Image, Generate button */}
+      <div className="well">
+        {/* Header: Model + Aspect Ratio selectors */}
+        <div className="svg-generation-header">
+          <ModelSelector
+            models={OPENROUTER_SVG_MODELS}
+            selectedModel={model}
+            onModelChange={setModel}
+            disabled={isLoading}
+          />
+          <AspectRatioSelector
+            selectedRatio={aspectRatio}
+            onRatioChange={setAspectRatio}
+            disabled={isLoading}
+          />
         </div>
-      )}
 
-      {/* Scrollable result area */}
-      <div className="svg-generation-scroll-area">
-        {/* Generated SVG preview and code */}
-        {svgCode && (
-          <div className="svg-generation-result">
-            <div className="svg-result-header">
-              <h3>Generated SVG</h3>
-              <div className="svg-result-actions">
-                <SaveButton onClick={handleSave} saving={saving} saved={saved} />
-              </div>
-            </div>
-            <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
-            <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
+        {/* Prompt input */}
+        <div className="svg-generation-prompt-section">
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Describe the SVG you want to create..."
+            disabled={isLoading}
+            rows={3}
+          />
+
+          <SingleImageUploader
+            image={referenceImage}
+            onImageChange={setReferenceImage}
+            disabled={isLoading}
+          />
+
+          <Button
+            onClick={generate}
+            disabled={isLoading || !prompt.trim()}
+            variant="primary"
+          >
+            {isLoading ? 'Generating...' : 'Generate'}
+          </Button>
+        </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="svg-generation-error">
+            {error}
           </div>
         )}
+      </div>
 
-        {/* Loading indicator - appears at bottom where new content will show */}
-        <LoadingIndicator
-          isLoading={isLoading}
-          defaultMessage="Generating SVG..."
-        />
+      {/* Output well: Scrollable result area */}
+      <div className="well svg-generation-output-well">
+        <div className="svg-generation-scroll-area">
+          {/* Generated SVG preview and code */}
+          {svgCode && (
+            <div className="svg-generation-result">
+              <div className="svg-result-header">
+                <h3>Generated SVG</h3>
+                <div className="svg-result-actions">
+                  <SaveButton onClick={handleSave} saving={saving} saved={saved} />
+                </div>
+              </div>
+              <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
+              <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
+            </div>
+          )}
+
+          {/* Loading indicator - appears at bottom where new content will show */}
+          <LoadingIndicator
+            isLoading={isLoading}
+            defaultMessage="Generating SVG..."
+          />
+        </div>
       </div>
 
       {/* Continue chat input - fixed at bottom */}

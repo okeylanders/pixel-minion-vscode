@@ -15,7 +15,7 @@
 /* Button-style tabs (Prose Minion design) */
 .tab-button {
   flex: 1;
-  padding: var(--spacing-md) var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--vscode-button-secondaryBackground);
   border: 2px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
   color: var(--vscode-button-secondaryForeground);

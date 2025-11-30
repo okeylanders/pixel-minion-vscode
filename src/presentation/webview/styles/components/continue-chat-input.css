@@ -10,7 +10,7 @@
 
 .continue-chat-input-field {
   flex: 1;
-  padding: 8px 12px;
+  padding: 10px 14px;
   background: var(--vscode-input-background);
   color: var(--vscode-input-foreground);
   border: 1px solid var(--vscode-input-border);
@@ -32,7 +32,7 @@
 }
 
 .continue-chat-submit {
-  padding: 8px 16px;
+  padding: 10px 18px;
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: none;
