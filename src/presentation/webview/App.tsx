@@ -23,6 +23,7 @@ import {
   Tab,
   ImageGenerationView,
   SVGGenerationView,
+  OpenRouterAlert,
 } from './components';
 import {
   useSettings,
@@ -148,6 +149,10 @@ export function App(): JSX.Element {
     setShowSettingsOverlay(false);
   };
 
+  const handleOpenSettings = () => {
+    setShowSettingsOverlay(true);
+  };
+
   return (
     <div className="app-container">
       <AppHeader />
@@ -159,6 +164,11 @@ export function App(): JSX.Element {
       />
 
       <ViewContainer>
+        {/* Show alert when API key not configured */}
+        {!settings.apiKeyConfigured && (
+          <OpenRouterAlert onOpenSettings={handleOpenSettings} />
+        )}
+
         <TabPanel id="image" activeTab={activeTab}>
           <ImageGenerationView imageGeneration={imageGeneration} />
         </TabPanel>

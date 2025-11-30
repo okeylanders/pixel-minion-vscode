@@ -360,6 +360,68 @@ body {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
+/* OpenRouter Alert - Warning banner when API key not configured */
+.openrouter-alert {
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorWidget-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin: var(--spacing-md);
+}
+
+.openrouter-alert-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.openrouter-alert-icon {
+  font-size: 1.2rem;
+}
+
+.openrouter-alert-title {
+  font-weight: 600;
+  color: var(--vscode-notificationsWarningIcon-foreground, #cca700);
+}
+
+.openrouter-alert-description {
+  color: var(--vscode-foreground);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.9em;
+}
+
+.openrouter-alert-steps {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  color: var(--vscode-foreground);
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+.openrouter-alert-steps li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.openrouter-alert-steps a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: underline;
+}
+
+.openrouter-alert-link {
+  background: none;
+  border: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.openrouter-alert-link:hover {
+  color: var(--vscode-textLink-activeForeground);
+}
+
 /* Legacy settings-overlay-header (for backwards compatibility) */
 .settings-overlay-header {
   display: flex;
