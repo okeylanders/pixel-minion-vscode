@@ -22,13 +22,14 @@ import {
   SVGGenerationRequestPayload,
   SVGGenerationContinuePayload,
   SVGSaveRequestPayload,
+  EnhancePromptRequestPayload,
   TokenUsage,
   TokenUsageUpdatePayload,
   createEnvelope,
   SettingsPayload,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
-import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler } from './domain';
+import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator } from '@ai';
@@ -40,6 +41,7 @@ export class MessageHandler {
   private readonly textHandler: TextHandler;
   private readonly imageGenerationHandler: ImageGenerationHandler;
   private readonly svgGenerationHandler: SVGGenerationHandler;
+  private readonly enhanceHandler: EnhanceHandler;
 
   // Token usage accumulator - tracks total usage across the session
   private tokenTotals: TokenUsage = {
@@ -87,6 +89,14 @@ export class MessageHandler {
     this.svgGenerationHandler = new SVGGenerationHandler(
       postMessage,
       svgOrchestrator,
+      logger,
+      (usage) => this.applyTokenUsage(usage)
+    );
+
+    // Create enhance handler for prompt enhancement
+    this.enhanceHandler = new EnhanceHandler(
+      postMessage,
+      secretStorage,
       logger,
       (usage) => this.applyTokenUsage(usage)
     );
@@ -256,6 +266,14 @@ export class MessageHandler {
       MessageType.SVG_SAVE_REQUEST,
       (msg) => this.svgGenerationHandler.handleSaveRequest(
         msg as MessageEnvelope<SVGSaveRequestPayload>
+      )
+    );
+
+    // Prompt Enhancement domain
+    this.router.register(
+      MessageType.ENHANCE_PROMPT_REQUEST,
+      (msg) => this.enhanceHandler.handleEnhanceRequest(
+        msg as MessageEnvelope<EnhancePromptRequestPayload>
       )
     );
   }

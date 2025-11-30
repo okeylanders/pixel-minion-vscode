@@ -13,7 +13,7 @@ export class OpenRouterTextClient implements TextClient {
 
   constructor(
     private readonly apiKey: string,
-    private readonly model: string = 'anthropic/claude-sonnet-4'
+    private readonly model: string = 'openai/gpt-5.1'
   ) {}
 
   getModel(): string {

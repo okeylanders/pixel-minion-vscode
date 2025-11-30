@@ -15,7 +15,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
   constructor(
     private readonly secretStorage: SecretStorageService,
     private readonly logger: LoggingService,
-    defaultModel: string = 'anthropic/claude-sonnet-4'
+    defaultModel: string = 'openai/gpt-5.1'
   ) {
     this.currentModel = defaultModel;
   }

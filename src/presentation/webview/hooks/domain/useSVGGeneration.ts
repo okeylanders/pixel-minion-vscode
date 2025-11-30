@@ -14,6 +14,7 @@ import {
   SVGGenerationResponsePayload,
   SVGSaveResultPayload,
   SVGConversationHistoryTurn,
+  EnhancePromptResponsePayload,
 } from '@messages';
 import { DEFAULT_SVG_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 
@@ -28,6 +29,7 @@ export interface SVGGenerationState {
   conversationHistory: SVGConversationHistoryTurn[];
   conversationId: string | null;
   isLoading: boolean;
+  isEnhancing: boolean;
   error: string | null;
 }
 
@@ -42,12 +44,14 @@ export interface SVGGenerationActions {
   clearConversation: () => void;
   saveSVG: () => void;
   copySVG: () => void;
+  enhancePrompt: () => void;
 }
 
 // 2b. Message Handlers Interface (for App-level routing)
 export interface SVGGenerationHandlers {
   handleGenerationResponse: (message: MessageEnvelope) => void;
   handleSaveResult: (message: MessageEnvelope) => void;
+  handleEnhanceResponse: (message: MessageEnvelope) => void;
   handleError: (message: MessageEnvelope) => void;
 }
 
@@ -96,6 +100,7 @@ export function useSVGGeneration(
   );
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setModel = useCallback((newModel: string) => {
     setModelState(newModel);
@@ -143,8 +148,15 @@ export function useSVGGeneration(
     }
   }, []);
 
+  const handleEnhanceResponse = useCallback((message: MessageEnvelope) => {
+    const payload = message.payload as EnhancePromptResponsePayload;
+    setPrompt(payload.enhancedPrompt);
+    setIsEnhancing(false);
+  }, []);
+
   const handleError = useCallback((message: MessageEnvelope) => {
     setIsLoading(false);
+    setIsEnhancing(false);
     setError((message.payload as { message: string }).message);
   }, []);
 
@@ -257,6 +269,27 @@ export function useSVGGeneration(
     });
   }, [svgCode]);
 
+  const enhancePrompt = useCallback(() => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt to enhance');
+      return;
+    }
+
+    setIsEnhancing(true);
+    setError(null);
+
+    vscode.postMessage(
+      createEnvelope(
+        MessageType.ENHANCE_PROMPT_REQUEST,
+        'webview.enhance',
+        {
+          prompt: prompt.trim(),
+          type: 'svg',
+        }
+      )
+    );
+  }, [prompt, vscode]);
+
   // Persistence object
   const persistedState: SVGGenerationPersistence = {
     prompt,
@@ -280,6 +313,7 @@ export function useSVGGeneration(
     conversationHistory,
     conversationId,
     isLoading,
+    isEnhancing,
     error,
     // Actions
     setPrompt,
@@ -291,9 +325,11 @@ export function useSVGGeneration(
     clearConversation,
     saveSVG,
     copySVG,
+    enhancePrompt,
     // Message Handlers (for App-level routing)
     handleGenerationResponse,
     handleSaveResult,
+    handleEnhanceResponse,
     handleError,
     // Persistence
     persistedState,

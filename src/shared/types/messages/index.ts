@@ -13,3 +13,4 @@ export * from './ui';
 export * from './tokenUsage';
 export * from './imageGeneration';
 export * from './svgGeneration';
+export * from './enhance';
