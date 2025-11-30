@@ -1,13 +1,29 @@
 <p align="center">
-  <img src="assets/pixel-minion.png" alt="Pixel Minion" width="128"/>
+  <img src="assets/pixel-minion-logo-animated-bw.svg" alt="Pixel Minion" width="128"/>
 </p>
 
+<h1 align="center">Pixel Minion</h1>
 <p align="center">
   <strong>AI-powered image and SVG generation inside VS Code</strong>
 </p>
 
 <p align="center">
   Generate images and vector graphics directly in your editor using cutting-edge AI models via OpenRouter.
+</p>
+
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=okeylanders.pixel-minion">
+    <img src="https://img.shields.io/visual-studio-marketplace/v/okeylanders.pixel-minion?style=flat-square&label=VS%20Marketplace&logo=visual-studio-code" alt="VS Marketplace Version"/>
+  </a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=okeylanders.pixel-minion">
+    <img src="https://img.shields.io/visual-studio-marketplace/i/okeylanders.pixel-minion?style=flat-square&label=Installs&logo=visual-studio-code" alt="VS Marketplace Installs"/>
+  </a>
+  <a href="https://github.com/okeylanders/pixel-minion-vscode/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License"/>
+  </a>
+  <a href="https://buymeacoffee.com/okeylanders">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-orange?style=flat-square&logo=buy-me-a-coffee" alt="Buy Me a Coffee"/>
+  </a>
 </p>
 
 ---
