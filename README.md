@@ -36,6 +36,10 @@ Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
 > **Tip:** For best experience, **widen your sidebar** to give Pixel Minion room to display all its features comfortably.
 
+<p align="center">
+  <img src="screenshots/image-generation-multiturn.png" alt="Image Generation" width="400"/>
+</p>
+
 ---
 
 ## Getting Started
@@ -91,6 +95,10 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
 
 Generate images from text prompts or refine existing images with AI.
 
+<p align="center">
+  <img src="screenshots/image-generation-header.png" alt="Image Generation Controls" width="500"/>
+</p>
+
 **Key Features:**
 
 - **Text-to-Image** - Describe what you want, get an image
@@ -120,11 +128,20 @@ Generate images from text prompts or refine existing images with AI.
 - Iterate with the chat input for refinements
 - Try different seeds for variety
 
+<p align="center">
+  <img src="screenshots/image-multiturn-refinement.png" alt="Multi-turn Refinement" width="500"/>
+</p>
+<p align="center"><em>Refine your images through multi-turn conversations</em></p>
+
 ---
 
 ### SVG Generation
 
 Generate vector graphics as code using powerful text models.
+
+<p align="center">
+  <img src="screenshots/svg-generation-result.png" alt="SVG Generation" width="500"/>
+</p>
 
 **Key Features:**
 
@@ -150,11 +167,20 @@ Generate vector graphics as code using powerful text models.
 - Use the preview sizes to check scalability
 - Copy the code for use in your projects
 
+<p align="center">
+  <img src="screenshots/svg-multisize-thumbnails.png" alt="SVG Multi-Size Preview" width="500"/>
+</p>
+<p align="center"><em>Preview your SVG at 32px, 64px, and 128px to verify scalability</em></p>
+
 ---
 
 ## Settings
 
 Click the **gear icon** in the Pixel Minion header for settings:
+
+<p align="center">
+  <img src="screenshots/settings-panel.png" alt="Settings Panel" width="500"/>
+</p>
 
 ### General Settings
 
