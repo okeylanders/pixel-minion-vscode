@@ -374,6 +374,23 @@ body {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
+/* Reset Token Button - Danger/destructive style */
+.reset-token-button {
+  padding: 6px 12px;
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-inputValidation-errorForeground, #fff);
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: var(--vscode-font-family);
+  transition: background 0.2s ease;
+}
+
+.reset-token-button:hover {
+  background: var(--vscode-inputValidation-errorBorder, #be1100);
+}
+
 /* OpenRouter Alert - Warning banner when API key not configured */
 .openrouter-alert {
   background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
