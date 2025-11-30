@@ -5,9 +5,9 @@
 .image-generation-view {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-sm);
   height: 100%;
-  padding: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   overflow: hidden;
 }
 
@@ -42,8 +42,8 @@
   min-width: 150px;
 }
 
+/* Seed input shares equal space with Model and Aspect Ratio selectors */
 .image-generation-header .seed-input {
-  max-width: 140px;
   min-width: 100px;
 }
 
@@ -105,16 +105,16 @@
   border: none;
   padding: 4px 8px;
   cursor: pointer;
-  color: var(--vscode-descriptionForeground);
+  color: var(--vscode-errorForeground);
   font-size: 16px;
   border-radius: 4px;
-  transition: background-color 0.15s, color 0.15s;
+  transition: background-color 0.15s, opacity 0.15s;
   flex-shrink: 0;
 }
 
 .conversation-header-clear:hover:not(:disabled) {
   background: var(--vscode-toolbar-hoverBackground);
-  color: var(--vscode-errorForeground);
+  opacity: 0.8;
 }
 
 .conversation-header-clear:disabled {

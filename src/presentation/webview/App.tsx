@@ -35,7 +35,7 @@ import {
 
 // Define available tabs with icons (Prose Minion style)
 const TABS: Tab[] = [
-  { id: 'image', label: 'Image', icon: '🖼️' },
+  { id: 'image', label: 'Image', icon: '🎨' },
   { id: 'svg', label: 'SVG', icon: '📐' },
 ];
 

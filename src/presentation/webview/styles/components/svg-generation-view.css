@@ -5,9 +5,9 @@
 .svg-generation-view {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--spacing-sm);
   height: 100%;
-  padding: 12px;
+  padding: var(--spacing-xs) var(--spacing-sm);
   overflow: hidden;
 }
 
