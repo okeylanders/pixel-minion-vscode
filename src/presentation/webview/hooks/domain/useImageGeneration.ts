@@ -171,7 +171,7 @@ export function useImageGeneration(
       const sizeBytes = new Blob([svgText]).size;
       setReferenceSvgWarning(
         sizeBytes > 16 * 1024
-          ? 'Reference SVG is large (>16KB). Responses may truncate. This seems to work better.'
+          ? 'Reference SVG is large (>16KB). Responses may truncate.'
           : 'SVG will be sent as text context (not as image).'
       );
     } else {
