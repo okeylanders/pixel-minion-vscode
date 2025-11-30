@@ -58,6 +58,12 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
 
+  // Reset save states when a new SVG arrives
+  React.useEffect(() => {
+    setSaving(false);
+    setSaved(false);
+  }, [svgCode, conversationId]);
+
   const handleSave = React.useCallback(() => {
     setSaving(true);
     saveSVG();
