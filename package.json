@@ -49,8 +49,8 @@
       },
       {
         "command": "pixelMinion.showOutput",
-        "title": "Pixel Minion: Show Output",
-        "icon": "$(output)"
+        "title": "Pixel Minion: Show Debug Output",
+        "icon": "$(bug)"
       },
       {
         "command": "pixelMinion.helloWorld",
