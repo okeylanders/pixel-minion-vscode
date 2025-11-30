@@ -2,6 +2,7 @@
 
 ## Ready to Plan
 - UI cleanup / alignment across tabs and settings panel.
+- Show Loading Animation during generates
 - Better system prompt management (consider exposing/editing prompts).
 - Token cost widget in the main view (consume TOKEN_USAGE updates).
 - Settings panel dropdown polish (consistent selectors for models/aspect).
