@@ -54,6 +54,7 @@ export interface ImageGenerationResult {
     promptTokens: number;
     completionTokens: number;
     totalTokens: number;
+    costUsd?: number;
   };
 }
 

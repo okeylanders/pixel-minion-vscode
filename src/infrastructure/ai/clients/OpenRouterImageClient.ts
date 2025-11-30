@@ -54,6 +54,7 @@ export class OpenRouterImageClient implements ImageGenerationClient {
         modalities: ['image', 'text'],
         seed: request.seed,
         image_config: { aspect_ratio: request.aspectRatio },
+        usage: { include: true },  // Request native token counts and cost
       }),
     });
 
@@ -64,7 +65,10 @@ export class OpenRouterImageClient implements ImageGenerationClient {
     }
 
     const result = await response.json();
-    this.logger.debug('OpenRouter response received');
+    this.logger.debug('OpenRouter response received', {
+      hasUsage: !!result.usage,
+      usage: result.usage,  // Log full usage object to see available fields
+    });
 
     return this.parseResponse(result, request.seed);
   }
@@ -105,9 +109,13 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       images,
       seed: requestedSeed ?? 0,
       usage: result.usage ? {
-        promptTokens: result.usage.prompt_tokens,
-        completionTokens: result.usage.completion_tokens,
-        totalTokens: result.usage.total_tokens,
+        // Prefer native token counts if available, fall back to normalized
+        promptTokens: result.usage.native_tokens_prompt ?? result.usage.prompt_tokens ?? 0,
+        completionTokens: result.usage.native_tokens_completion ?? result.usage.completion_tokens ?? 0,
+        totalTokens: (result.usage.native_tokens_prompt ?? result.usage.prompt_tokens ?? 0) +
+                     (result.usage.native_tokens_completion ?? result.usage.completion_tokens ?? 0),
+        // Cost may be in different fields depending on OpenRouter version
+        costUsd: result.usage.cost ?? result.usage.total_cost,
       } : undefined,
     };
   }
