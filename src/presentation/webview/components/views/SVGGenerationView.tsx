@@ -37,7 +37,8 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     aspectRatio,
     setAspectRatio,
     referenceImage,
-    setReferenceImage,
+    referenceSvgText,
+    setReferenceAttachment,
     svgCode,
     conversationHistory,
     conversationId,
@@ -96,8 +97,8 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
           />
 
           <SingleImageUploader
-            image={referenceImage}
-            onImageChange={setReferenceImage}
+            attachment={{ preview: referenceImage, svgText: referenceSvgText }}
+            onAttachmentChange={setReferenceAttachment}
             disabled={isLoading}
           />
 

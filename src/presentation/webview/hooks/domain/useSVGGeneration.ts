@@ -22,7 +22,8 @@ export interface SVGGenerationState {
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
-  referenceImage: string | null;  // Single image, nullable
+  referenceImage: string | null;  // Single image preview (data URL)
+  referenceSvgText: string | null; // Raw SVG text if attachment is SVG
   svgCode: string | null;
   conversationHistory: SVGConversationHistoryTurn[];
   conversationId: string | null;
@@ -35,7 +36,7 @@ export interface SVGGenerationActions {
   setPrompt: (prompt: string) => void;
   setModel: (model: string) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
-  setReferenceImage: (dataUrl: string | null) => void;
+  setReferenceAttachment: (attachment: { preview: string | null; svgText: string | null }) => void;
   generate: () => void;
   continueChat: (prompt: string) => void;
   clearConversation: () => void;
@@ -58,6 +59,8 @@ export interface SVGGenerationPersistence {
   conversationId: string | null;
   svgCode: string | null;
   conversationHistory: SVGConversationHistoryTurn[];
+  referenceSvgText: string | null;
+  referenceImage: string | null;
 }
 
 // Composed return type
@@ -80,7 +83,8 @@ export function useSVGGeneration(
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [referenceImage, setReferenceImage] = useState<string | null>(initialState?.referenceImage ?? null);
+  const [referenceSvgText, setReferenceSvgText] = useState<string | null>(initialState?.referenceSvgText ?? null);
   const [svgCode, setSvgCode] = useState<string | null>(
     initialState?.svgCode ?? null
   );
@@ -100,10 +104,15 @@ export function useSVGGeneration(
 
   useEffect(() => {
     if (sync?.selectedModel && !isLoading) {
-      setModelState(sync.selectedModel);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sync?.selectedModel]);
+    setModelState(sync.selectedModel);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [sync?.selectedModel]);
+
+  const setReferenceAttachment = useCallback((attachment: { preview: string | null; svgText: string | null }) => {
+    setReferenceImage(attachment.preview);
+    setReferenceSvgText(attachment.svgText);
+  }, []);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
@@ -116,6 +125,7 @@ export function useSVGGeneration(
           prompt: currentPrompt,
           svgCode: payload.svgCode,
           turnNumber: payload.turnNumber,
+          referenceSvgText: referenceSvgText ?? undefined,
           usage: payload.usage,
         };
         setConversationHistory((prev) => [...prev, turn]);
@@ -160,11 +170,12 @@ export function useSVGGeneration(
           prompt,
           model,
           aspectRatio,
-          referenceImage: referenceImage ?? undefined,
+          referenceImage: referenceSvgText ? undefined : (referenceImage ?? undefined),
+          referenceSvgText: referenceSvgText ?? undefined,
         }
       )
     );
-  }, [prompt, model, aspectRatio, referenceImage, vscode]);
+  }, [prompt, model, aspectRatio, referenceImage, referenceSvgText, vscode]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -186,6 +197,7 @@ export function useSVGGeneration(
         prompt: turn.prompt,
         svgCode: turn.svgCode,
         turnNumber: turn.turnNumber,
+        referenceSvgText: turn.referenceSvgText,
       }));
 
       vscode.postMessage(
@@ -198,11 +210,12 @@ export function useSVGGeneration(
             history,
             model,
             aspectRatio,
+            referenceSvgText: referenceSvgText ?? undefined,
           }
         )
       );
     },
-    [conversationHistory, conversationId, model, aspectRatio, vscode]
+    [conversationHistory, conversationId, model, aspectRatio, referenceSvgText, vscode]
   );
 
   const clearConversation = useCallback(() => {
@@ -252,6 +265,8 @@ export function useSVGGeneration(
     conversationId,
     svgCode,
     conversationHistory,
+    referenceSvgText,
+    referenceImage,
   };
 
   return {
@@ -260,6 +275,7 @@ export function useSVGGeneration(
     model,
     aspectRatio,
     referenceImage,
+    referenceSvgText,
     svgCode,
     conversationHistory,
     conversationId,
@@ -269,7 +285,7 @@ export function useSVGGeneration(
     setPrompt,
     setModel,
     setAspectRatio,
-    setReferenceImage,
+    setReferenceAttachment,
     generate,
     continueChat,
     clearConversation,

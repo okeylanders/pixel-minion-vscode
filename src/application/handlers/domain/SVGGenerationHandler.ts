@@ -39,7 +39,7 @@ export class SVGGenerationHandler {
    * Handle new SVG generation request
    */
   async handleGenerationRequest(message: MessageEnvelope<SVGGenerationRequestPayload>): Promise<void> {
-    const { prompt, model, aspectRatio, referenceImage, conversationId } = message.payload;
+    const { prompt, model, aspectRatio, referenceImage, referenceSvgText, conversationId } = message.payload;
     this.logger.info(`SVG generation request: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -54,7 +54,7 @@ export class SVGGenerationHandler {
       // Use orchestrator for generation
       const result = await this.svgOrchestrator.generateSVG(
         prompt,
-        { model, aspectRatio, referenceImage },
+        { model, aspectRatio, referenceImage, referenceSvgText },
         conversationId
       );
 
@@ -103,7 +103,7 @@ export class SVGGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<SVGGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio, referenceSvgText } = message.payload;
     this.logger.info(`SVG generation continue: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -121,7 +121,8 @@ export class SVGGenerationHandler {
         prompt,
         history,
         model,
-        aspectRatio
+        aspectRatio,
+        referenceSvgText
       );
 
       // Apply token usage if available

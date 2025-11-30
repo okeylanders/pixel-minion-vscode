@@ -2,14 +2,17 @@ import React, { useRef, useCallback } from 'react';
 import '../../styles/components/single-image-uploader.css';
 
 interface SingleImageUploaderProps {
-  image: string | null;
-  onImageChange: (dataUrl: string | null) => void;
+  attachment: {
+    preview: string | null;
+    svgText: string | null;
+  };
+  onAttachmentChange: (data: { preview: string | null; svgText: string | null }) => void;
   disabled?: boolean;
 }
 
 export const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
-  image,
-  onImageChange,
+  attachment,
+  onAttachmentChange,
   disabled = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,25 +21,36 @@ export const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        onImageChange(reader.result);
+    // Always read as data URL for preview
+    const dataUrlReader = new FileReader();
+    dataUrlReader.onload = () => {
+      if (typeof dataUrlReader.result === 'string') {
+        // If SVG, also read text content to attach as prompt text
+        if (file.type === 'image/svg+xml') {
+          const textReader = new FileReader();
+          textReader.onload = () => {
+            const svgText = typeof textReader.result === 'string' ? textReader.result : null;
+            onAttachmentChange({ preview: dataUrlReader.result as string, svgText });
+          };
+          textReader.readAsText(file);
+        } else {
+          onAttachmentChange({ preview: dataUrlReader.result as string, svgText: null });
+        }
       }
     };
-    reader.readAsDataURL(file);
+    dataUrlReader.readAsDataURL(file);
 
     if (inputRef.current) inputRef.current.value = '';
-  }, [onImageChange]);
+  }, [onAttachmentChange]);
 
   return (
     <div className="single-image-uploader">
-      {image ? (
+      {attachment.preview ? (
         <div className="single-image-preview">
-          <img src={image} alt="Reference" />
+          <img src={attachment.preview} alt="Reference" />
           <button
             type="button"
-            onClick={() => onImageChange(null)}
+            onClick={() => onAttachmentChange({ preview: null, svgText: null })}
             disabled={disabled}
             className="remove-image"
           >
