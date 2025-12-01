@@ -1,7 +1,7 @@
 # ADR-001: Pixel Minion Architecture
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 
