@@ -31,3 +31,5 @@ Create individual markdown files for each debt item: `debt-XXX-description.md`
 | 008 | Text client created on every enhance request | EnhanceHandler.ts |
 | 009 | Inconsistent error logging | Various handlers |
 | 010 | Default model hardcoded in multiple places | Multiple files |
+| 011 | TokenUsage interface in TextClient, not shared | TextClient.ts |
+| 012 | TextClient vs DynamicTextClient duplication | AI clients |
