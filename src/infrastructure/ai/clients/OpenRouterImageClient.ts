@@ -46,7 +46,7 @@ export class OpenRouterImageClient implements ImageGenerationClient {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'https://github.com/pixel-minion-vscode',
-        'X-Title': 'Pixel Minion',
+        'X-Title': 'Pixel Minion VS Code Extension',
       },
       body: JSON.stringify({
         model: request.model,
