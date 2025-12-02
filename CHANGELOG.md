@@ -6,6 +6,22 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.0.1] - 2025-12-01
+
+### Fixed
+
+- **SVG Model Race Condition** - Fixed race condition where concurrent SVG generation requests with different models could interfere with each other. Models are now passed per-request instead of using shared state. (Debt-006)
+
+### Changed
+
+- `setModel()` method on `OpenRouterDynamicTextClient` is now deprecated. Pass model in `createCompletion()` options instead.
+
+### Added
+
+- 32 new tests for `OpenRouterDynamicTextClient` covering concurrent request handling
+
+---
+
 ## [1.0.0] - 2025-11-30
 
 ### Overview
