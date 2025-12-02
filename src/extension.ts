@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import { WebviewViewProvider } from './application/providers/WebviewViewProvider';
 import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
 import { LoggingService } from './infrastructure/logging/LoggingService';
+import { PromptLoader } from './infrastructure/resources/PromptLoader';
 
 // Module-level reference to logging service for deactivate()
 let logger: LoggingService | undefined;
@@ -36,6 +37,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Initialize infrastructure services (with logging injected)
   const secretStorage = new SecretStorageService(context.secrets, loggingService);
+  const promptLoader = new PromptLoader(context.extensionUri, loggingService);
 
   // Create and register the webview view provider
   const provider = new WebviewViewProvider(context.extensionUri, secretStorage, loggingService);

@@ -194,4 +194,129 @@ describe('PromptLoader', () => {
       );
     });
   });
+
+  describe('load (category/name API)', () => {
+    it('should load a prompt by category and name', async () => {
+      const mockContent = 'SVG generation prompt';
+      (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+        Buffer.from(mockContent)
+      );
+
+      const result = await loader.load('svg', 'generation');
+
+      expect(vscode.Uri.joinPath).toHaveBeenCalledWith(
+        mockExtensionUri,
+        'resources',
+        'system-prompts',
+        'svg/generation.md'
+      );
+      expect(result).toBe(mockContent);
+    });
+
+    it('should cache prompt after first load', async () => {
+      const mockContent = 'Cached prompt';
+      (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+        Buffer.from(mockContent)
+      );
+
+      // First load - should hit file system
+      const result1 = await loader.load('svg', 'generation');
+      expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(1);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'PromptLoader: Loaded and cached svg/generation'
+      );
+
+      // Second load - should hit cache
+      const result2 = await loader.load('svg', 'generation');
+      expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(1); // Still 1, not 2
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'PromptLoader: Cache hit for svg/generation'
+      );
+      expect(result1).toBe(result2);
+    });
+
+    it('should throw error with proper message when prompt not found', async () => {
+      (vscode.workspace.fs.readFile as jest.Mock).mockRejectedValue(
+        new Error('File not found')
+      );
+
+      await expect(loader.load('missing', 'prompt')).rejects.toThrow(
+        'System prompt not found: missing/prompt'
+      );
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'PromptLoader: Failed to load prompt missing/prompt',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle nested categories correctly', async () => {
+      const mockContent = 'Blueprint analysis prompt';
+      (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+        Buffer.from(mockContent)
+      );
+
+      await loader.load('svg-architect', 'blueprint-analysis');
+
+      expect(vscode.Uri.joinPath).toHaveBeenCalledWith(
+        mockExtensionUri,
+        'resources',
+        'system-prompts',
+        'svg-architect/blueprint-analysis.md'
+      );
+    });
+  });
+
+  describe('exists (category/name API)', () => {
+    it('should return true when prompt exists', async () => {
+      (vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({
+        type: 1, // FileType.File
+      });
+
+      const result = await loader.exists('svg', 'generation');
+
+      expect(result).toBe(true);
+      expect(vscode.Uri.joinPath).toHaveBeenCalledWith(
+        mockExtensionUri,
+        'resources',
+        'system-prompts',
+        'svg/generation.md'
+      );
+    });
+
+    it('should return false when prompt does not exist', async () => {
+      (vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(
+        new Error('File not found')
+      );
+
+      const result = await loader.exists('missing', 'prompt');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('clearCache', () => {
+    it('should clear the cache', async () => {
+      const mockContent = 'Cached content';
+      (vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+        Buffer.from(mockContent)
+      );
+
+      // Load and cache
+      await loader.load('svg', 'generation');
+      expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(1);
+
+      // Verify cache hit
+      await loader.load('svg', 'generation');
+      expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(1);
+
+      // Clear cache
+      loader.clearCache();
+      expect(mockLogger.debug).toHaveBeenCalledWith('PromptLoader: Cache cleared');
+
+      // Load again - should hit file system again
+      await loader.load('svg', 'generation');
+      expect(vscode.workspace.fs.readFile).toHaveBeenCalledTimes(2);
+    });
+  });
 });

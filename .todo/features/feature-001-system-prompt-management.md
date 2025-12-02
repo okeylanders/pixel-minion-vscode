@@ -1,9 +1,10 @@
 # Feature-001: System Prompt Management via PromptLoader
 
-**Status:** Deferred
+**Status:** ✅ IMPLEMENTED (2025-12-01)
 **Planned Version:** v1.1
 **Priority:** Medium
 **Created:** 2025-11-30
+**Resolution:** [EPIC: SVG-ARCHITECT] Sprint 3
 
 ## Summary
 

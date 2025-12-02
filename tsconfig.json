@@ -24,7 +24,9 @@
       "@ai": ["src/infrastructure/ai"],
       "@ai/*": ["src/infrastructure/ai/*"],
       "@providers/*": ["src/infrastructure/ai/providers/*"],
-      "@logging": ["src/infrastructure/logging"]
+      "@logging": ["src/infrastructure/logging"],
+      "@resources": ["src/infrastructure/resources"],
+      "@resources/*": ["src/infrastructure/resources/*"]
     }
   },
   "include": ["src/**/*.ts"],
