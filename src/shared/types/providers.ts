@@ -7,7 +7,7 @@
 
 import { TextClient } from '../../infrastructure/ai/clients/TextClient';
 
-export type GenerationType = 'image' | 'svg';
+export type GenerationType = 'image' | 'svg' | 'svgBlueprint';
 
 export interface ModelDefinition {
   id: string;           // e.g., 'google/gemini-2.5-flash-image'

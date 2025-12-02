@@ -15,3 +15,19 @@ export { SVGConversationManager } from './SVGConversationManager';
 export type { SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 export { SVGOrchestrator } from './SVGOrchestrator';
 export type { SVGGenerationOptions, SVGTurnResult } from './SVGOrchestrator';
+
+// SVG Architect orchestration
+export { SVGArchitectConversationManager } from './SVGArchitectConversationManager';
+export type {
+  SVGArchitectStatus,
+  SVGArchitectIteration,
+  SVGArchitectConversationState,
+  SVGArchitectRehydrationData
+} from './SVGArchitectConversationManager';
+export { SVGArchitectOrchestrator } from './SVGArchitectOrchestrator';
+export type {
+  SVGArchitectInput,
+  SVGArchitectOptions,
+  SVGArchitectProgress,
+  SVGArchitectResult
+} from './SVGArchitectOrchestrator';

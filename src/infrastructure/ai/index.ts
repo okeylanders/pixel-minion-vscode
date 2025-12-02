@@ -56,6 +56,19 @@ export type {
   SVGRehydrationTurn,
 } from './orchestration';
 
+// SVG Architect orchestration
+export { SVGArchitectConversationManager, SVGArchitectOrchestrator } from './orchestration';
+export type {
+  SVGArchitectStatus,
+  SVGArchitectIteration,
+  SVGArchitectConversationState,
+  SVGArchitectRehydrationData,
+  SVGArchitectInput,
+  SVGArchitectOptions,
+  SVGArchitectProgress,
+  SVGArchitectResult,
+} from './orchestration';
+
 // Tools
 export type { ToolProvider, ToolDefinition, ToolExecutionResult } from './tools';
 export { FileToolProvider, ToolRegistry } from './tools';
