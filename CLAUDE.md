@@ -102,7 +102,7 @@ Each suite consists of three layers:
 #### SVG Suite
 
 - **Purpose**: SVG code generation using text models
-- **Client**: `OpenRouterDynamicTextClient` (model set via `setModel()`)
+- **Client**: `OpenRouterDynamicTextClient` (model passed per-request to avoid race conditions)
 - **Messages**: `TextMessage[]` with multimodal content (images optional)
 - **State**: Tracks prompts, SVG code, aspect ratio
 - **Special**: Extracts SVG code from markdown responses; re-hydration supported and uses stored model/aspect per conversation
@@ -1629,7 +1629,9 @@ export class OpenRouterDynamicTextClient implements TextClient {
   }
 
   /**
-   * Set the model to use for subsequent requests
+   * @deprecated Use createCompletion() with model in options instead.
+   * This method exists for backwards compatibility but may cause race conditions
+   * in concurrent scenarios. Pass model directly in createCompletion() options.
    */
   setModel(model: string): void {
     this.currentModel = model;
@@ -1642,10 +1644,30 @@ export class OpenRouterDynamicTextClient implements TextClient {
 
   async createCompletion(messages, options?): Promise<TextCompletionResult> {
     const apiKey = await this.secretStorage.getApiKey();
-    // ... OpenRouter API call with this.currentModel
+    // Use model from options if provided, otherwise fall back to currentModel
+    const model = options?.model ?? this.currentModel;
+    // ... OpenRouter API call with model variable
     // Default: max_tokens: 48000
   }
 }
+```
+
+**Race Condition Prevention**: Always pass the model in `createCompletion()` options rather than using `setModel()`. This prevents race conditions when multiple requests are made concurrently or when a conversation is re-hydrated.
+
+**Old pattern (deprecated - causes race conditions):**
+
+```typescript
+client.setModel('anthropic/claude-sonnet-4');
+const result = await client.createCompletion(messages);
+```
+
+**New pattern (recommended):**
+
+```typescript
+const result = await client.createCompletion(messages, {
+  model: 'anthropic/claude-sonnet-4',
+  maxTokens: 48000
+});
 ```
 
 #### OpenRouterImageClient

@@ -25,6 +25,7 @@ export interface TextCompletionOptions {
   temperature?: number;
   maxTokens?: number;
   signal?: AbortSignal;
+  model?: string;  // Optional model override to avoid race conditions
 }
 
 export interface TokenUsage {

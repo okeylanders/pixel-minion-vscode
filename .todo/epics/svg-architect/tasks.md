@@ -12,16 +12,17 @@
 
 **Tasks:**
 
-- [ ] 1.1 Update `OpenRouterDynamicTextClient.createCompletion()` to accept optional `model` parameter
-- [ ] 1.2 Update `SVGOrchestrator` to pass model directly to `createCompletion()` instead of calling `setModel()`
-- [ ] 1.3 Deprecate or remove `setModel()` method (or keep for backwards compatibility with warning)
-- [ ] 1.4 Update any other callers that rely on `setModel()` pattern
-- [ ] 1.5 Add test for concurrent requests with different models
-- [ ] 1.6 Update CLAUDE.md AI Client Integration section if pattern changes
+- [x] 1.1 Update `OpenRouterDynamicTextClient.createCompletion()` to accept optional `model` parameter
+- [x] 1.2 Update `SVGOrchestrator` to pass model directly to `createCompletion()` instead of calling `setModel()`
+- [x] 1.3 Deprecate or remove `setModel()` method (or keep for backwards compatibility with warning)
+- [x] 1.4 Update any other callers that rely on `setModel()` pattern (N/A - only SVGOrchestrator used it)
+- [x] 1.5 Add test for concurrent requests with different models
+- [x] 1.6 Update CLAUDE.md AI Client Integration section if pattern changes
 
 **Acceptance Criteria:**
-- Two concurrent SVG generation requests with different models execute correctly without race condition
-- Existing single-request flows continue to work
+
+- [x] Two concurrent SVG generation requests with different models execute correctly without race condition
+- [x] Existing single-request flows continue to work
 
 ---
 

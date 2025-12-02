@@ -22,8 +22,10 @@ export class OpenRouterDynamicTextClient implements TextClient {
 
   /**
    * Set the model to use for subsequent requests
+   * @deprecated Pass model directly to createCompletion() options instead to avoid race conditions
    */
   setModel(model: string): void {
+    this.logger.warn('setModel() is deprecated. Pass model to createCompletion() options instead.');
     this.currentModel = model;
     this.logger.debug(`OpenRouterDynamicTextClient model set to: ${model}`);
   }
@@ -45,8 +47,11 @@ export class OpenRouterDynamicTextClient implements TextClient {
       throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
     }
 
+    // Use passed model if provided, otherwise fall back to this.currentModel
+    const modelToUse = options?.model ?? this.currentModel;
+
     this.logger.debug('Calling OpenRouter text completion', {
-      model: this.currentModel,
+      model: modelToUse,
       messageCount: messages.length,
     });
 
@@ -59,7 +64,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
         'X-Title': 'Pixel Minion VS Code Extension',
       },
       body: JSON.stringify({
-        model: this.currentModel,
+        model: modelToUse,
         // Content can be either string or multimodal array - pass as-is
         messages: messages.map(m => ({ role: m.role, content: m.content })),
         temperature: options?.temperature ?? 0.7,

@@ -84,14 +84,13 @@ export class SVGOrchestrator {
 
     this.logger.debug(`Generating SVG for conversation ${conversation.id}`);
 
-    // Set the model on the client for this request
-    this.client.setModel(options.model);
-
     // Add user message (handles multimodal if reference image provided)
     this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage, options.referenceSvgText);
 
-    // Call the text client with conversation messages
-    const result = await this.client.createCompletion(conversation.messages);
+    // Call the text client with conversation messages, passing model directly to avoid race conditions
+    const result = await this.client.createCompletion(conversation.messages, {
+      model: options.model
+    });
 
     // Extract SVG from the response
     const svgCode = this.extractSVG(result.content);
