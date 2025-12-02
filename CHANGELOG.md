@@ -6,6 +6,20 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.0.2] - 2025-12-01
+
+### Fixed
+
+- **SVG Extraction Fallback** - `extractSVG()` now throws a clear error instead of returning raw content when no valid SVG is found. Prevents displaying AI explanations as "SVG code". (Debt-001)
+
+### Added
+
+- **PromptLoader Service** - Centralized system prompt management via `resources/system-prompts/` directory with caching support. (Feature-001)
+- **SVG Architect Prompts** - Placeholder prompts for upcoming multi-agent SVG generation pipeline
+- 35 new tests (16 for SVG extraction, 19 for PromptLoader)
+
+---
+
 ## [1.0.1] - 2025-12-01
 
 ### Fixed

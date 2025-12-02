@@ -9,6 +9,133 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-12-01
+
+### Overview
+
+Sprint 2-3 of the SVG Architect Epic - Foundation improvements and infrastructure prep.
+
+**Key Changes:**
+- SVG extraction now properly validates content
+- PromptLoader service for centralized prompt management
+- SVG Architect placeholder prompts ready for Phase 1
+
+---
+
+### Fixed
+
+#### SVG Extraction Fallback (Debt-001)
+
+**What Changed:**
+`extractSVG()` in SVGOrchestrator now throws a user-friendly error instead of returning raw content when no valid SVG tags are found.
+
+**Why:**
+Previously, if the AI returned an explanation instead of SVG code, it would be displayed as "SVG code" in the UI - confusing users.
+
+**Implementation:**
+- Validate SVG tags even when found in markdown code blocks
+- Log content preview (first 200 chars) for debugging
+- Throw clear error: "No valid SVG code found in response"
+
+**Files Modified:**
+- `src/infrastructure/ai/orchestration/SVGOrchestrator.ts`
+
+**Tests Added:** 16 tests in `SVGOrchestrator.test.ts`
+
+---
+
+### Added
+
+#### PromptLoader Service (Feature-001)
+
+**What It Does:**
+Centralized system prompt management - loads prompts from files instead of inline strings.
+
+**API:**
+```typescript
+const prompt = await promptLoader.load('svg', 'generation');
+const exists = await promptLoader.exists('svg-architect', 'blueprint-analysis');
+promptLoader.clearCache();
+```
+
+**Directory Structure:**
+```
+resources/system-prompts/
+├── svg/
+│   └── generation.md
+├── enhance-svg/
+│   └── enhance.md
+└── svg-architect/
+    ├── blueprint-analysis.md
+    ├── blueprint-render.md
+    └── blueprint-validation.md
+```
+
+**Files Added:**
+- `src/infrastructure/resources/PromptLoader.ts`
+- `resources/system-prompts/svg/generation.md`
+- `resources/system-prompts/enhance-svg/enhance.md`
+- `resources/system-prompts/svg-architect/blueprint-analysis.md`
+- `resources/system-prompts/svg-architect/blueprint-render.md`
+- `resources/system-prompts/svg-architect/blueprint-validation.md`
+
+**Files Modified:**
+- `src/extension.ts` - PromptLoader instantiation
+- `tsconfig.json` - Added `@resources` path alias
+
+**Tests Added:** 19 tests in `PromptLoader.test.ts`
+
+**Note:** Orchestrators not yet updated to use PromptLoader - deferred to Phase 1 when SVG Architect orchestrators are built.
+
+---
+
+### Developer Notes
+
+#### Test Coverage Update
+
+140 tests across 12 test suites:
+
+| Suite | Tests | Notes |
+|-------|-------|-------|
+| OpenRouterDynamicTextClient | 32 | Concurrent request handling |
+| SVGOrchestrator | 16 | SVG extraction scenarios |
+| PromptLoader | 19 | Load, cache, exists |
+| (previous suites) | 73 | Unchanged |
+
+---
+
+## [1.0.1] - 2025-12-01
+
+### Overview
+
+Sprint 1 of the SVG Architect Epic - Fix model race condition.
+
+**Key Changes:**
+- Fixed race condition in concurrent SVG generation
+- Deprecated `setModel()` in favor of per-request model passing
+
+---
+
+### Fixed
+
+#### SVG Model Race Condition (Debt-006)
+
+**What Changed:**
+`OpenRouterDynamicTextClient.createCompletion()` now accepts an optional `model` parameter. SVGOrchestrator passes model directly instead of calling `setModel()`.
+
+**Why:**
+The previous pattern set `this.currentModel` as shared state. Concurrent requests with different models could race, causing wrong model to be used.
+
+**Files Modified:**
+- `src/infrastructure/ai/clients/TextClient.ts` - Added `model?: string` to options
+- `src/infrastructure/ai/clients/OpenRouterDynamicTextClient.ts` - Use `options.model` if provided
+- `src/infrastructure/ai/orchestration/SVGOrchestrator.ts` - Pass model to `createCompletion()`
+- `CLAUDE.md` - Updated AI Client Integration docs
+
+**Tests Added:** 32 tests in `OpenRouterDynamicTextClient.test.ts`
+
+---
+
 ## [1.0.0] - 2025-11-30
 
 ### Overview
