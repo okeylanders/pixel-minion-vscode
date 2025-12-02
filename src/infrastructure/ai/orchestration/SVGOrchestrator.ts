@@ -92,12 +92,8 @@ export class SVGOrchestrator {
       model: options.model
     });
 
-    // Extract SVG from the response
+    // Extract SVG from the response (throws if no valid SVG found)
     const svgCode = this.extractSVG(result.content);
-
-    if (!svgCode) {
-      throw new Error('Failed to extract SVG code from response');
-    }
 
     // Add assistant response
     this.conversationManager.addAssistantResponse(conversation.id, svgCode);
@@ -179,7 +175,11 @@ export class SVGOrchestrator {
     // Try to extract from markdown code block first
     const codeBlockMatch = content.match(/```(?:svg|xml)?\s*([\s\S]*?)```/);
     if (codeBlockMatch) {
-      return codeBlockMatch[1].trim();
+      const extracted = codeBlockMatch[1].trim();
+      // Verify it contains SVG tags
+      if (/<svg[\s\S]*<\/svg>/i.test(extracted)) {
+        return extracted;
+      }
     }
 
     // Try to extract raw SVG
@@ -188,8 +188,11 @@ export class SVGOrchestrator {
       return svgMatch[0].trim();
     }
 
-    // If no SVG tags found, return the content as-is
-    // (the AI might have returned pure SVG without markdown)
-    return content.trim();
+    // No valid SVG found - log for debugging and throw error
+    this.logger.warn('SVG extraction failed - no valid SVG tags found in response', {
+      contentLength: content.length,
+      contentPreview: content.substring(0, 200) + (content.length > 200 ? '...' : '')
+    });
+    throw new Error('No valid SVG code found in response. The AI may have returned an explanation instead of SVG code.');
   }
 }

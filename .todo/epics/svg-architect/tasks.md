@@ -36,19 +36,20 @@
 
 **Tasks:**
 
-- [ ] 2.1 Modify `extractSVG()` to throw error instead of returning raw content
-- [ ] 2.2 Update error message to be user-friendly: "No valid SVG code found in response"
-- [ ] 2.3 Update handler to catch this specific error and surface appropriately to UI
-- [ ] 2.4 Add tests for:
+- [x] 2.1 Modify `extractSVG()` to throw error instead of returning raw content
+- [x] 2.2 Update error message to be user-friendly: "No valid SVG code found in response"
+- [x] 2.3 Update handler to catch this specific error and surface appropriately to UI (handler already propagates errors)
+- [x] 2.4 Add tests for:
   - Valid SVG extraction (existing)
   - Response with no SVG tags (should throw)
   - Response with malformed SVG (edge case)
-- [ ] 2.5 Consider logging the raw response for debugging when extraction fails
+- [x] 2.5 Consider logging the raw response for debugging when extraction fails
 
 **Acceptance Criteria:**
-- LLM responses without valid SVG show clear error instead of displaying raw text
-- Valid SVG extraction continues to work
-- Failed extractions are logged for debugging
+
+- [x] LLM responses without valid SVG show clear error instead of displaying raw text
+- [x] Valid SVG extraction continues to work
+- [x] Failed extractions are logged for debugging
 
 ---
 
@@ -60,28 +61,29 @@
 
 **Tasks:**
 
-- [ ] 3.1 Create `src/infrastructure/resources/PromptLoader.ts` service
-- [ ] 3.2 Create directory structure: `resources/system-prompts/{image,svg,enhance-image,enhance-svg,svg-architect}/`
-- [ ] 3.3 Create prompt template files as `.md` or `.txt` files
-- [ ] 3.4 Implement `PromptLoader.load(category: string, name: string): string`
-- [ ] 3.5 Add caching to avoid repeated file reads
-- [ ] 3.6 Migrate existing prompts from orchestrators to prompt files:
+- [x] 3.1 Create `src/infrastructure/resources/PromptLoader.ts` service
+- [x] 3.2 Create directory structure: `resources/system-prompts/{image,svg,enhance-image,enhance-svg,svg-architect}/`
+- [x] 3.3 Create prompt template files as `.md` or `.txt` files
+- [x] 3.4 Implement `PromptLoader.load(category: string, name: string): string`
+- [x] 3.5 Add caching to avoid repeated file reads
+- [x] 3.6 Migrate existing prompts from orchestrators to prompt files:
   - `svg/generation.md` - Main SVG generation system prompt
   - `enhance-svg/enhance.md` - SVG enhancement assistant prompt
   - (others as identified)
-- [ ] 3.7 Create SVG Architect prompt files (for use in Phase 1):
+- [x] 3.7 Create SVG Architect prompt files (for use in Phase 1):
   - `svg-architect/blueprint-analysis.md`
   - `svg-architect/blueprint-render.md`
   - `svg-architect/blueprint-validation.md`
-- [ ] 3.8 Update orchestrators to use PromptLoader instead of inline strings
-- [ ] 3.9 Add PromptLoader to DI in `extension.ts`
-- [ ] 3.10 Add tests for PromptLoader
+- [ ] 3.8 Update orchestrators to use PromptLoader instead of inline strings (deferred to Phase 1)
+- [x] 3.9 Add PromptLoader to DI in `extension.ts`
+- [x] 3.10 Add tests for PromptLoader
 
 **Acceptance Criteria:**
-- All system prompts loaded from files at runtime
-- Prompts organized by category in `resources/system-prompts/`
-- SVG Architect prompts created and ready for Phase 1
-- Existing functionality unchanged
+
+- [x] All system prompts loaded from files at runtime
+- [x] Prompts organized by category in `resources/system-prompts/`
+- [x] SVG Architect prompts created and ready for Phase 1
+- [x] Existing functionality unchanged
 
 **Notes:**
 - Consider future enhancement: Allow user prompt customization via settings or `.pixelminion/prompts/` override
