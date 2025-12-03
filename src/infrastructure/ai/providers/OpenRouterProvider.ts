@@ -18,7 +18,7 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'google/gemini-3-pro-preview', displayName: 'Gemini Pro 3.0', inputCost: 1.25, outputCost: 10.00 },
-  { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
+  { id: 'anthropic/claude-opus-4.5', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
   { id: 'openai/gpt-5.1-codex', displayName: 'OpenAI: GPT-5.1 Codex' },
 ];
 
@@ -27,7 +27,8 @@ export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
  * These are text models with strong reasoning capabilities
  */
 export const OPENROUTER_SVG_BLUEPRINT_MODELS: ModelDefinition[] = [
-  { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
+  { id: 'openai/gpt-5.1-codex', displayName: 'GPT-5.1 Codex', inputCost: 2.50, outputCost: 10.00 },
+  { id: 'anthropic/claude-opus-4.5', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
   { id: 'google/gemini-3-pro-preview', displayName: 'Gemini Pro 3.0', inputCost: 1.25, outputCost: 10.00 },
   { id: 'openai/gpt-5.1', displayName: 'GPT-5.1', inputCost: 2.50, outputCost: 10.00 },
 ];
@@ -52,4 +53,4 @@ export const DEFAULT_IMAGE_MODEL = 'google/gemini-2.5-flash-image';
 export const DEFAULT_SVG_MODEL = 'openai/gpt-5.1-codex';
 
 /** Default model for SVG Blueprint analysis */
-export const DEFAULT_SVG_BLUEPRINT_MODEL = 'anthropic/claude-opus-4';
+export const DEFAULT_SVG_BLUEPRINT_MODEL = 'openai/gpt-5.1-codex';
