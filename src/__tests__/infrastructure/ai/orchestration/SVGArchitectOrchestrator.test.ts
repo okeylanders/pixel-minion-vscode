@@ -197,16 +197,22 @@ describe('SVGArchitectOrchestrator', () => {
         (progress) => progressUpdates.push(progress)
       );
 
-      // Check progress phases
+      // Check progress phases (now includes detail updates)
       expect(progressUpdates[0].status).toBe('analyzing');
       expect(progressUpdates[0].message).toContain('Analyzing input');
 
-      expect(progressUpdates[1].status).toBe('rendering');
-      expect(progressUpdates[1].message).toContain('Rendering SVG');
+      // Analysis complete with details
+      expect(progressUpdates[1].status).toBe('analyzing');
+      expect(progressUpdates[1].message).toContain('Analysis complete');
+      expect(progressUpdates[1].description).toBeDefined();
+      expect(progressUpdates[1].blueprint).toBeDefined();
 
-      expect(progressUpdates[2].status).toBe('validating');
-      expect(progressUpdates[2].message).toContain('Waiting for PNG');
-      expect(progressUpdates[2].svgCode).toBeDefined();
+      expect(progressUpdates[2].status).toBe('rendering');
+      expect(progressUpdates[2].message).toContain('Rendering SVG');
+
+      expect(progressUpdates[3].status).toBe('validating');
+      expect(progressUpdates[3].message).toContain('Waiting for PNG');
+      expect(progressUpdates[3].svgCode).toBeDefined();
     });
 
     it('includes reference image in blueprint analysis', async () => {
@@ -493,11 +499,14 @@ describe('SVGArchitectOrchestrator', () => {
         (progress) => progressUpdates.push(progress)
       );
 
+      // Now includes additional detail progress updates
       expect(progressUpdates.map(p => p.status)).toEqual([
-        'validating',
-        'refining',
-        'rendering',
-        'validating'
+        'validating',  // Start validation with renderedPng
+        'validating',  // Validation complete with issues/corrections
+        'refining',    // Starting refinement with corrections
+        'refining',    // Refinement complete with new blueprint
+        'rendering',   // Starting render with blueprint
+        'validating'   // Waiting for PNG
       ]);
     });
 

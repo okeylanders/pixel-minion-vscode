@@ -13,6 +13,8 @@ module.exports = {
     },
   },
   moduleNameMapper: {
+    // Mock CSS imports for tests
+    '\\.css$': '<rootDir>/src/__tests__/__mocks__/styleMock.js',
     // Support path aliases in tests (order matters - most specific first)
     '^@messages$': '<rootDir>/src/shared/types/messages/index.ts',
     '^@messages/(.*)$': '<rootDir>/src/shared/types/messages/$1',

@@ -47,6 +47,12 @@ export interface SVGArchitectProgress {
   message: string;
   svgCode?: string;        // Latest SVG if available
   confidenceScore?: number; // Latest confidence if available
+  // Detailed information for conversation thread
+  description?: string;    // Analysis description
+  blueprint?: string;      // Current blueprint JSON
+  issues?: string[];       // Validation issues found
+  corrections?: string[];  // Corrections to apply
+  renderedPng?: string;    // Rendered PNG base64 (for display)
 }
 
 /**
@@ -158,6 +164,17 @@ export class SVGArchitectOrchestrator {
       this.conversationManager.setDescription(conversation.id, description);
       this.conversationManager.addIteration(conversation.id, blueprintJson);
 
+      // Send analysis complete with details
+      onProgress({
+        conversationId: conversation.id,
+        status: 'analyzing',
+        iteration: 0,
+        maxIterations: options.maxIterations,
+        message: 'Analysis complete. Blueprint generated.',
+        description,
+        blueprint: blueprintJson,
+      });
+
       // Phase 2: Initial Render
       onProgress({
         conversationId: conversation.id,
@@ -165,6 +182,7 @@ export class SVGArchitectOrchestrator {
         iteration: 1,
         maxIterations: options.maxIterations,
         message: 'Rendering SVG from blueprint...',
+        blueprint: blueprintJson,
       });
 
       const svgCode = await this.renderSvg(
@@ -225,6 +243,7 @@ export class SVGArchitectOrchestrator {
       iteration: conversation.currentIteration,
       maxIterations: conversation.maxIterations,
       message: 'Validating rendered output...',
+      renderedPng: pngBase64,
     });
 
     const validation = await this.validateAndAnnotate(
@@ -240,6 +259,18 @@ export class SVGArchitectOrchestrator {
       validation.corrections,
       validation.recommendation
     );
+
+    // Send validation results with details
+    onProgress({
+      conversationId,
+      status: 'validating',
+      iteration: conversation.currentIteration,
+      maxIterations: conversation.maxIterations,
+      message: `Validation complete. Confidence: ${validation.confidenceScore}%`,
+      confidenceScore: validation.confidenceScore,
+      issues: validation.issues,
+      corrections: validation.corrections,
+    });
 
     // Check if we're done
     if (validation.recommendation === 'ACCEPT') {
@@ -322,6 +353,7 @@ export class SVGArchitectOrchestrator {
       iteration: conversation.currentIteration + 1,
       maxIterations: conversation.maxIterations,
       message: 'Refining blueprint based on validation...',
+      corrections: validation.corrections,
     });
 
     const refinedBlueprint = await this.refineBlueprint(
@@ -332,6 +364,16 @@ export class SVGArchitectOrchestrator {
 
     this.conversationManager.addIteration(conversationId, refinedBlueprint);
 
+    // Send refinement complete with new blueprint
+    onProgress({
+      conversationId,
+      status: 'refining',
+      iteration: conversation.currentIteration + 1,
+      maxIterations: conversation.maxIterations,
+      message: 'Blueprint refined.',
+      blueprint: refinedBlueprint,
+    });
+
     // Render new SVG
     onProgress({
       conversationId,
@@ -339,6 +381,7 @@ export class SVGArchitectOrchestrator {
       iteration: conversation.currentIteration + 1,
       maxIterations: conversation.maxIterations,
       message: 'Rendering refined SVG...',
+      blueprint: refinedBlueprint,
     });
 
     const newSvg = await this.renderSvg(

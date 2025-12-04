@@ -80,7 +80,7 @@ export class SVGArchitectHandler {
           maxIterations,
         },
         (progress: SVGArchitectProgress) => {
-          // Send progress updates
+          // Send progress updates with detail fields
           this.postMessage(createEnvelope<SVGArchitectProgressPayload>(
             MessageType.SVG_ARCHITECT_PROGRESS,
             'extension.svgArchitect',
@@ -92,6 +92,11 @@ export class SVGArchitectHandler {
               message: progress.message,
               svgCode: progress.svgCode,
               confidenceScore: progress.confidenceScore,
+              description: progress.description,
+              blueprint: progress.blueprint,
+              issues: progress.issues,
+              corrections: progress.corrections,
+              renderedPng: progress.renderedPng,
             },
             message.correlationId
           ));
@@ -146,7 +151,7 @@ export class SVGArchitectHandler {
         conversationId,
         pngBase64,
         (progress: SVGArchitectProgress) => {
-          // Send progress updates
+          // Send progress updates with detail fields
           this.postMessage(createEnvelope<SVGArchitectProgressPayload>(
             MessageType.SVG_ARCHITECT_PROGRESS,
             'extension.svgArchitect',
@@ -158,6 +163,11 @@ export class SVGArchitectHandler {
               message: progress.message,
               svgCode: progress.svgCode,
               confidenceScore: progress.confidenceScore,
+              description: progress.description,
+              blueprint: progress.blueprint,
+              issues: progress.issues,
+              corrections: progress.corrections,
+              renderedPng: progress.renderedPng,
             },
             message.correlationId
           ));
@@ -212,7 +222,7 @@ export class SVGArchitectHandler {
         conversationId,
         userNotes,
         (progress: SVGArchitectProgress) => {
-          // Send progress updates
+          // Send progress updates with detail fields
           this.postMessage(createEnvelope<SVGArchitectProgressPayload>(
             MessageType.SVG_ARCHITECT_PROGRESS,
             'extension.svgArchitect',
@@ -224,6 +234,11 @@ export class SVGArchitectHandler {
               message: progress.message,
               svgCode: progress.svgCode,
               confidenceScore: progress.confidenceScore,
+              description: progress.description,
+              blueprint: progress.blueprint,
+              issues: progress.issues,
+              corrections: progress.corrections,
+              renderedPng: progress.renderedPng,
             },
             message.correlationId
           ));

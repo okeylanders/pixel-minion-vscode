@@ -105,6 +105,110 @@
   font-style: italic;
 }
 
+/* Expand button */
+.entry-expand-button {
+  margin-left: var(--spacing-xs);
+  padding: 2px 6px;
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 2px);
+  color: var(--vscode-foreground);
+  background-color: transparent;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.entry-expand-button:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.entry-expand-button:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+/* Entry details section */
+.entry-details {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--vscode-panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.detail-label {
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-content {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: calc(var(--vscode-editor-font-size) - 1px);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  line-height: 1.6;
+}
+
+.detail-list li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.detail-preview {
+  max-width: 200px;
+  max-height: 200px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.detail-preview svg {
+  width: 100%;
+  height: auto;
+}
+
+.rendered-preview-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 /* User input section */
 .user-input-section {
   flex-shrink: 0;

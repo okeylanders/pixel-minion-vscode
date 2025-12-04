@@ -4,8 +4,9 @@
  * Pattern: Scrolling list of conversation entries with user input
  * Sprint 6.4 - SVG Tab Components
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SvgArchitectConversationEntry } from '../../hooks/domain/useSvgArchitect';
+import { SVGPreview } from './SVGPreview';
 
 export interface ArchitectConversationProps {
   entries: SvgArchitectConversationEntry[];
@@ -13,6 +14,131 @@ export interface ArchitectConversationProps {
   onUserNotesChange: (notes: string) => void;
   onSubmitNotes: () => void;
   showUserInput: boolean;
+}
+
+/**
+ * Individual conversation entry with expandable details
+ */
+interface ConversationEntryItemProps {
+  entry: SvgArchitectConversationEntry;
+  formatTimestamp: (timestamp: number) => string;
+  getEntryIcon: (type: SvgArchitectConversationEntry['type']) => string;
+  getEntryLabel: (type: SvgArchitectConversationEntry['type']) => string;
+}
+
+function ConversationEntryItem({
+  entry,
+  formatTimestamp,
+  getEntryIcon,
+  getEntryLabel,
+}: ConversationEntryItemProps): JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetails = !!(
+    entry.description ||
+    entry.blueprint ||
+    entry.issues?.length ||
+    entry.corrections?.length ||
+    entry.svgCode ||
+    entry.renderedPng
+  );
+
+  return (
+    <div className={`conversation-entry entry-${entry.type}`}>
+      <div className="entry-header">
+        <span className="entry-icon">{getEntryIcon(entry.type)}</span>
+        <span className="entry-label">{getEntryLabel(entry.type)}</span>
+        <span className="entry-timestamp">{formatTimestamp(entry.timestamp)}</span>
+        {hasDetails && (
+          <button
+            type="button"
+            className="entry-expand-button"
+            onClick={() => setExpanded(!expanded)}
+            title={expanded ? 'Collapse details' : 'Expand details'}
+          >
+            {expanded ? '▼' : '▶'}
+          </button>
+        )}
+      </div>
+      <div className="entry-message">{entry.message}</div>
+
+      {entry.confidenceScore !== undefined && (
+        <div className="entry-confidence">
+          Confidence: {entry.confidenceScore.toFixed(0)}%
+        </div>
+      )}
+
+      {/* Expandable details section */}
+      {expanded && hasDetails && (
+        <div className="entry-details">
+          {/* Analysis description */}
+          {entry.description && (
+            <div className="detail-section">
+              <div className="detail-label">Description</div>
+              <div className="detail-content">{entry.description}</div>
+            </div>
+          )}
+
+          {/* Blueprint JSON */}
+          {entry.blueprint && (
+            <div className="detail-section">
+              <div className="detail-label">Blueprint</div>
+              <pre className="detail-code">{entry.blueprint}</pre>
+            </div>
+          )}
+
+          {/* Validation issues */}
+          {entry.issues && entry.issues.length > 0 && (
+            <div className="detail-section">
+              <div className="detail-label">Issues Found</div>
+              <ul className="detail-list">
+                {entry.issues.map((issue, i) => (
+                  <li key={i}>{issue}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Corrections */}
+          {entry.corrections && entry.corrections.length > 0 && (
+            <div className="detail-section">
+              <div className="detail-label">Corrections</div>
+              <ul className="detail-list">
+                {entry.corrections.map((correction, i) => (
+                  <li key={i}>{correction}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* SVG Preview */}
+          {entry.svgCode && (
+            <div className="detail-section">
+              <div className="detail-label">Generated SVG</div>
+              <div className="detail-preview">
+                <SVGPreview svgCode={entry.svgCode} aspectRatio="1:1" />
+              </div>
+            </div>
+          )}
+
+          {/* Rendered PNG */}
+          {entry.renderedPng && (
+            <div className="detail-section">
+              <div className="detail-label">Rendered Output</div>
+              <div className="detail-preview">
+                <img
+                  src={entry.renderedPng.startsWith('data:')
+                    ? entry.renderedPng
+                    : `data:image/png;base64,${entry.renderedPng}`}
+                  alt="Rendered SVG"
+                  className="rendered-preview-img"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ArchitectConversation({
@@ -91,19 +217,13 @@ export function ArchitectConversation({
           </div>
         )}
         {entries.map((entry, index) => (
-          <div key={index} className={`conversation-entry entry-${entry.type}`}>
-            <div className="entry-header">
-              <span className="entry-icon">{getEntryIcon(entry.type)}</span>
-              <span className="entry-label">{getEntryLabel(entry.type)}</span>
-              <span className="entry-timestamp">{formatTimestamp(entry.timestamp)}</span>
-            </div>
-            <div className="entry-message">{entry.message}</div>
-            {entry.confidenceScore !== undefined && (
-              <div className="entry-confidence">
-                Confidence: {entry.confidenceScore.toFixed(0)}%
-              </div>
-            )}
-          </div>
+          <ConversationEntryItem
+            key={index}
+            entry={entry}
+            formatTimestamp={formatTimestamp}
+            getEntryIcon={getEntryIcon}
+            getEntryLabel={getEntryLabel}
+          />
         ))}
       </div>
 

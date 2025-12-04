@@ -45,7 +45,12 @@ export interface SVGArchitectProgressPayload {
   message: string;
   svgCode?: string;             // Latest SVG if available
   confidenceScore?: number;     // Validation confidence (0-100)
+  // Detailed information for conversation thread
+  description?: string;         // Analysis description
   blueprint?: string;           // Current blueprint JSON
+  issues?: string[];            // Validation issues found
+  corrections?: string[];       // Corrections to apply
+  renderedPng?: string;         // Rendered PNG base64 (for display)
 }
 
 /**

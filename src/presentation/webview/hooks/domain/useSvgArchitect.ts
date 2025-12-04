@@ -28,6 +28,12 @@ export interface SvgArchitectConversationEntry {
   message: string;
   svgCode?: string;
   confidenceScore?: number;
+  // Detailed information for display
+  description?: string;       // Analysis description
+  blueprint?: string;         // Current blueprint JSON
+  issues?: string[];          // Validation issues found
+  corrections?: string[];     // Corrections to apply
+  renderedPng?: string;       // Rendered PNG base64 (for display)
 }
 
 // 1. State Interface (read-only)
@@ -177,13 +183,18 @@ export function useSvgArchitect(
       setBlueprint(payload.blueprint);
     }
 
-    // Add conversation entry based on status
+    // Add conversation entry based on status with detail fields
     const entry: SvgArchitectConversationEntry = {
       timestamp: Date.now(),
       type: mapStatusToEntryType(payload.status),
       message: payload.message,
       svgCode: payload.svgCode,
       confidenceScore: payload.confidenceScore,
+      description: payload.description,
+      blueprint: payload.blueprint,
+      issues: payload.issues,
+      corrections: payload.corrections,
+      renderedPng: payload.renderedPng,
     };
 
     setConversationEntries((prev) => [...prev, entry]);
