@@ -582,55 +582,107 @@ export class SVGArchitectOrchestrator {
     const systemPrompt = await this.promptLoader!.load('svg-architect', 'blueprint-render');
     const conv = this.conversationManager.get(conversationId)!;
 
-    // Build multimodal content
-    const content: TextMessageContent[] = [];
+    // Build conversation with history of previous render attempts
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string | TextMessageContent[] }> = [];
 
-    // Add reference image if available
+    // System prompt
+    messages.push({ role: 'system', content: systemPrompt });
+
+    // Build first user message with reference image and initial request
+    const firstUserContent: TextMessageContent[] = [];
+
+    // Add reference image if available (only in first message)
     if (options?.referenceImage) {
-      content.push({ type: 'text', text: 'Reference image to recreate:' });
+      firstUserContent.push({ type: 'text', text: 'Reference image to recreate:' });
       const imageUrl = options.referenceImage.startsWith('data:')
         ? options.referenceImage
         : `data:image/png;base64,${options.referenceImage}`;
-      content.push({
+      firstUserContent.push({
         type: 'image_url',
         image_url: { url: imageUrl }
       });
     }
 
-    // Build text content
-    let textContent = `
+    // Add initial request text
+    firstUserContent.push({
+      type: 'text',
+      text: `
 ## Description
 ${description}
 
-## Blueprint
-${blueprintJson}
-
 ## Aspect Ratio
 ${conv.aspectRatio}
-`;
 
-    // Add validation feedback on iterations
-    if (options?.issues && options.issues.length > 0) {
-      textContent += `
-## Issues from Previous Render
-${options.issues.map(i => `- ${i}`).join('\n')}
-`;
+## Blueprint
+${conv.iterations.length > 0 ? conv.iterations[0].blueprintJson : blueprintJson}
+
+Generate the SVG code now.`
+    });
+
+    messages.push({ role: 'user', content: firstUserContent });
+
+    // Add conversation history from previous iterations
+    for (let i = 0; i < conv.iterations.length; i++) {
+      const iteration = conv.iterations[i];
+
+      // Skip if this iteration has no SVG yet (it's the current one being rendered)
+      if (!iteration.svgCode) continue;
+
+      // Add assistant's previous SVG response
+      messages.push({
+        role: 'assistant',
+        content: iteration.svgCode
+      });
+
+      // Add user feedback with validation results (if there are issues/corrections)
+      if (iteration.validationResult && (iteration.validationResult.issues.length > 0 || iteration.validationResult.corrections.length > 0)) {
+        let feedbackText = '## Validation Feedback\n\n';
+
+        if (iteration.validationResult.issues.length > 0) {
+          feedbackText += `### Issues Found\n${iteration.validationResult.issues.map(i => `- ${i}`).join('\n')}\n\n`;
+        }
+
+        if (iteration.validationResult.corrections.length > 0) {
+          feedbackText += `### Corrections Needed\n${iteration.validationResult.corrections.map(c => `- ${c}`).join('\n')}\n\n`;
+        }
+
+        // Add next iteration's blueprint if available
+        const nextIteration = conv.iterations[i + 1];
+        if (nextIteration) {
+          feedbackText += `## Updated Blueprint\n${nextIteration.blueprintJson}\n\n`;
+        }
+
+        feedbackText += 'Please generate an improved SVG addressing these issues.';
+
+        messages.push({ role: 'user', content: feedbackText });
+      }
     }
 
-    if (options?.corrections && options.corrections.length > 0) {
-      textContent += `
-## Corrections to Apply
-${options.corrections.map(c => `- ${c}`).join('\n')}
-`;
+    // If this is a continuation (not the first render), add current feedback as the final user message
+    if (conv.iterations.length > 0 && (options?.issues?.length || options?.corrections?.length)) {
+      // Check if we already have the latest feedback in history
+      const lastIteration = conv.iterations[conv.iterations.length - 1];
+      const alreadyHasFeedback = lastIteration.svgCode && lastIteration.validationResult;
+
+      if (!alreadyHasFeedback) {
+        let feedbackText = '## Validation Feedback\n\n';
+
+        if (options?.issues && options.issues.length > 0) {
+          feedbackText += `### Issues Found\n${options.issues.map(i => `- ${i}`).join('\n')}\n\n`;
+        }
+
+        if (options?.corrections && options.corrections.length > 0) {
+          feedbackText += `### Corrections Needed\n${options.corrections.map(c => `- ${c}`).join('\n')}\n\n`;
+        }
+
+        feedbackText += `## Updated Blueprint\n${blueprintJson}\n\n`;
+        feedbackText += 'Please generate an improved SVG addressing these issues.';
+
+        messages.push({ role: 'user', content: feedbackText });
+      }
     }
 
-    textContent += '\nGenerate the SVG code now.';
-    content.push({ type: 'text', text: textContent });
-
-    const result = await this.renderClient!.createCompletion([
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content }
-    ], { model });
+    const result = await this.renderClient!.createCompletion(messages, { model });
 
     // Extract SVG from response
     const svgMatch = result.content.match(/<svg[\s\S]*<\/svg>/i);
