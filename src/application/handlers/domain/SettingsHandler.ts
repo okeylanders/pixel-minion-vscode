@@ -160,6 +160,10 @@ export class SettingsHandler {
       openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'openai/gpt-5.1')),
       imageModel: config.get<string>('imageModel', 'google/gemini-2.5-flash-image'),
       svgModel: config.get<string>('svgModel', 'google/gemini-3-pro-preview'),
+      // SVG Architect settings
+      svgBlueprintModel: config.get<string>('svgBlueprintModel', 'openai/gpt-5.1-codex'),
+      svgArchitectMaxIterations: config.get<number>('svgArchitectMaxIterations', 5),
+      svgArchitectEnabled: config.get<boolean>('svgArchitectEnabled', false),
     };
   }
 }

@@ -5,6 +5,10 @@ export interface SettingsPayload {
   openRouterModel: string;
   imageModel: string;
   svgModel: string;
+  // SVG Architect settings
+  svgBlueprintModel: string;
+  svgArchitectMaxIterations: number;
+  svgArchitectEnabled: boolean;
 }
 
 export interface UpdateSettingPayload {

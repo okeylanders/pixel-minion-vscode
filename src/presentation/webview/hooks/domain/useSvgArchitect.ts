@@ -85,13 +85,34 @@ export type UseSvgArchitectReturn = SvgArchitectState & SvgArchitectActions & Sv
   persistedState: SvgArchitectPersistence;
 };
 
+export interface SvgArchitectSync {
+  enabled?: boolean;
+  onEnabledChange?: (enabled: boolean) => void;
+}
+
 export function useSvgArchitect(
-  initialState?: Partial<SvgArchitectPersistence>
+  initialState?: Partial<SvgArchitectPersistence>,
+  sync?: SvgArchitectSync
 ): UseSvgArchitectReturn {
   const vscode = useVSCodeApi();
 
-  // State
-  const [isEnabled, setIsEnabled] = useState(initialState?.isEnabled ?? false);
+  // State - sync enabled with settings
+  const [isEnabled, setIsEnabledState] = useState(
+    sync?.enabled ?? initialState?.isEnabled ?? false
+  );
+
+  // Sync enabled state with settings
+  const setIsEnabled = useCallback((enabled: boolean) => {
+    setIsEnabledState(enabled);
+    sync?.onEnabledChange?.(enabled);
+  }, [sync]);
+
+  // Update from settings when sync changes
+  useEffect(() => {
+    if (sync?.enabled !== undefined) {
+      setIsEnabledState(sync.enabled);
+    }
+  }, [sync?.enabled]);
   const [status, setStatus] = useState<SVGArchitectStatusType>('idle');
   const [iteration, setIteration] = useState(0);
   const [maxIterations, setMaxIterations] = useState(3);
@@ -330,7 +351,7 @@ export function useSvgArchitect(
     error,
     conversationEntries,
     // Actions
-    setEnabled: setIsEnabled,
+    setEnabled: setIsEnabled,  // Uses synced callback
     generate,
     submitUserNotes,
     cancel,

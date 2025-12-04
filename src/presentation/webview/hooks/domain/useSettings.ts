@@ -21,6 +21,10 @@ export interface SettingsState {
   openRouterModel: string;
   imageModel: string;
   svgModel: string;
+  // SVG Architect settings
+  svgBlueprintModel: string;
+  svgArchitectMaxIterations: number;
+  svgArchitectEnabled: boolean;
   apiKeyConfigured: boolean;
   isLoading: boolean;
 }
@@ -49,6 +53,10 @@ export interface SettingsPersistence {
   openRouterModel: string;
   imageModel: string;
   svgModel: string;
+  // SVG Architect settings
+  svgBlueprintModel: string;
+  svgArchitectMaxIterations: number;
+  svgArchitectEnabled: boolean;
 }
 
 export type UseSettingsReturn = SettingsState & SettingsActions & SettingsHandlers & {
@@ -73,6 +81,16 @@ export function useSettings(
   const [svgModel, setSvgModel] = useState(
     initialState?.svgModel ?? 'openai/gpt-5.1-codex'
   );
+  // SVG Architect settings
+  const [svgBlueprintModel, setSvgBlueprintModel] = useState(
+    initialState?.svgBlueprintModel ?? 'openai/gpt-5.1-codex'
+  );
+  const [svgArchitectMaxIterations, setSvgArchitectMaxIterations] = useState(
+    initialState?.svgArchitectMaxIterations ?? 5
+  );
+  const [svgArchitectEnabled, setSvgArchitectEnabled] = useState(
+    initialState?.svgArchitectEnabled ?? false
+  );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -83,6 +101,10 @@ export function useSettings(
     setOpenRouterModel(payload.openRouterModel);
     setImageModel(payload.imageModel);
     setSvgModel(payload.svgModel);
+    // SVG Architect settings
+    setSvgBlueprintModel(payload.svgBlueprintModel);
+    setSvgArchitectMaxIterations(payload.svgArchitectMaxIterations);
+    setSvgArchitectEnabled(payload.svgArchitectEnabled);
     setIsLoading(false);
   }, []);
 
@@ -110,6 +132,12 @@ export function useSettings(
         setImageModel(value as string);
       } else if (key === 'svgModel') {
         setSvgModel(value as string);
+      } else if (key === 'svgBlueprintModel') {
+        setSvgBlueprintModel(value as string);
+      } else if (key === 'svgArchitectMaxIterations') {
+        setSvgArchitectMaxIterations(value as number);
+      } else if (key === 'svgArchitectEnabled') {
+        setSvgArchitectEnabled(value as boolean);
       }
     },
     [vscode]
@@ -156,6 +184,10 @@ export function useSettings(
     openRouterModel,
     imageModel,
     svgModel,
+    // SVG Architect settings
+    svgBlueprintModel,
+    svgArchitectMaxIterations,
+    svgArchitectEnabled,
   };
 
   return {
@@ -164,6 +196,10 @@ export function useSettings(
     openRouterModel,
     imageModel,
     svgModel,
+    // SVG Architect settings
+    svgBlueprintModel,
+    svgArchitectMaxIterations,
+    svgArchitectEnabled,
     apiKeyConfigured,
     isLoading,
     // Actions

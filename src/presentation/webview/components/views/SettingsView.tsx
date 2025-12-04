@@ -7,7 +7,7 @@
  * - VSCode settings sync
  */
 import React from 'react';
-import { SecretInput } from '../common';
+import { SecretInput, ToggleSwitch } from '../common';
 import { UseSettingsReturn, UseTokenTrackingReturn } from '@hooks';
 
 export interface SettingsViewProps {
@@ -20,6 +20,9 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
     maxConversationTurns,
     imageModel,
     svgModel,
+    svgBlueprintModel,
+    svgArchitectMaxIterations,
+    svgArchitectEnabled,
     apiKeyConfigured,
     isLoading,
     updateSetting,
@@ -90,6 +93,54 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
           />
           <span className="settings-description">
             Powers SVG code generation from text prompts. Recommended: GPT-5.1 Codex or Gemini Pro 3.
+          </span>
+        </label>
+      </section>
+
+      {/* SVG Architect Section */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">SVG Architect (High Quality Mode)</h3>
+        <p className="settings-description mb-sm">
+          Multi-agent pipeline for higher quality SVG output. Uses a Blueprint Agent to plan
+          and validate, with iterative refinement for better results.
+        </p>
+
+        <div className="settings-toggle-row">
+          <ToggleSwitch
+            checked={svgArchitectEnabled}
+            onChange={(enabled) => updateSetting('svgArchitectEnabled', enabled)}
+            label="Enable SVG Architect by default"
+          />
+        </div>
+
+        <label className="settings-label">
+          <span className="settings-label-title">Blueprint Model</span>
+          <input
+            type="text"
+            className="settings-input"
+            value={svgBlueprintModel}
+            onChange={(e) => updateSetting('svgBlueprintModel', e.target.value)}
+            placeholder="openai/gpt-5.1-codex"
+          />
+          <span className="settings-description">
+            Model for blueprint analysis and validation. Recommended: GPT-5.1 Codex.
+          </span>
+        </label>
+
+        <label className="settings-label">
+          <span className="settings-label-title">Max Iterations</span>
+          <input
+            type="number"
+            className="settings-input small"
+            min={1}
+            max={10}
+            value={svgArchitectMaxIterations}
+            onChange={(e) =>
+              updateSetting('svgArchitectMaxIterations', parseInt(e.target.value, 10) || 5)
+            }
+          />
+          <span className="settings-description">
+            Maximum refinement iterations (1-10). Higher values may improve quality but use more tokens.
           </span>
         </label>
       </section>
