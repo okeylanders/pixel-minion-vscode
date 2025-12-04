@@ -462,9 +462,13 @@ export class SVGArchitectOrchestrator {
     content.push({ type: 'text', text: `Generate an SVG for: ${input.prompt}` });
 
     if (input.referenceImageBase64) {
+      // Handle both raw base64 and data URLs
+      const imageUrl = input.referenceImageBase64.startsWith('data:')
+        ? input.referenceImageBase64
+        : `data:image/png;base64,${input.referenceImageBase64}`;
       content.push({
         type: 'image_url',
-        image_url: { url: `data:image/png;base64,${input.referenceImageBase64}` }
+        image_url: { url: imageUrl }
       });
     }
 
@@ -565,9 +569,13 @@ Generate the SVG code now.
     // Original reference if available
     if (contextImages.length > 0) {
       content.push({ type: 'text', text: 'Original input:' });
+      // Handle both raw base64 and data URLs
+      const originalImageUrl = contextImages[0].startsWith('data:')
+        ? contextImages[0]
+        : `data:image/png;base64,${contextImages[0]}`;
       content.push({
         type: 'image_url',
-        image_url: { url: `data:image/png;base64,${contextImages[0]}` }
+        image_url: { url: originalImageUrl }
       });
     }
 
