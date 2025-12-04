@@ -94,7 +94,10 @@ export function App(): JSX.Element {
     selectedModel: settings.svgModel,
     onModelChange: (model) => settings.updateSetting('svgModel', model),
   });
-  const svgArchitect = useSvgArchitect(persistedState.svgArchitect);
+  const svgArchitect = useSvgArchitect(persistedState.svgArchitect, {
+    enabled: settings.svgArchitectEnabled,
+    onEnabledChange: (enabled) => settings.updateSetting('svgArchitectEnabled', enabled),
+  });
 
   // Message routing at App level (prose-minion pattern)
   // Handlers stay registered even when views unmount
@@ -212,6 +215,8 @@ export function App(): JSX.Element {
           <SVGGenerationView
             svgGeneration={svgGeneration}
             svgArchitect={svgArchitect}
+            svgBlueprintModel={settings.svgBlueprintModel}
+            svgArchitectMaxIterations={settings.svgArchitectMaxIterations}
           />
         </TabPanel>
       </ViewContainer>

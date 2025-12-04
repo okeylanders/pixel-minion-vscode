@@ -56,6 +56,10 @@ describe('SettingsHandler', () => {
         openRouterModel: 'anthropic/claude-sonnet-4',
         imageModel: 'google/gemini-2.5-flash-image',
         svgModel: 'google/gemini-3-pro-preview',
+        // SVG Architect settings
+        svgBlueprintModel: 'openai/gpt-5.1-codex',
+        svgArchitectMaxIterations: 5,
+        svgArchitectEnabled: false,
       };
       return settings[key] ?? defaultValue;
     });
@@ -81,6 +85,10 @@ describe('SettingsHandler', () => {
             openRouterModel: 'anthropic/claude-sonnet-4',
             imageModel: 'google/gemini-2.5-flash-image',
             svgModel: 'google/gemini-3-pro-preview',
+            // SVG Architect settings
+            svgBlueprintModel: 'openai/gpt-5.1-codex',
+            svgArchitectMaxIterations: 5,
+            svgArchitectEnabled: false,
           },
           correlationId: 'correlation-123',
         })

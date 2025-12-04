@@ -28,11 +28,15 @@ import '../../styles/components/svg-generation-view.css';
 export interface SVGGenerationViewProps {
   svgGeneration: UseSVGGenerationReturn;
   svgArchitect: UseSvgArchitectReturn;
+  svgBlueprintModel: string;
+  svgArchitectMaxIterations: number;
 }
 
 export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
   svgGeneration,
   svgArchitect,
+  svgBlueprintModel,
+  svgArchitectMaxIterations,
 }) => {
   const {
     prompt,
@@ -102,10 +106,10 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     if (svgArchitect.isEnabled) {
       // Use architect for high-quality generation
       svgArchitect.generate(prompt, {
-        blueprintModel: 'openai/gpt-5.1', // TODO: get from settings when implemented
+        blueprintModel: svgBlueprintModel,
         renderModel: model,
         aspectRatio,
-        maxIterations: 3, // TODO: get from settings when implemented
+        maxIterations: svgArchitectMaxIterations,
         referenceImage: referenceImage ?? undefined,
         referenceSvgText: referenceSvgText ?? undefined,
       });
@@ -118,6 +122,8 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     prompt,
     model,
     aspectRatio,
+    svgBlueprintModel,
+    svgArchitectMaxIterations,
     referenceImage,
     referenceSvgText,
     generate,
