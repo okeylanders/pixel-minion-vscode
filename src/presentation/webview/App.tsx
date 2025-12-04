@@ -32,6 +32,7 @@ import {
   useImageGeneration,
   useSVGGeneration,
   useTokenTracking,
+  useSvgArchitect,
 } from './hooks';
 
 // Define available tabs with icons (Prose Minion style)
@@ -93,6 +94,7 @@ export function App(): JSX.Element {
     selectedModel: settings.svgModel,
     onModelChange: (model) => settings.updateSetting('svgModel', model),
   });
+  const svgArchitect = useSvgArchitect(persistedState.svgArchitect);
 
   // Message routing at App level (prose-minion pattern)
   // Handlers stay registered even when views unmount
@@ -104,6 +106,10 @@ export function App(): JSX.Element {
     // SVG Generation messages
     [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleGenerationResponse,
     [MessageType.SVG_SAVE_RESULT]: svgGeneration.handleSaveResult,
+
+    // SVG Architect messages
+    [MessageType.SVG_ARCHITECT_PROGRESS]: svgArchitect.handleProgress,
+    [MessageType.SVG_ARCHITECT_RESULT]: svgArchitect.handleResult,
 
     // Prompt Enhancement messages - route based on type
     [MessageType.ENHANCE_PROMPT_RESPONSE]: (msg) => {
@@ -132,14 +138,17 @@ export function App(): JSX.Element {
         imageGeneration.handleError(msg);
       } else if (source.includes('svg') || source.includes('SVG')) {
         svgGeneration.handleError(msg);
+      } else if (source.includes('svgArchitect') || source.includes('architect')) {
+        svgArchitect.handleError(msg);
       } else if (source.includes('enhance')) {
         // Route enhance errors based on active tab or to both
         imageGeneration.handleError(msg);
         svgGeneration.handleError(msg);
       } else {
-        // Default: send to both (they'll handle based on their loading state)
+        // Default: send to all (they'll handle based on their loading state)
         imageGeneration.handleError(msg);
         svgGeneration.handleError(msg);
+        svgArchitect.handleError(msg);
       }
     },
   });
@@ -151,6 +160,7 @@ export function App(): JSX.Element {
       settings: settings.persistedState,
       imageGeneration: imageGeneration.persistedState,
       svgGeneration: svgGeneration.persistedState,
+      svgArchitect: svgArchitect.persistedState,
       tokenTracking: tokenTracking.persistedState,
     });
   }, [
@@ -158,6 +168,7 @@ export function App(): JSX.Element {
     settings.persistedState,
     imageGeneration.persistedState,
     svgGeneration.persistedState,
+    svgArchitect.persistedState,
     tokenTracking.persistedState,
     saveState,
   ]);
@@ -198,7 +209,10 @@ export function App(): JSX.Element {
         </TabPanel>
 
         <TabPanel id="svg" activeTab={activeTab}>
-          <SVGGenerationView svgGeneration={svgGeneration} />
+          <SVGGenerationView
+            svgGeneration={svgGeneration}
+            svgArchitect={svgArchitect}
+          />
         </TabPanel>
       </ViewContainer>
 

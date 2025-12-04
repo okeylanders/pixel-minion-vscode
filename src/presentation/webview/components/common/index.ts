@@ -12,3 +12,6 @@ export type { MarkdownRendererProps } from './MarkdownRenderer';
 
 export { Textarea } from './Textarea';
 export type { TextareaProps } from './Textarea';
+
+export { ToggleSwitch } from './ToggleSwitch';
+export type { ToggleSwitchProps } from './ToggleSwitch';

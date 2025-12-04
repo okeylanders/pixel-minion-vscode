@@ -1,7 +1,20 @@
 /**
  * Jest setup file
- * Mocks VSCode API for testing
+ * Mocks VSCode API for testing and configures testing library
  */
+
+// Import jest-dom matchers
+import '@testing-library/jest-dom';
+
+// Mock crypto.randomUUID for jsdom environment
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as unknown as { crypto: { randomUUID: () => string } }).crypto = {
+    randomUUID: () => 'test-uuid-' + Math.random().toString(36).substring(2, 15),
+  };
+} else if (!globalThis.crypto.randomUUID) {
+  (globalThis.crypto as { randomUUID: () => string }).randomUUID = () =>
+    'test-uuid-' + Math.random().toString(36).substring(2, 15);
+}
 
 // Mock vscode module
 jest.mock('vscode', () => ({

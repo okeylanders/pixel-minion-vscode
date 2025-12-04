@@ -1,0 +1,178 @@
+/**
+ * ArchitectDashboard Styles
+ *
+ * VSCode-themed status dashboard for SVG Architect pipeline.
+ */
+
+.architect-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  overflow-y: auto;
+}
+
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.section-title {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+  padding: 0;
+}
+
+.section-title.blueprint-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-title.blueprint-toggle:hover {
+  color: var(--vscode-textLink-foreground);
+}
+
+/* Status summary */
+.status-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.status-idle {
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-foreground);
+}
+
+.status-badge.status-analyzing,
+.status-badge.status-rendering,
+.status-badge.status-validating,
+.status-badge.status-refining {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.status-badge.status-awaiting_user {
+  background-color: var(--vscode-notificationsWarningIcon-foreground);
+  color: var(--vscode-editor-background);
+}
+
+.status-badge.status-complete {
+  background-color: var(--vscode-terminal-ansiGreen);
+  color: var(--vscode-editor-background);
+}
+
+.status-badge.status-error {
+  background-color: var(--vscode-errorForeground);
+  color: var(--vscode-editor-background);
+}
+
+.iteration-counter {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  opacity: 0.8;
+}
+
+/* Agent status grid */
+.agent-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.agent-status-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.agent-status-box.agent-active {
+  border-color: var(--vscode-button-background);
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.agent-status-box.agent-complete {
+  border-color: var(--vscode-terminal-ansiGreen);
+}
+
+.agent-name {
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.agent-status {
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-foreground);
+  opacity: 0.7;
+  text-transform: capitalize;
+}
+
+/* Confidence score */
+.confidence-display {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.confidence-bar-container {
+  flex: 1;
+  height: 20px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.confidence-bar {
+  height: 100%;
+  background-color: var(--vscode-button-background);
+  transition: width 0.3s ease;
+}
+
+.confidence-score {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Blueprint preview */
+.blueprint-preview {
+  font-family: var(--vscode-editor-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-foreground);
+  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
