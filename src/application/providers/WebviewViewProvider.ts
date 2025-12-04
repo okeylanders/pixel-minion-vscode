@@ -44,11 +44,12 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     // Set HTML content
     webviewView.webview.html = this.getHtmlForWebview(webviewView.webview);
 
-    // Initialize message handler
+    // Initialize message handler with extensionUri for PromptLoader
     this.messageHandler = new MessageHandler(
       (message) => webviewView.webview.postMessage(message),
       this.secretStorage,
-      this.logger
+      this.logger,
+      this.extensionUri
     );
 
     // Handle messages from webview

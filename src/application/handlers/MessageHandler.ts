@@ -32,10 +32,12 @@ import {
   createEnvelope,
   SettingsPayload,
 } from '@messages';
+import * as vscode from 'vscode';
 import { MessageRouter } from './MessageRouter';
 import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler, SVGArchitectHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
+import { PromptLoader } from '../../infrastructure/resources/PromptLoader';
 import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator, SVGArchitectOrchestrator } from '@ai';
 
 export class MessageHandler {
@@ -59,7 +61,8 @@ export class MessageHandler {
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
     secretStorage: SecretStorageService,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    extensionUri?: vscode.Uri
   ) {
     this.router = new MessageRouter();
 
@@ -112,7 +115,10 @@ export class MessageHandler {
     const renderClient = new OpenRouterDynamicTextClient(secretStorage, logger);
     svgArchitectOrchestrator.setBlueprintClient(blueprintClient);
     svgArchitectOrchestrator.setRenderClient(renderClient);
-    // Note: PromptLoader will be set when extension context is available
+    // Set PromptLoader if extensionUri is available
+    if (extensionUri) {
+      svgArchitectOrchestrator.setPromptLoader(new PromptLoader(extensionUri, logger));
+    }
 
     this.svgArchitectHandler = new SVGArchitectHandler(
       postMessage,
