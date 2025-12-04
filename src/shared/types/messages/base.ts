@@ -56,6 +56,14 @@ export enum MessageType {
   // Prompt Enhancement
   ENHANCE_PROMPT_REQUEST = 'ENHANCE_PROMPT_REQUEST',
   ENHANCE_PROMPT_RESPONSE = 'ENHANCE_PROMPT_RESPONSE',
+
+  // SVG Architect (multi-agent pipeline)
+  SVG_ARCHITECT_REQUEST = 'SVG_ARCHITECT_REQUEST',
+  SVG_ARCHITECT_PROGRESS = 'SVG_ARCHITECT_PROGRESS',
+  SVG_ARCHITECT_PNG_READY = 'SVG_ARCHITECT_PNG_READY',
+  SVG_ARCHITECT_RESUME = 'SVG_ARCHITECT_RESUME',
+  SVG_ARCHITECT_RESULT = 'SVG_ARCHITECT_RESULT',
+  SVG_ARCHITECT_CANCEL = 'SVG_ARCHITECT_CANCEL',
 }
 
 export type MessageSource =
@@ -64,12 +72,14 @@ export type MessageSource =
   | 'extension.ai'
   | 'extension.imageGeneration'
   | 'extension.svgGeneration'
+  | 'extension.svgArchitect'
   | 'extension.enhance'
   | 'webview.helloWorld'
   | 'webview.settings'
   | 'webview.ai'
   | 'webview.imageGeneration'
   | 'webview.svgGeneration'
+  | 'webview.svgArchitect'
   | 'webview.enhance';
 
 /**

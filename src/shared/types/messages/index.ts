@@ -14,3 +14,4 @@ export * from './tokenUsage';
 export * from './imageGeneration';
 export * from './svgGeneration';
 export * from './enhance';
+export * from './svgArchitect';

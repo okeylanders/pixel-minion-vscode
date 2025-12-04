@@ -23,16 +23,20 @@ import {
   SVGGenerationContinuePayload,
   SVGSaveRequestPayload,
   EnhancePromptRequestPayload,
+  SVGArchitectRequestPayload,
+  SVGArchitectPngPayload,
+  SVGArchitectResumePayload,
+  SVGArchitectCancelPayload,
   TokenUsage,
   TokenUsageUpdatePayload,
   createEnvelope,
   SettingsPayload,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
-import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler } from './domain';
+import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler, SVGArchitectHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator } from '@ai';
+import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator, SVGArchitectOrchestrator } from '@ai';
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -42,6 +46,7 @@ export class MessageHandler {
   private readonly imageGenerationHandler: ImageGenerationHandler;
   private readonly svgGenerationHandler: SVGGenerationHandler;
   private readonly enhanceHandler: EnhanceHandler;
+  private readonly svgArchitectHandler: SVGArchitectHandler;
 
   // Token usage accumulator - tracks total usage across the session
   private tokenTotals: TokenUsage = {
@@ -97,6 +102,21 @@ export class MessageHandler {
     this.enhanceHandler = new EnhanceHandler(
       postMessage,
       secretStorage,
+      logger,
+      (usage) => this.applyTokenUsage(usage)
+    );
+
+    // Create SVG Architect orchestrator and inject clients
+    const svgArchitectOrchestrator = new SVGArchitectOrchestrator(logger);
+    const blueprintClient = new OpenRouterDynamicTextClient(secretStorage, logger);
+    const renderClient = new OpenRouterDynamicTextClient(secretStorage, logger);
+    svgArchitectOrchestrator.setBlueprintClient(blueprintClient);
+    svgArchitectOrchestrator.setRenderClient(renderClient);
+    // Note: PromptLoader will be set when extension context is available
+
+    this.svgArchitectHandler = new SVGArchitectHandler(
+      postMessage,
+      svgArchitectOrchestrator,
       logger,
       (usage) => this.applyTokenUsage(usage)
     );
@@ -274,6 +294,32 @@ export class MessageHandler {
       MessageType.ENHANCE_PROMPT_REQUEST,
       (msg) => this.enhanceHandler.handleEnhanceRequest(
         msg as MessageEnvelope<EnhancePromptRequestPayload>
+      )
+    );
+
+    // SVG Architect domain
+    this.router.register(
+      MessageType.SVG_ARCHITECT_REQUEST,
+      (msg) => this.svgArchitectHandler.handleGenerationRequest(
+        msg as MessageEnvelope<SVGArchitectRequestPayload>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_ARCHITECT_PNG_READY,
+      (msg) => this.svgArchitectHandler.handlePngReady(
+        msg as MessageEnvelope<SVGArchitectPngPayload>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_ARCHITECT_RESUME,
+      (msg) => this.svgArchitectHandler.handleResume(
+        msg as MessageEnvelope<SVGArchitectResumePayload>
+      )
+    );
+    this.router.register(
+      MessageType.SVG_ARCHITECT_CANCEL,
+      (msg) => this.svgArchitectHandler.handleCancel(
+        msg as MessageEnvelope<SVGArchitectCancelPayload>
       )
     );
   }

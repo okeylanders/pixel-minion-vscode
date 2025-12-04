@@ -4,3 +4,4 @@ export { TextHandler } from './TextHandler';
 export { ImageGenerationHandler } from './ImageGenerationHandler';
 export { SVGGenerationHandler } from './SVGGenerationHandler';
 export { EnhanceHandler } from './EnhanceHandler';
+export { SVGArchitectHandler } from './SVGArchitectHandler';
