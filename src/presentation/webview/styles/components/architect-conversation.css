@@ -1,0 +1,197 @@
+/**
+ * ArchitectConversation Styles
+ *
+ * VSCode-themed conversation display for SVG Architect pipeline.
+ */
+
+.architect-conversation {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Conversation entries */
+.conversation-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  opacity: 0.6;
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+.conversation-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background-color: var(--vscode-input-background);
+  border-left: 3px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+}
+
+.conversation-entry.entry-analysis {
+  border-left-color: var(--vscode-button-background);
+}
+
+.conversation-entry.entry-render {
+  border-left-color: var(--vscode-terminal-ansiMagenta);
+}
+
+.conversation-entry.entry-validation {
+  border-left-color: var(--vscode-terminal-ansiGreen);
+}
+
+.conversation-entry.entry-user_notes {
+  border-left-color: var(--vscode-terminal-ansiYellow);
+}
+
+.conversation-entry.entry-result {
+  border-left-color: var(--vscode-button-background);
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+}
+
+.entry-icon {
+  font-size: calc(var(--vscode-font-size) + 2px);
+}
+
+.entry-label {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.entry-timestamp {
+  margin-left: auto;
+  color: var(--vscode-foreground);
+  opacity: 0.6;
+}
+
+.entry-message {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.entry-confidence {
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-foreground);
+  opacity: 0.8;
+  font-style: italic;
+}
+
+/* User input section */
+.user-input-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--vscode-editor-background);
+  border-top: 2px solid var(--vscode-notificationsWarningIcon-foreground);
+}
+
+.user-input-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.user-input-icon {
+  font-size: calc(var(--vscode-font-size) + 2px);
+}
+
+.user-input-label {
+  color: var(--vscode-foreground);
+}
+
+.user-notes-input {
+  width: 100%;
+  min-height: 60px;
+  padding: var(--spacing-xs);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-input-foreground);
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  outline: none;
+}
+
+.user-notes-input:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.user-notes-input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.user-input-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.submit-notes-button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-button-foreground);
+  background-color: var(--vscode-button-background);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.submit-notes-button:hover:not(:disabled) {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.submit-notes-button:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.submit-notes-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keyboard-hint {
+  font-family: var(--vscode-font-family);
+  font-size: calc(var(--vscode-font-size) - 1px);
+  color: var(--vscode-foreground);
+  opacity: 0.6;
+}

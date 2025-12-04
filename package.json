@@ -168,6 +168,7 @@
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",

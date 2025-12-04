@@ -1,0 +1,74 @@
+/**
+ * ToggleSwitch Styles
+ *
+ * VSCode-themed toggle switch using CSS variables.
+ */
+
+.toggle-switch-container {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+  outline: none;
+}
+
+.toggle-switch:hover:not(.disabled) {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.toggle-switch:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.toggle-switch.checked {
+  background-color: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+}
+
+.toggle-switch.checked:hover:not(.disabled) {
+  background-color: var(--vscode-button-hoverBackground);
+  border-color: var(--vscode-button-hoverBackground);
+}
+
+.toggle-switch.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--vscode-button-foreground);
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.toggle-switch.checked .toggle-slider {
+  transform: translateX(20px);
+}
+
+.toggle-label {
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  user-select: none;
+}
+
+.toggle-label.disabled {
+  opacity: 0.5;
+}

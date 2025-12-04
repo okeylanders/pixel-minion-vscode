@@ -10,6 +10,10 @@
 @import './components/input.css';
 @import './components/tabs.css';
 @import './components/markdown.css';
+@import './components/toggle-switch.css';
+@import './components/output-sub-tabs.css';
+@import './components/architect-dashboard.css';
+@import './components/architect-conversation.css';
 
 /* Reset and base */
 *,

@@ -8,6 +8,7 @@ import { useEffect, useCallback } from 'react';
 import { useVSCodeApi } from './useVSCodeApi';
 import type { ImageGenerationPersistence } from './domain/useImageGeneration';
 import type { SVGGenerationPersistence } from './domain/useSVGGeneration';
+import type { SvgArchitectPersistence } from './domain/useSvgArchitect';
 import type { TokenTrackingPersistence } from './domain/useTokenTracking';
 import type { AspectRatio } from '@messages';
 
@@ -24,6 +25,7 @@ export interface PersistenceState {
   };
   imageGeneration?: ImageGenerationPersistence;
   svgGeneration?: SVGGenerationPersistence;
+  svgArchitect?: SvgArchitectPersistence;
   tokenTracking?: TokenTrackingPersistence;
   activeTab?: string;
 }

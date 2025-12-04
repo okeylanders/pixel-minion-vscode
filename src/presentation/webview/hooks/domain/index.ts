@@ -37,3 +37,14 @@ export type {
   SVGGenerationPersistence,
   UseSVGGenerationReturn,
 } from './useSVGGeneration';
+
+export { useSvgArchitect } from './useSvgArchitect';
+export type {
+  SvgArchitectState,
+  SvgArchitectActions,
+  SvgArchitectHandlers,
+  SvgArchitectPersistence,
+  UseSvgArchitectReturn,
+  SvgArchitectConversationEntry,
+  SvgArchitectGenerateOptions,
+} from './useSvgArchitect';
