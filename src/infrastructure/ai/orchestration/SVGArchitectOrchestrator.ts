@@ -189,7 +189,8 @@ export class SVGArchitectOrchestrator {
         conversation.id,
         description,
         blueprintJson,
-        options.renderModel
+        options.renderModel,
+        { referenceImage: input.referenceImageBase64 }
       );
 
       this.conversationManager.setIterationSvg(conversation.id, svgCode);
@@ -374,7 +375,7 @@ export class SVGArchitectOrchestrator {
       blueprint: refinedBlueprint,
     });
 
-    // Render new SVG
+    // Render new SVG with full context (reference image + validation feedback)
     onProgress({
       conversationId,
       status: 'rendering',
@@ -384,11 +385,20 @@ export class SVGArchitectOrchestrator {
       blueprint: refinedBlueprint,
     });
 
+    // Get original reference image for context
+    const contextImages = this.conversationManager.getContextImages(conversationId);
+    const referenceImage = contextImages.length > 0 ? contextImages[0] : undefined;
+
     const newSvg = await this.renderSvg(
       conversationId,
       conversation.description!,
       refinedBlueprint,
-      conversation.renderModel
+      conversation.renderModel,
+      {
+        referenceImage,
+        issues: validation.issues,
+        corrections: validation.corrections,
+      }
     );
 
     this.conversationManager.setIterationSvg(conversationId, newSvg);
@@ -448,12 +458,20 @@ export class SVGArchitectOrchestrator {
 
     this.conversationManager.addIteration(conversationId, refinedBlueprint);
 
-    // Render
+    // Get original reference image for context
+    const contextImages = this.conversationManager.getContextImages(conversationId);
+    const referenceImage = contextImages.length > 0 ? contextImages[0] : undefined;
+
+    // Render with reference image and user feedback
     const newSvg = await this.renderSvg(
       conversationId,
       conversation.description!,
       refinedBlueprint,
-      conversation.renderModel
+      conversation.renderModel,
+      {
+        referenceImage,
+        corrections: [notes], // User notes as corrections
+      }
     );
 
     this.conversationManager.setIterationSvg(conversationId, newSvg);
@@ -554,12 +572,33 @@ export class SVGArchitectOrchestrator {
     conversationId: string,
     description: string,
     blueprintJson: string,
-    model: string
+    model: string,
+    options?: {
+      referenceImage?: string;      // Original reference image
+      issues?: string[];            // Validation issues from previous iteration
+      corrections?: string[];       // Corrections to apply
+    }
   ): Promise<string> {
     const systemPrompt = await this.promptLoader!.load('svg-architect', 'blueprint-render');
     const conv = this.conversationManager.get(conversationId)!;
 
-    const userContent = `
+    // Build multimodal content
+    const content: TextMessageContent[] = [];
+
+    // Add reference image if available
+    if (options?.referenceImage) {
+      content.push({ type: 'text', text: 'Reference image to recreate:' });
+      const imageUrl = options.referenceImage.startsWith('data:')
+        ? options.referenceImage
+        : `data:image/png;base64,${options.referenceImage}`;
+      content.push({
+        type: 'image_url',
+        image_url: { url: imageUrl }
+      });
+    }
+
+    // Build text content
+    let textContent = `
 ## Description
 ${description}
 
@@ -568,13 +607,29 @@ ${blueprintJson}
 
 ## Aspect Ratio
 ${conv.aspectRatio}
-
-Generate the SVG code now.
 `;
+
+    // Add validation feedback on iterations
+    if (options?.issues && options.issues.length > 0) {
+      textContent += `
+## Issues from Previous Render
+${options.issues.map(i => `- ${i}`).join('\n')}
+`;
+    }
+
+    if (options?.corrections && options.corrections.length > 0) {
+      textContent += `
+## Corrections to Apply
+${options.corrections.map(c => `- ${c}`).join('\n')}
+`;
+    }
+
+    textContent += '\nGenerate the SVG code now.';
+    content.push({ type: 'text', text: textContent });
 
     const result = await this.renderClient!.createCompletion([
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent }
+      { role: 'user', content }
     ], { model });
 
     // Extract SVG from response
