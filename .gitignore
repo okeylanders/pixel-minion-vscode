@@ -26,6 +26,7 @@ npm-debug.log*
 .env
 .env.local
 
-# example repo
+# example repo & ports
 docs/example-repo/
 docs/template-repo/
+ports/
