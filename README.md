@@ -34,6 +34,15 @@
 <p align="center">
   <img src="screenshots/hero-2-svg-conversation.png" alt="Image Generation" width="600"/>
 </p>
+
+---
+
+## 🎉 What's New in v1.0.2
+
+> **🐛 Bug Fixes** - Fixed SVG extraction to show clear errors instead of raw AI responses, and resolved a race condition when generating SVGs with different models concurrently.
+>
+> **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
+
 ---
 <p align="center">
 <details>
