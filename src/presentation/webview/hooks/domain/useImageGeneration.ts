@@ -20,6 +20,24 @@ import {
 } from '@messages';
 import { DEFAULT_IMAGE_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 
+// Sourceful models have a 4.5MB request size limit for reference images
+const SOURCEFUL_SIZE_LIMIT_BYTES = 4.5 * 1024 * 1024; // 4.5MB
+
+/** Check if a model ID belongs to Sourceful provider */
+function isSourcefulModel(modelId: string): boolean {
+  return modelId.startsWith('sourceful/');
+}
+
+/** Calculate approximate byte size of base64 data URLs */
+function calculateBase64Size(dataUrls: string[]): number {
+  return dataUrls.reduce((total, dataUrl) => {
+    // Extract base64 portion after the comma
+    const base64 = dataUrl.split(',')[1] || '';
+    // Base64 decodes to approximately 75% of the encoded string length
+    return total + Math.ceil(base64.length * 0.75);
+  }, 0);
+}
+
 // 1. State Interface (read-only)
 export interface ImageGenerationState {
   prompt: string;
@@ -28,6 +46,7 @@ export interface ImageGenerationState {
   referenceImages: string[];  // base64 data URLs
   referenceSvgText: string | null; // raw SVG text attachment
   referenceSvgWarning: string | null;
+  referenceImageSizeWarning: string | null; // Warning for Sourceful 4.5MB limit
   seedInput: string;          // seed input field (empty = auto-generate)
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];  // Full conversation thread
@@ -98,6 +117,7 @@ export function useImageGeneration(
   const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
   const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
   const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
+  const [referenceImageSizeWarning, setReferenceImageSizeWarning] = useState<string | null>(null);
   const [seedInput, setSeedInput] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
     initialState?.generatedImages ?? []
@@ -124,6 +144,24 @@ export function useImageGeneration(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sync?.selectedModel]);
+
+  // Check reference image size for Sourceful models (4.5MB limit)
+  useEffect(() => {
+    if (!isSourcefulModel(model) || referenceImages.length === 0) {
+      setReferenceImageSizeWarning(null);
+      return;
+    }
+
+    const totalBytes = calculateBase64Size(referenceImages);
+    if (totalBytes > SOURCEFUL_SIZE_LIMIT_BYTES) {
+      const sizeMB = (totalBytes / (1024 * 1024)).toFixed(1);
+      setReferenceImageSizeWarning(
+        `Reference images total ${sizeMB}MB, exceeding Sourceful's 4.5MB limit. Generation may fail.`
+      );
+    } else {
+      setReferenceImageSizeWarning(null);
+    }
+  }, [model, referenceImages]);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
@@ -371,6 +409,7 @@ export function useImageGeneration(
     referenceImages,
     referenceSvgText,
     referenceSvgWarning,
+    referenceImageSizeWarning,
     seedInput,
     generatedImages,
     conversationHistory,
