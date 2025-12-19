@@ -37,9 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.0.2
+## 🎉 What's New in v1.1.0
 
-> **🐛 Bug Fixes** - Fixed SVG extraction to show clear errors instead of raw AI responses, and resolved a race condition when generating SVGs with different models concurrently.
+> **🆕 New Models** - Added FLUX.2 Max, Riverflow V2 (Max/Standard/Fast), and Gemini Flash 3.0 for more generation options.
+>
+> **⚠️ Size Warning** - Now warns you when reference images exceed Sourceful's 4.5MB limit.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 

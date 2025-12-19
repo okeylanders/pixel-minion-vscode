@@ -9,6 +9,58 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-18
+
+### Overview
+
+Adds new AI models and a size warning feature for Sourceful provider limits.
+
+**PR:** #6 - feat: add new OpenRouter models and Sourceful size warning
+
+---
+
+### Added
+
+#### New Image Generation Models
+
+Added 4 new image generation models to OpenRouter provider:
+
+- **FLUX.2 Max** (`black-forest-labs/flux.2-max`) - Top-tier from Black Forest Labs
+- **Riverflow V2 Max** (`sourceful/riverflow-v2-max-preview`) - Most powerful Riverflow variant
+- **Riverflow V2 Standard** (`sourceful/riverflow-v2-standard-preview`) - Balanced performance
+- **Riverflow V2 Fast** (`sourceful/riverflow-v2-fast-preview`) - Fastest Riverflow variant
+
+#### New SVG Generation Model
+
+Added Gemini Flash 3.0 (`google/gemini-3-flash-preview`) - high speed reasoning model for SVG generation.
+
+#### Sourceful Size Warning
+
+Displays a warning when reference images exceed Sourceful's 4.5MB request limit:
+
+**Implementation:**
+
+- `isSourcefulModel()` - Detects Sourceful provider models
+- `calculateBase64Size()` - Calculates approximate byte size of base64 data URLs
+- Warning displayed in yellow box below reference image uploader
+- Uses VSCode theme variables for consistent styling
+
+**Files Modified:**
+
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - New model definitions
+- `src/presentation/webview/hooks/domain/useImageGeneration.ts` - Size checking logic
+- `src/presentation/webview/components/views/ImageGenerationView.tsx` - Warning display
+- `src/presentation/webview/styles/components/image-generation-view.css` - Warning styles
+
+#### Tests
+
+Added 16 unit tests for size warning utilities:
+
+- 8 tests for `isSourcefulModel()` (all Sourceful variants, other providers, edge cases)
+- 8 tests for `calculateBase64Size()` (empty, single, multiple, threshold validation)
+
+---
+
 ## [1.0.2] - 2025-12-01
 
 ### Overview

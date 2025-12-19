@@ -6,6 +6,27 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.1.0] - 2025-12-18
+
+### Added
+
+- **New Image Generation Models**
+  - FLUX.2 Max (black-forest-labs/flux.2-max) - Top-tier image model from Black Forest Labs
+  - Riverflow V2 Max Preview (sourceful/riverflow-v2-max-preview)
+  - Riverflow V2 Standard Preview (sourceful/riverflow-v2-standard-preview)
+  - Riverflow V2 Fast Preview (sourceful/riverflow-v2-fast-preview)
+
+- **New SVG Generation Model**
+  - Gemini Flash 3.0 (google/gemini-3-flash-preview) - Fast reasoning model for SVG generation
+
+- **Sourceful Size Warning** - Displays a warning when reference images exceed Sourceful's 4.5MB request limit
+
+### Changed
+
+- Added 16 new unit tests for size warning utility functions
+
+---
+
 ## [1.0.2] - 2025-12-01
 
 ### Fixed
