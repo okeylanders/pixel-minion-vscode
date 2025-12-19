@@ -41,6 +41,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     referenceImages,
     referenceSvgText,
     referenceSvgWarning,
+    referenceImageSizeWarning,
     addReferenceImage,
     removeReferenceImage,
     clearReferenceImages,
@@ -150,6 +151,11 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           {referenceSvgText && (
             <div className="image-generation-svg-note">
               {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
+            </div>
+          )}
+          {referenceImageSizeWarning && (
+            <div className="image-generation-size-warning">
+              ⚠️ {referenceImageSizeWarning}
             </div>
           )}
 

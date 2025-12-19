@@ -134,6 +134,15 @@
   font-size: 12px;
 }
 
+.image-generation-size-warning {
+  padding: 8px 12px;
+  background: var(--vscode-inputValidation-warningBackground);
+  border: 1px solid var(--vscode-inputValidation-warningBorder);
+  color: var(--vscode-inputValidation-warningForeground);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
 /* Actions row: Reference image + Enhance button */
 .image-generation-actions-row {
   display: flex;
