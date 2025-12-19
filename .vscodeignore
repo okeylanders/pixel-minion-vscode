@@ -1,0 +1,38 @@
+# Source files (only dist/ is needed)
+src/**
+tsconfig.json
+webpack.config.js
+
+# Development files
+.eslintrc.json
+.prettierrc
+jest.config.js
+
+# Git
+.git/**
+.gitignore
+
+# Node
+node_modules/**
+package-lock.json
+
+# Build artifacts
+*.vsix
+
+# IDE
+.vscode/**
+
+# Claude/AI
+.claude/**
+.memory-bank/**
+.todo/**
+CLAUDE.md
+
+# Test files
+**/*.test.ts
+**/__tests__/**
+coverage/**
+
+# Temporary files
+*.log
+.DS_Store
