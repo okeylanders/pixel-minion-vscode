@@ -24,12 +24,12 @@ import { DEFAULT_IMAGE_MODEL } from '../../../../infrastructure/ai/providers/Ope
 const SOURCEFUL_SIZE_LIMIT_BYTES = 4.5 * 1024 * 1024; // 4.5MB
 
 /** Check if a model ID belongs to Sourceful provider */
-function isSourcefulModel(modelId: string): boolean {
+export function isSourcefulModel(modelId: string): boolean {
   return modelId.startsWith('sourceful/');
 }
 
 /** Calculate approximate byte size of base64 data URLs */
-function calculateBase64Size(dataUrls: string[]): number {
+export function calculateBase64Size(dataUrls: string[]): number {
   return dataUrls.reduce((total, dataUrl) => {
     // Extract base64 portion after the comma
     const base64 = dataUrl.split(',')[1] || '';
