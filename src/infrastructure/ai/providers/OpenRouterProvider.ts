@@ -18,6 +18,7 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'sourceful/riverflow-v2-max-preview', displayName: 'Riverflow V2 Max Preview', outputCost: 75.00 },
   { id: 'sourceful/riverflow-v2-standard-preview', displayName: 'Riverflow V2 Standard Preview', outputCost: 35.00 },
   { id: 'sourceful/riverflow-v2-fast-preview', displayName: 'Riverflow V2 Fast Preview', outputCost: 30.00 },
+  { id: 'bytedance-seed/seedream-4.5', displayName: 'Seedream 4.5', outputCost: 0.04 },
 ];
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
