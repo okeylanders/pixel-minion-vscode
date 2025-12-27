@@ -9,6 +9,28 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-12-27
+
+### Overview
+
+Adds ByteDance Seedream 4.5 image generation model.
+
+**PR:** #7 - feat: add ByteDance Seedream 4.5 image model
+
+---
+
+### Added
+
+#### New Image Generation Model
+
+Added ByteDance Seedream 4.5 (`bytedance-seedream/seedream-4.5`) - Advanced image generation model from ByteDance.
+
+**Files Modified:**
+
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - New model definition
+
+---
+
 ## [1.1.0] - 2025-12-18
 
 ### Overview

@@ -6,6 +6,15 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.1.1] - 2025-12-27
+
+### Added
+
+- **New Image Generation Model**
+  - ByteDance Seedream 4.5 (bytedance-seedream/seedream-4.5) - Advanced image generation from ByteDance
+
+---
+
 ## [1.1.0] - 2025-12-18
 
 ### Added
