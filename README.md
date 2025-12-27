@@ -37,11 +37,9 @@
 
 ---
 
-## 🎉 What's New in v1.1.0
+## 🎉 What's New in v1.1.1
 
-> **🆕 New Models** - Added FLUX.2 Max, Riverflow V2 (Max/Standard/Fast), and Gemini Flash 3.0 for more generation options.
->
-> **⚠️ Size Warning** - Now warns you when reference images exceed Sourceful's 4.5MB limit.
+> **🆕 Seedream 4.5** - Added ByteDance Seedream 4.5 image generation model.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
