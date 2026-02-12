@@ -71,7 +71,7 @@ export function useSettings(
     initialState?.imageModel ?? 'google/gemini-2.5-flash-image'
   );
   const [svgModel, setSvgModel] = useState(
-    initialState?.svgModel ?? 'openai/gpt-5.1-codex'
+    initialState?.svgModel ?? 'openai/gpt-5.2-codex'
   );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

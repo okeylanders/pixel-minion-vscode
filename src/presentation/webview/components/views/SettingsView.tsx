@@ -86,10 +86,10 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
             className="settings-input"
             value={svgModel}
             onChange={(e) => updateSetting('svgModel', e.target.value)}
-            placeholder="openai/gpt-5.1-codex"
+            placeholder="openai/gpt-5.2-codex"
           />
           <span className="settings-description">
-            Powers SVG code generation from text prompts. Recommended: GPT-5.1 Codex or Gemini Pro 3.
+            Powers SVG code generation from text prompts. Recommended: GPT-5.2 Codex or Gemini Pro 3.
           </span>
         </label>
       </section>
