@@ -12,9 +12,12 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'google/gemini-3-pro-image-preview', displayName: 'Nano Banana Pro (Google: Gemini 3 Pro Image Preview)', inputCost: 2.00, outputCost: 12.00 },
   { id: 'openai/gpt-5-image-mini', displayName: 'GPT-5 Image Mini', inputCost: 2.50, outputCost: 2.00 },
   { id: 'openai/gpt-5-image', displayName: 'GPT-5 Image', inputCost: 10.00, outputCost: 10.00 },
+  { id: 'black-forest-labs/flux.2-klein-4b', displayName: 'FLUX.2 Klein 4B', outputCost: 0.014 },
   { id: 'black-forest-labs/flux.2-pro', displayName: 'FLUX.2 Pro', inputCost: 3.66, outputCost: 3.66 },
   { id: 'black-forest-labs/flux.2-flex', displayName: 'FLUX.2 Flex', inputCost: 14.64, outputCost: 14.64 },
   { id: 'black-forest-labs/flux.2-max', displayName: 'FLUX.2 Max', inputCost: 30.00, outputCost: 70.00 },
+  { id: 'sourceful/riverflow-v2-pro', displayName: 'Riverflow V2 Pro', outputCost: 0.15 },
+  { id: 'sourceful/riverflow-v2-fast', displayName: 'Riverflow V2 Fast', outputCost: 0.02 },
   { id: 'sourceful/riverflow-v2-max-preview', displayName: 'Riverflow V2 Max Preview', outputCost: 75.00 },
   { id: 'sourceful/riverflow-v2-standard-preview', displayName: 'Riverflow V2 Standard Preview', outputCost: 35.00 },
   { id: 'sourceful/riverflow-v2-fast-preview', displayName: 'Riverflow V2 Fast Preview', outputCost: 30.00 },
@@ -24,7 +27,9 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'google/gemini-3-pro-preview', displayName: 'Gemini Pro 3.0', inputCost: 1.25, outputCost: 10.00 },
   { id: 'google/gemini-3-flash-preview', displayName: 'Gemini Flash 3.0', inputCost: 0.15, outputCost: 0.60 },
+  { id: 'anthropic/claude-opus-4.6', displayName: 'Claude Opus 4.6', inputCost: 5.00, outputCost: 25.00 },
   { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4.5', inputCost: 15.00, outputCost: 75.00 },
+  { id: 'openai/gpt-5.2-codex', displayName: 'OpenAI: GPT-5.2 Codex', inputCost: 1.75, outputCost: 14.00 },
   { id: 'openai/gpt-5.1-codex', displayName: 'OpenAI: GPT-5.1 Codex' },
 ];
 
@@ -44,4 +49,4 @@ export const OPENROUTER_CONFIG: ProviderConfig = {
 export const DEFAULT_IMAGE_MODEL = 'google/gemini-2.5-flash-image';
 
 /** Default model for SVG generation */
-export const DEFAULT_SVG_MODEL = 'openai/gpt-5.1-codex';
+export const DEFAULT_SVG_MODEL = 'openai/gpt-5.2-codex';
