@@ -37,9 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.1.1
+## 🎉 What's New in v1.2.0
 
-> **🆕 Seedream 4.5** - Added ByteDance Seedream 4.5 image generation model.
+> **🆕 New Image Models** - FLUX.2 Klein 4B, Riverflow V2 Pro, Riverflow V2 Fast
+>
+> **🆕 New SVG Models** - Claude Opus 4.6, GPT-5.2 Codex (now the default)
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 

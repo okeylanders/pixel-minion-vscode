@@ -6,6 +6,25 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.2.0] - 2026-02-11
+
+### Added
+
+- **New Image Generation Models**
+  - FLUX.2 Klein 4B (black-forest-labs/flux.2-klein-4b) - Fastest and cheapest FLUX.2 variant
+  - Riverflow V2 Pro (sourceful/riverflow-v2-pro) - Top-tier GA Sourceful model
+  - Riverflow V2 Fast (sourceful/riverflow-v2-fast) - Fast GA Sourceful model
+
+- **New SVG Generation Models**
+  - Claude Opus 4.6 (anthropic/claude-opus-4.6) - Latest Anthropic model, cheaper than Opus 4
+  - GPT-5.2 Codex (openai/gpt-5.2-codex) - Latest OpenAI coding model, now the default
+
+### Changed
+
+- Default SVG model updated from GPT-5.1 Codex to GPT-5.2 Codex
+
+---
+
 ## [1.1.1] - 2025-12-27
 
 ### Added

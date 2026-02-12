@@ -9,6 +9,40 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-11
+
+### Overview
+
+Adds new image and SVG generation models, updates default SVG model.
+
+**PR:** #8 - feat: add new image and SVG generation models
+
+---
+
+### Added
+
+#### New Image Generation Models
+
+- **FLUX.2 Klein 4B** (`black-forest-labs/flux.2-klein-4b`) - Fastest and most cost-effective model in the FLUX.2 family
+- **Riverflow V2 Pro** (`sourceful/riverflow-v2-pro`) - Top-tier GA Sourceful model
+- **Riverflow V2 Fast** (`sourceful/riverflow-v2-fast`) - Fast GA Sourceful model
+
+#### New SVG Generation Models
+
+- **Claude Opus 4.6** (`anthropic/claude-opus-4.6`) - $5/$25 per M tokens (cheaper than Opus 4)
+- **GPT-5.2 Codex** (`openai/gpt-5.2-codex`) - $1.75/$14 per M tokens, 400K context
+
+### Changed
+
+- Default SVG model updated from `openai/gpt-5.1-codex` to `openai/gpt-5.2-codex`
+
+**Files Modified:**
+
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - New model definitions, updated default
+- `package.json` - Updated default SVG model setting
+
+---
+
 ## [1.1.1] - 2025-12-27
 
 ### Overview
