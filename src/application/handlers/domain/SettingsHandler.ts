@@ -158,7 +158,7 @@ export class SettingsHandler {
     return {
       maxConversationTurns: config.get<number>('maxConversationTurns', legacyConfig.get('maxConversationTurns', 10)),
       openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'openai/gpt-5.1')),
-      imageModel: config.get<string>('imageModel', 'google/gemini-2.5-flash-image'),
+      imageModel: config.get<string>('imageModel', 'google/gemini-3.1-flash-image-preview'),
       svgModel: config.get<string>('svgModel', 'google/gemini-3-pro-preview'),
     };
   }
