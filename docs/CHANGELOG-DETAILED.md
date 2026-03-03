@@ -9,6 +9,43 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-03-03
+
+### Overview
+
+Adds latest image and SVG generation models, updates defaults for both tabs.
+
+**PR:** #9 - feat: add latest image and SVG generation models
+**Branch:** patch/model-updates
+
+---
+
+### Added
+
+#### New Image Generation Model
+
+- **Nano Banana 2** (`google/gemini-3.1-flash-image-preview`) - Latest Gemini 3.1 Flash image model. Cheaper than previous Nano Banana ($0.25/$1.50 vs $0.30/$2.50 per million tokens). Now the recommended default.
+
+#### New SVG Generation Models
+
+- **Gemini Pro 3.1** (`google/gemini-3.1-pro-preview`) - Latest Google Pro model ($2.00/$12.00 per million tokens)
+- **GPT-5.3 Codex** (`openai/gpt-5.3-codex`) - Latest OpenAI coding model ($1.75/$14.00 per million tokens). Now the default SVG model.
+
+### Changed
+
+- Default image model: `google/gemini-2.5-flash-image` → `google/gemini-3.1-flash-image-preview`
+- Default SVG model: `openai/gpt-5.2-codex` → `openai/gpt-5.3-codex`
+
+### Files Modified
+
+- `package.json` - Version bump, updated default model IDs and descriptions
+- `package-lock.json` - Version bump
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - Added 3 new models, updated defaults
+- `src/application/handlers/domain/SettingsHandler.ts` - Updated image model fallback
+- `src/presentation/webview/hooks/domain/useSettings.ts` - Updated image and SVG model fallbacks
+
+---
+
 ## [1.2.0] - 2026-02-11
 
 ### Overview

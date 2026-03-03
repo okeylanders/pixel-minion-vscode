@@ -37,11 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.2.0
+## 🎉 What's New in v1.2.1
 
-> **🆕 New Image Models** - FLUX.2 Klein 4B, Riverflow V2 Pro, Riverflow V2 Fast
+> **🆕 Nano Banana 2** - New recommended image model (Gemini 3.1 Flash) — faster and cheaper
 >
-> **🆕 New SVG Models** - Claude Opus 4.6, GPT-5.2 Codex (now the default)
+> **🆕 New SVG Models** - Gemini Pro 3.1, GPT-5.3 Codex (now the default)
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 

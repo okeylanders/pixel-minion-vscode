@@ -6,6 +6,24 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.2.1] - 2026-03-03
+
+### Added
+
+- **New Image Generation Model**
+  - Nano Banana 2 (google/gemini-3.1-flash-image-preview) - Latest Gemini Flash image model, now the recommended default
+
+- **New SVG Generation Models**
+  - Gemini Pro 3.1 (google/gemini-3.1-pro-preview) - Latest Google Pro model
+  - GPT-5.3 Codex (openai/gpt-5.3-codex) - Latest OpenAI coding model, now the default
+
+### Changed
+
+- Default image model updated from Nano Banana (Gemini 2.5 Flash) to Nano Banana 2 (Gemini 3.1 Flash)
+- Default SVG model updated from GPT-5.2 Codex to GPT-5.3 Codex
+
+---
+
 ## [1.2.0] - 2026-02-11
 
 ### Added
