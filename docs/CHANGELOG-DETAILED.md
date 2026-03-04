@@ -9,6 +9,63 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-03-04
+
+### Overview
+
+Fixes two high-impact image generation regressions introduced by stricter provider requirements:
+1) Gemini multi-turn continuation failures on thought-signature validation
+2) FLUX and Sourceful Riverflow generation failures from unsupported `image,text` output modality requests
+
+**PR:** #10 - Fix Gemini continuation and image modalities for non-text image models
+**Branch:** fix/preserve-gemini-reasoning-details
+
+---
+
+### Fixed
+
+#### Gemini Multi-Turn Continuation Failures
+
+- Preserved provider reasoning metadata and assistant response blocks for continuation state
+- Added Gemini-safe fallback path when assistant image parts are returned without thought signatures
+- Continued image context via user-side reference images when strict assistant-image replay is not valid
+
+**Impact:**
+- Prevents `INVALID_ARGUMENT` continuation failures with Gemini image models in multi-turn conversations
+- Keeps conversation continuity after first-turn image generation
+
+#### FLUX and Sourceful Riverflow Modality Mismatch
+
+- Added model-family-aware modality selection in OpenRouter image client
+- `black-forest-labs/*` and `sourceful/*` now send `modalities: ['image']`
+- Gemini-style image models continue to use `modalities: ['image', 'text']`
+
+**Impact:**
+- Resolves OpenRouter `404 No endpoints found that support requested output modalities: image, text` for FLUX and Riverflow models
+
+### Tests Added
+
+- `src/__tests__/infrastructure/ai/orchestration/ImageConversationManager.test.ts`
+  - Verifies reasoning/signature preservation behavior and Gemini-safe continuation fallback
+- `src/__tests__/infrastructure/ai/clients/OpenRouterImageClient.test.ts`
+  - Verifies model-specific modality routing (`image` vs `image,text`)
+
+### Files Modified
+
+- `src/infrastructure/ai/clients/ImageGenerationClient.ts`
+- `src/infrastructure/ai/clients/OpenRouterImageClient.ts`
+- `src/infrastructure/ai/orchestration/ImageConversationManager.ts`
+- `src/infrastructure/ai/orchestration/ImageOrchestrator.ts`
+- `src/__tests__/infrastructure/ai/orchestration/ImageConversationManager.test.ts`
+- `src/__tests__/infrastructure/ai/clients/OpenRouterImageClient.test.ts`
+- `README.md`
+- `CHANGELOG.md`
+- `docs/CHANGELOG-DETAILED.md`
+- `package.json`
+- `package-lock.json`
+
+---
+
 ## [1.2.1] - 2026-03-03
 
 ### Overview

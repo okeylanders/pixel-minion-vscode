@@ -6,6 +6,20 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.2.2] - 2026-03-04
+
+### Fixed
+
+- **Gemini Image Continuation Reliability**
+  - Preserves Gemini reasoning metadata and applies safe continuation fallback behavior when unsigned assistant image parts are returned
+  - Prevents continuation failures caused by thought-signature validation in multi-turn image conversations
+
+- **FLUX and Riverflow Request Compatibility**
+  - Uses model-specific output modalities for OpenRouter image requests
+  - FLUX and Sourceful Riverflow models now request image-only output instead of image+text, resolving 404 endpoint errors
+
+---
+
 ## [1.2.1] - 2026-03-03
 
 ### Added

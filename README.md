@@ -37,11 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.2.1
+## 🎉 What's New in v1.2.2
 
-> **🆕 Nano Banana 2** - New recommended image model (Gemini 3.1 Flash) — faster and cheaper
+> **🛠️ Gemini Multi-Turn Fix** - Image continuation now handles Gemini reasoning/signature constraints reliably
 >
-> **🆕 New SVG Models** - Gemini Pro 3.1, GPT-5.3 Codex (now the default)
+> **🖼️ FLUX + Riverflow Compatibility Fix** - Image generation now uses model-appropriate output modalities
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
