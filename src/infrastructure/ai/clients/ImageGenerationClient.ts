@@ -15,6 +15,15 @@ export interface ImageMessageContent {
   type: 'text' | 'image_url';
   text?: string;
   image_url?: { url: string };
+  [key: string]: unknown;
+}
+
+/**
+ * Image block in an assistant message
+ */
+export interface ImageMessageImage {
+  image_url: { url: string };
+  [key: string]: unknown;
 }
 
 /**
@@ -24,7 +33,10 @@ export interface ImageConversationMessage {
   role: 'user' | 'assistant';
   content: ImageMessageContent[];
   /** Assistant messages may include generated images */
-  images?: Array<{ image_url: { url: string } }>;
+  images?: ImageMessageImage[];
+  /** Reasoning details from the model response (must be echoed back unmodified for Gemini models) */
+  reasoning_details?: unknown[];
+  [key: string]: unknown;
 }
 
 /**
@@ -52,6 +64,14 @@ export interface ImageGenerationResult {
   images: GeneratedImageData[];
   seed: number;
   usage?: TokenUsage;
+  /** Raw assistant message from provider response (must be replayed unmodified for strict Gemini validation) */
+  assistantMessage?: ImageConversationMessage;
+  /** Actual content blocks from the assistant response (text, images, etc.) */
+  assistantContent?: ImageMessageContent[];
+  /** Raw image blocks from assistant response (must be preserved for Gemini continuation) */
+  assistantImages?: ImageMessageImage[];
+  /** Reasoning details from the model response (must be preserved for multi-turn Gemini conversations) */
+  reasoning_details?: unknown[];
 }
 
 /**

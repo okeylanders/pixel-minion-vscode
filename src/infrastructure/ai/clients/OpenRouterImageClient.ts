@@ -10,6 +10,9 @@ import {
   ImageGenerationClient,
   ImageGenerationRequest,
   ImageGenerationResult,
+  ImageConversationMessage,
+  ImageMessageContent,
+  ImageMessageImage,
   GeneratedImageData,
 } from './ImageGenerationClient';
 import { SecretStorageService } from '@secrets';
@@ -33,11 +36,15 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
     }
 
+    const modalities = this.getModalitiesForModel(request.model);
+
     this.logger.debug('Calling OpenRouter image generation', {
       model: request.model,
       aspectRatio: request.aspectRatio,
       seed: request.seed,
+      modalities,
       messageCount: request.messages.length,
+      assistantMessageDiagnostics: this.getAssistantMessageDiagnostics(request.messages),
     });
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -51,7 +58,7 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       body: JSON.stringify({
         model: request.model,
         messages: request.messages,
-        modalities: ['image', 'text'],
+        modalities,
         seed: request.seed,
         image_config: { aspect_ratio: request.aspectRatio },
         usage: { include: true },  // Request native token counts and cost
@@ -105,9 +112,29 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       throw new Error('Failed to parse images from API response');
     }
 
+    // Preserve assistant blocks exactly for multi-turn conversations.
+    // Gemini continuation requires thought signatures and other provider fields.
+    const assistantContent = this.parseAssistantContent(choice.message.content);
+    const assistantImages = this.parseAssistantImages(choice.message.images);
+
+    // Preserve reasoning_details for Gemini models (must be echoed back unmodified)
+    const reasoning_details = Array.isArray(choice.message.reasoning_details)
+      ? choice.message.reasoning_details
+      : undefined;
+
+    if (reasoning_details) {
+      this.logger.debug('Preserved reasoning_details from model response', {
+        count: reasoning_details.length,
+      });
+    }
+
     return {
       images,
       seed: requestedSeed ?? 0,
+      assistantMessage: choice.message as ImageConversationMessage,
+      assistantContent,
+      assistantImages,
+      reasoning_details,
       usage: result.usage ? {
         // Prefer native token counts if available, fall back to normalized
         promptTokens: result.usage.native_tokens_prompt ?? result.usage.prompt_tokens ?? 0,
@@ -120,8 +147,81 @@ export class OpenRouterImageClient implements ImageGenerationClient {
     };
   }
 
+  /**
+   * Parse assistant content from API response into ImageMessageContent[].
+   * Content may be a string, an array of content blocks, or absent.
+   */
+  private parseAssistantContent(content: unknown): ImageMessageContent[] | undefined {
+    if (!content) {
+      return undefined;
+    }
+
+    if (typeof content === 'string') {
+      return [{ type: 'text', text: content }];
+    }
+
+    if (Array.isArray(content)) {
+      return content as ImageMessageContent[];
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Parse assistant image blocks from API response.
+   * Must preserve provider-specific fields (e.g., thought signatures) for continuation.
+   */
+  private parseAssistantImages(images: unknown): ImageMessageImage[] | undefined {
+    if (!Array.isArray(images)) {
+      return undefined;
+    }
+
+    return images as ImageMessageImage[];
+  }
+
   private extractMimeType(dataUrl: string): string | null {
     const match = dataUrl.match(/^data:(image\/\w+);base64,/);
     return match?.[1] ?? null;
+  }
+
+  private getAssistantMessageDiagnostics(messages: ImageConversationMessage[]): {
+    assistantCount: number;
+    withReasoningDetails: number;
+    withImageThoughtSignatures: number;
+    withContentImageThoughtSignatures: number;
+  } {
+    const assistants = messages.filter(message => message.role === 'assistant');
+
+    const withReasoningDetails = assistants.filter(message =>
+      Array.isArray(message.reasoning_details) && message.reasoning_details.length > 0
+    ).length;
+
+    const withImageThoughtSignatures = assistants.filter(message =>
+      Array.isArray(message.images) && message.images.some(image => 'thought_signature' in image)
+    ).length;
+
+    const withContentImageThoughtSignatures = assistants.filter(message =>
+      Array.isArray(message.content) &&
+      message.content.some(block => block.type === 'image_url' && 'thought_signature' in block)
+    ).length;
+
+    return {
+      assistantCount: assistants.length,
+      withReasoningDetails,
+      withImageThoughtSignatures,
+      withContentImageThoughtSignatures,
+    };
+  }
+
+  private getModalitiesForModel(model: string): Array<'image' | 'text'> {
+    const normalizedModel = model.toLowerCase();
+
+    // Flux and Sourceful endpoints are image-only and reject ["image", "text"].
+    if (normalizedModel.startsWith('black-forest-labs/') || normalizedModel.startsWith('sourceful/')) {
+      return ['image'];
+    }
+
+    // Gemini and similar multimodal image models support both.
+    return ['image', 'text'];
   }
 }
