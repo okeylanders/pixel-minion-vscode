@@ -149,6 +149,7 @@ export class ImageOrchestrator {
       model: conversation.model,
       aspectRatio: conversation.aspectRatio,
       seed: conversation.lastSeed,
+      referenceImages: conversation.lastImages,
       referenceSvgText,
     }, conversationId);
   }

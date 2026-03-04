@@ -23,6 +23,7 @@ export interface ImageConversationState {
   aspectRatio: string;
   turnNumber: number;
   lastSeed?: number;
+  lastImages?: string[];
 }
 
 /**
@@ -53,6 +54,7 @@ export class ImageConversationManager {
       model,
       aspectRatio,
       turnNumber: 0,
+      lastImages: [],
     };
     this.conversations.set(id, conversation);
     this.logger.debug(`Created image conversation: ${id}`);
@@ -129,14 +131,38 @@ export class ImageConversationManager {
       throw new Error(`Conversation ${conversationId} not found`);
     }
 
-    conversation.messages.push({
-      role: 'assistant',
-      content: [{ type: 'text', text: 'Generated images' }],
-      images: result.images.map(img => ({ image_url: { url: img.data } }))
-    });
+    const message: ImageConversationMessage = result.assistantMessage
+      ? { ...result.assistantMessage }
+      : {
+          role: 'assistant',
+          content: result.assistantContent ?? [{ type: 'text', text: 'Generated images' }],
+          images: result.assistantImages ?? result.images.map(img => ({ image_url: { url: img.data } })),
+        };
+
+    // Preserve reasoning_details for Gemini multi-turn conversations
+    if (result.reasoning_details) {
+      message.reasoning_details = result.reasoning_details;
+    }
+
+    // Gemini image continuation is strict about thought signatures on model image parts.
+    // If the provider response does not include signatures, do not replay assistant image parts.
+    // We pass image context as user reference images on continuation instead.
+    if (this.isGeminiModel(conversation.model) && !this.hasThoughtSignatures(message)) {
+      if (Array.isArray(message.images) && message.images.length > 0) {
+        delete message.images;
+      }
+      if (!Array.isArray(message.content)) {
+        message.content = [{ type: 'text', text: 'Generated images' }];
+      } else {
+        message.content = message.content.filter(block => block.type !== 'image_url');
+      }
+    }
+
+    conversation.messages.push(message);
 
     conversation.turnNumber++;
     conversation.lastSeed = result.seed;
+    conversation.lastImages = result.images.map(img => img.data);
   }
 
   /**
@@ -154,6 +180,7 @@ export class ImageConversationManager {
       model,
       aspectRatio,
       turnNumber: 0,
+      lastImages: [],
     };
 
     // Rebuild messages from history
@@ -187,6 +214,7 @@ export class ImageConversationManager {
       // Track the last seed used
       if (turn.images.length > 0) {
         conversation.lastSeed = turn.images[0].seed;
+        conversation.lastImages = turn.images.map(img => img.data);
       }
     }
 
@@ -210,5 +238,22 @@ export class ImageConversationManager {
   clearAll(): void {
     this.conversations.clear();
     this.logger.debug('Cleared all image conversations');
+  }
+
+  private isGeminiModel(model: string): boolean {
+    return model.toLowerCase().includes('gemini');
+  }
+
+  private hasThoughtSignatures(message: ImageConversationMessage): boolean {
+    const hasImageSignature = Array.isArray(message.images) &&
+      message.images.some(image => 'thought_signature' in image || 'thoughtSignature' in image);
+
+    const hasContentSignature = Array.isArray(message.content) &&
+      message.content.some(block =>
+        (block.type === 'image_url' || 'image_url' in block) &&
+        ('thought_signature' in block || 'thoughtSignature' in block)
+      );
+
+    return hasImageSignature || hasContentSignature;
   }
 }
