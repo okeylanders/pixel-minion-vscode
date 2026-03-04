@@ -36,10 +36,13 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
     }
 
+    const modalities = this.getModalitiesForModel(request.model);
+
     this.logger.debug('Calling OpenRouter image generation', {
       model: request.model,
       aspectRatio: request.aspectRatio,
       seed: request.seed,
+      modalities,
       messageCount: request.messages.length,
       assistantMessageDiagnostics: this.getAssistantMessageDiagnostics(request.messages),
     });
@@ -55,7 +58,7 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       body: JSON.stringify({
         model: request.model,
         messages: request.messages,
-        modalities: ['image', 'text'],
+        modalities,
         seed: request.seed,
         image_config: { aspect_ratio: request.aspectRatio },
         usage: { include: true },  // Request native token counts and cost
@@ -208,5 +211,17 @@ export class OpenRouterImageClient implements ImageGenerationClient {
       withImageThoughtSignatures,
       withContentImageThoughtSignatures,
     };
+  }
+
+  private getModalitiesForModel(model: string): Array<'image' | 'text'> {
+    const normalizedModel = model.toLowerCase();
+
+    // Flux and Sourceful endpoints are image-only and reject ["image", "text"].
+    if (normalizedModel.startsWith('black-forest-labs/') || normalizedModel.startsWith('sourceful/')) {
+      return ['image'];
+    }
+
+    // Gemini and similar multimodal image models support both.
+    return ['image', 'text'];
   }
 }
