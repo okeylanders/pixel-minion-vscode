@@ -7,10 +7,11 @@
 import { ProviderConfig, ModelDefinition } from '../../../shared/types/providers';
 
 export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
-  { id: 'google/gemini-3.1-flash-image-preview', displayName: '⭐ Nano Banana 2 (Google: Gemini 3.1 Flash Image Preview) - Recommended', inputCost: 0.25, outputCost: 1.50 },
+  { id: 'google/gemini-3.1-flash-image-preview', displayName: '⭐ Nano Banana 2 (Google: Gemini 3.1 Flash Image Preview) - Recommended', inputCost: 0.50, outputCost: 3.00 },
   { id: 'google/gemini-2.5-flash-image', displayName: 'Nano Banana 10/25 (Google: Gemini 2.5 Flash Image)', inputCost: 0.30, outputCost: 2.50 },
   { id: 'google/gemini-2.5-flash-image-preview', displayName: 'Nano Banana 8/25 (Google: Gemini 2.5 Flash Image Preview)', inputCost: 0.30, outputCost: 2.50 },
   { id: 'google/gemini-3-pro-image-preview', displayName: 'Nano Banana Pro (Google: Gemini 3 Pro Image Preview)', inputCost: 2.00, outputCost: 12.00 },
+  { id: 'openai/gpt-5.4-image-2', displayName: 'GPT-5.4 Image 2', inputCost: 8.00, outputCost: 15.00 },
   { id: 'openai/gpt-5-image-mini', displayName: 'GPT-5 Image Mini', inputCost: 2.50, outputCost: 2.00 },
   { id: 'openai/gpt-5-image', displayName: 'GPT-5 Image', inputCost: 10.00, outputCost: 10.00 },
   { id: 'black-forest-labs/flux.2-klein-4b', displayName: 'FLUX.2 Klein 4B', outputCost: 0.014 },

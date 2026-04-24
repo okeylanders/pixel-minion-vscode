@@ -37,11 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.2.2
+## 🎉 What's New in v1.2.3
 
-> **🛠️ Gemini Multi-Turn Fix** - Image continuation now handles Gemini reasoning/signature constraints reliably
+> **🖼️ GPT-5.4 Image 2** - Added OpenAI's latest image model from OpenRouter to the image model dropdown
 >
-> **🖼️ FLUX + Riverflow Compatibility Fix** - Image generation now uses model-appropriate output modalities
+> **💸 Current Model Pricing** - Updated Nano Banana 2 pricing metadata to match OpenRouter's current model API
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
@@ -152,12 +152,15 @@ Generate images from text prompts or refine existing images with AI.
 
 | Model | Description |
 |-------|-------------|
-| **Nano Banana 10/25** | Recommended - Gemini 2.5 Flash Image |
+| **Nano Banana 2** | Recommended - Gemini 3.1 Flash Image Preview |
+| **Nano Banana 10/25** | Gemini 2.5 Flash Image |
 | **Nano Banana 8/25** | Gemini 2.5 Flash Image Preview |
 | **Nano Banana Pro** | Gemini 3 Pro Image Preview |
+| **GPT-5.4 Image 2** | OpenAI's latest premium image model |
 | **GPT-5 Image Mini** | OpenAI's efficient image model |
 | **GPT-5 Image** | OpenAI's premium image model |
-| **FLUX.2 Pro/Flex** | Black Forest Labs models |
+| **FLUX.2** | Black Forest Labs models |
+| **Riverflow V2** | Sourceful fast and pro image models |
 
 **Best Practices:**
 
@@ -270,8 +273,8 @@ Click the **gear icon** in the Pixel Minion header for settings:
 
 ### Model Selection
 
-- **Image Model** - Model for image generation (recommended: Nano Banana 10/25)
-- **SVG Model** - Model for SVG generation (recommended: GPT-5.1 Codex)
+- **Image Model** - Model for image generation (recommended: Nano Banana 2)
+- **SVG Model** - Model for SVG generation (recommended: GPT-5.3 Codex)
 
 All settings save automatically and sync with your VS Code preferences.
 

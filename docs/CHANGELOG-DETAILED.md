@@ -9,6 +9,31 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-04-24
+
+### Overview
+
+Refreshes the curated OpenRouter image model list against the live image-capable model catalog.
+
+### Added
+
+#### New Image Generation Model
+
+- **GPT-5.4 Image 2** (`openai/gpt-5.4-image-2`) - Latest OpenAI image model on OpenRouter ($8.00/$15.00 per million tokens), with text, image, and file input support and text plus image output.
+
+### Changed
+
+- Updated **Nano Banana 2** (`google/gemini-3.1-flash-image-preview`) pricing metadata from $0.25/$1.50 to $0.50/$3.00 per million tokens to match OpenRouter's current model API.
+
+### Files Modified
+
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - Added GPT-5.4 Image 2 and updated current pricing metadata
+- `README.md` - Refreshed image model table and recommended settings copy
+- `CHANGELOG.md`
+- `docs/CHANGELOG-DETAILED.md`
+
+---
+
 ## [1.2.2] - 2026-03-04
 
 ### Overview

@@ -6,6 +6,19 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.2.3] - 2026-04-24
+
+### Added
+
+- **New Image Generation Model**
+  - GPT-5.4 Image 2 (openai/gpt-5.4-image-2) - Latest OpenAI image model on OpenRouter
+
+### Changed
+
+- Updated Nano Banana 2 pricing metadata to match OpenRouter's current model API
+
+---
+
 ## [1.2.2] - 2026-03-04
 
 ### Fixed
