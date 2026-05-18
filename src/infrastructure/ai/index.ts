@@ -16,7 +16,7 @@ export type {
   TextCompletionResult,
   TokenUsage,
 } from './clients';
-export { OpenRouterTextClient, OpenRouterDynamicTextClient } from './clients';
+export { OpenRouterTextClient, OpenRouterDynamicTextClient, OpenRouterImageSVGClient } from './clients';
 
 // Image generation client
 export type {

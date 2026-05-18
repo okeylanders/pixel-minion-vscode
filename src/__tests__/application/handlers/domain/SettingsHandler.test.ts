@@ -55,7 +55,7 @@ describe('SettingsHandler', () => {
         maxConversationTurns: 10,
         openRouterModel: 'anthropic/claude-sonnet-4',
         imageModel: 'google/gemini-2.5-flash-image',
-        svgModel: 'google/gemini-3-pro-preview',
+        svgModel: 'openai/gpt-5.3-codex',
       };
       return settings[key] ?? defaultValue;
     });
@@ -80,7 +80,7 @@ describe('SettingsHandler', () => {
             maxConversationTurns: 10,
             openRouterModel: 'anthropic/claude-sonnet-4',
             imageModel: 'google/gemini-2.5-flash-image',
-            svgModel: 'google/gemini-3-pro-preview',
+            svgModel: 'openai/gpt-5.3-codex',
           },
           correlationId: 'correlation-123',
         })
