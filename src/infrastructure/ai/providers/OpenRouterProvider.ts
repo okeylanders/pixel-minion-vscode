@@ -23,6 +23,10 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'sourceful/riverflow-v2-standard-preview', displayName: 'Riverflow V2 Standard Preview', outputCost: 35.00 },
   { id: 'sourceful/riverflow-v2-fast-preview', displayName: 'Riverflow V2 Fast Preview', outputCost: 30.00 },
   { id: 'bytedance-seed/seedream-4.5', displayName: 'Seedream 4.5', outputCost: 0.04 },
+  { id: 'recraft/recraft-v4.1-pro', displayName: 'Recraft V4.1 Pro', outputCost: 0.06 },
+  { id: 'recraft/recraft-v4-pro', displayName: 'Recraft V4 Pro', outputCost: 0.06 },
+  { id: 'recraft/recraft-v4', displayName: 'Recraft V4', outputCost: 0.04 },
+  { id: 'recraft/recraft-v3', displayName: 'Recraft V3', outputCost: 0.04 },
 ];
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [

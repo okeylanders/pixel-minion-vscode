@@ -55,26 +55,27 @@ describe('OpenRouterImageClient', () => {
     mockFetch.mockResolvedValue(createMockApiResponse());
   });
 
-  it('uses image-only modalities for FLUX and Sourceful models', async () => {
-    await client.generateImages({
-      model: 'black-forest-labs/flux.2-flex',
-      aspectRatio: '16:9',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }] }],
-      seed: 123,
+  it('uses image-only modalities for image-only providers (FLUX, Sourceful, Recraft, Seedream)', async () => {
+    const imageOnlyModels = [
+      'black-forest-labs/flux.2-flex',
+      'sourceful/riverflow-v2-fast',
+      'recraft/recraft-v4.1-pro',
+      'bytedance-seed/seedream-4.5',
+    ];
+
+    for (const model of imageOnlyModels) {
+      await client.generateImages({
+        model,
+        aspectRatio: '16:9',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }] }],
+        seed: 1,
+      });
+    }
+
+    imageOnlyModels.forEach((_, i) => {
+      const body = JSON.parse(mockFetch.mock.calls[i][1].body as string);
+      expect(body.modalities).toEqual(['image']);
     });
-
-    await client.generateImages({
-      model: 'sourceful/riverflow-v2-fast',
-      aspectRatio: '16:9',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }] }],
-      seed: 456,
-    });
-
-    const firstBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    const secondBody = JSON.parse(mockFetch.mock.calls[1][1].body as string);
-
-    expect(firstBody.modalities).toEqual(['image']);
-    expect(secondBody.modalities).toEqual(['image']);
   });
 
   it('uses image+text modalities for Gemini image models', async () => {
