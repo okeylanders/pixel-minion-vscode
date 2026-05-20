@@ -55,12 +55,13 @@ describe('OpenRouterImageClient', () => {
     mockFetch.mockResolvedValue(createMockApiResponse());
   });
 
-  it('uses image-only modalities for image-only providers (FLUX, Sourceful, Recraft, Seedream)', async () => {
+  it('uses image-only modalities for image-only providers (FLUX, Sourceful, Recraft, Seedream, Grok Imagine)', async () => {
     const imageOnlyModels = [
       'black-forest-labs/flux.2-flex',
       'sourceful/riverflow-v2-fast',
       'recraft/recraft-v4.1-pro',
       'bytedance-seed/seedream-4.5',
+      'x-ai/grok-imagine-image-quality',
     ];
 
     for (const model of imageOnlyModels) {

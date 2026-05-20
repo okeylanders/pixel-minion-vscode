@@ -27,12 +27,14 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'recraft/recraft-v4-pro', displayName: 'Recraft V4 Pro', outputCost: 0.06 },
   { id: 'recraft/recraft-v4', displayName: 'Recraft V4', outputCost: 0.04 },
   { id: 'recraft/recraft-v3', displayName: 'Recraft V3', outputCost: 0.04 },
+  { id: 'x-ai/grok-imagine-image-quality', displayName: 'Grok Imagine (Image Quality)', outputCost: 0.05 },
 ];
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'recraft/recraft-v4.1-pro-vector', displayName: '⭐ Recraft V4.1 Pro Vector (native SVG)', outputCost: 0.08 },
   { id: 'recraft/recraft-v4-vector', displayName: 'Recraft V4 Vector (native SVG, budget)', outputCost: 0.02 },
   { id: 'google/gemini-3.1-pro-preview', displayName: 'Gemini Pro 3.1', inputCost: 2.00, outputCost: 12.00 },
+  { id: 'google/gemini-3.5-flash', displayName: 'Gemini Flash 3.5', inputCost: 1.50, outputCost: 9.00 },
   { id: 'google/gemini-3-flash-preview', displayName: 'Gemini Flash 3.0', inputCost: 0.50, outputCost: 3.00 },
   { id: 'anthropic/claude-opus-4.7', displayName: 'Claude Opus 4.7', inputCost: 5.00, outputCost: 25.00 },
   { id: 'anthropic/claude-opus-4.6', displayName: 'Claude Opus 4.6', inputCost: 5.00, outputCost: 25.00 },
