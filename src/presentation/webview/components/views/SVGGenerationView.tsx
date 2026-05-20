@@ -180,14 +180,25 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         </div>
       </div>
 
-      {/* Continue chat input - fixed at bottom */}
+      {/* Continue chat input - fixed at bottom. Recraft vector models don't
+          support multi-turn refinement (they regenerate from scratch instead
+          of iterating), so disable Refine and explain why. */}
       {conversationId && svgCode && (
-        <ContinueChatInput
-          onSubmit={continueChat}
-          disabled={isLoading}
-          isLoading={isLoading}
-          placeholder="Refine: Add a gradient fill..."
-        />
+        (() => {
+          const isRecraftVector = model.startsWith('recraft/');
+          return (
+            <ContinueChatInput
+              onSubmit={continueChat}
+              disabled={isLoading || isRecraftVector}
+              isLoading={isLoading}
+              placeholder={
+                isRecraftVector
+                  ? 'Refine not supported for Recraft — start a new generation to iterate'
+                  : 'Refine: Add a gradient fill...'
+              }
+            />
+          );
+        })()
       )}
     </div>
   );
