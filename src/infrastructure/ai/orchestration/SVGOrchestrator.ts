@@ -11,6 +11,7 @@
  * Note: Uses OpenRouterDynamicTextClient which allows model to be set per request
  */
 import { OpenRouterDynamicTextClient } from '../clients/OpenRouterDynamicTextClient';
+import { TextClient } from '../clients/TextClient';
 import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
 import { AspectRatio, TokenUsage } from '@messages';
@@ -32,6 +33,7 @@ export interface SVGTurnResult {
 export class SVGOrchestrator {
   private readonly conversationManager: SVGConversationManager;
   private client: OpenRouterDynamicTextClient | null = null;
+  private vectorImageClient: TextClient | null = null;
 
   constructor(private readonly logger: LoggingService) {
     this.conversationManager = new SVGConversationManager(logger);
@@ -43,6 +45,14 @@ export class SVGOrchestrator {
   setClient(client: OpenRouterDynamicTextClient): void {
     this.client = client;
     this.logger.debug('SVGOrchestrator client configured');
+  }
+
+  /**
+   * Set the vector-image SVG client used for image-output models (e.g. Recraft).
+   */
+  setVectorImageClient(client: TextClient): void {
+    this.vectorImageClient = client;
+    this.logger.debug('SVGOrchestrator vector-image client configured');
   }
 
   /**
@@ -60,6 +70,23 @@ export class SVGOrchestrator {
   }
 
   /**
+   * Pick the client appropriate for the given model. Vector image models
+   * (e.g. Recraft) need a different API shape and produce SVG via image output.
+   */
+  private selectClient(model: string): TextClient {
+    if (model.startsWith('recraft/')) {
+      if (!this.vectorImageClient) {
+        throw new Error('Vector image client not configured for Recraft models.');
+      }
+      return this.vectorImageClient;
+    }
+    if (!this.client) {
+      throw new Error('No text client configured. Call setClient() first.');
+    }
+    return this.client;
+  }
+
+  /**
    * Generate an SVG (new conversation or continue existing)
    */
   async generateSVG(
@@ -67,11 +94,9 @@ export class SVGOrchestrator {
     options: SVGGenerationOptions,
     conversationId?: string
   ): Promise<SVGTurnResult> {
-    if (!this.client) {
-      throw new Error('No text client configured. Call setClient() first.');
-    }
+    const client = this.selectClient(options.model);
 
-    if (!(await this.client.isConfigured())) {
+    if (!(await client.isConfigured())) {
       throw new Error('API key not configured. Please add your OpenRouter API key in Settings.');
     }
 
@@ -88,7 +113,7 @@ export class SVGOrchestrator {
     this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage, options.referenceSvgText);
 
     // Call the text client with conversation messages, passing model directly to avoid race conditions
-    const result = await this.client.createCompletion(conversation.messages, {
+    const result = await client.createCompletion(conversation.messages, {
       model: options.model
     });
 

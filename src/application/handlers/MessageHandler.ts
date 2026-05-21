@@ -32,7 +32,7 @@ import { MessageRouter } from './MessageRouter';
 import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler } from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, SVGOrchestrator } from '@ai';
+import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, OpenRouterImageSVGClient, SVGOrchestrator } from '@ai';
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -83,9 +83,10 @@ export class MessageHandler {
       (usage) => this.applyTokenUsage(usage)
     );
 
-    // Create SVG generation orchestrator and inject dynamic text client
+    // Create SVG generation orchestrator and inject both text and vector-image clients
     const svgOrchestrator = new SVGOrchestrator(logger);
     svgOrchestrator.setClient(new OpenRouterDynamicTextClient(secretStorage, logger));
+    svgOrchestrator.setVectorImageClient(new OpenRouterImageSVGClient(secretStorage, logger));
     this.svgGenerationHandler = new SVGGenerationHandler(
       postMessage,
       svgOrchestrator,

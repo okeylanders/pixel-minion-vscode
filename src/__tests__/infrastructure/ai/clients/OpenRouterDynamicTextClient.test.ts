@@ -81,10 +81,10 @@ describe('OpenRouterDynamicTextClient', () => {
       const newClient = new OpenRouterDynamicTextClient(
         mockSecretStorage,
         mockLogger,
-        'google/gemini-3-pro-preview'
+        'google/gemini-3.1-pro-preview'
       );
 
-      expect(newClient.getModel()).toBe('google/gemini-3-pro-preview');
+      expect(newClient.getModel()).toBe('google/gemini-3.1-pro-preview');
     });
 
     it('should use fallback default model if none provided', () => {
@@ -99,13 +99,13 @@ describe('OpenRouterDynamicTextClient', () => {
 
   describe('setModel()', () => {
     it('should update the current model', () => {
-      client.setModel('google/gemini-3-pro-preview');
+      client.setModel('google/gemini-3.1-pro-preview');
 
-      expect(client.getModel()).toBe('google/gemini-3-pro-preview');
+      expect(client.getModel()).toBe('google/gemini-3.1-pro-preview');
     });
 
     it('should log deprecation warning', () => {
-      client.setModel('google/gemini-3-pro-preview');
+      client.setModel('google/gemini-3.1-pro-preview');
 
       expect(mockLogger.warn).toHaveBeenCalledWith(
         'setModel() is deprecated. Pass model to createCompletion() options instead.'
@@ -113,10 +113,10 @@ describe('OpenRouterDynamicTextClient', () => {
     });
 
     it('should log debug message with new model', () => {
-      client.setModel('google/gemini-3-pro-preview');
+      client.setModel('google/gemini-3.1-pro-preview');
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        'OpenRouterDynamicTextClient model set to: google/gemini-3-pro-preview'
+        'OpenRouterDynamicTextClient model set to: google/gemini-3.1-pro-preview'
       );
     });
   });
@@ -146,7 +146,7 @@ describe('OpenRouterDynamicTextClient', () => {
     ];
 
     it('should use model from options.model when provided', async () => {
-      const overrideModel = 'google/gemini-3-pro-preview';
+      const overrideModel = 'google/gemini-3.1-pro-preview';
 
       await client.createCompletion(testMessages, {
         model: overrideModel
@@ -174,14 +174,14 @@ describe('OpenRouterDynamicTextClient', () => {
     });
 
     it('should use currentModel after setModel() if no options.model', async () => {
-      client.setModel('google/gemini-3-pro-preview');
+      client.setModel('google/gemini-3.1-pro-preview');
 
       await client.createCompletion(testMessages);
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://openrouter.ai/api/v1/chat/completions',
         expect.objectContaining({
-          body: expect.stringContaining('"model":"google/gemini-3-pro-preview"')
+          body: expect.stringContaining('"model":"google/gemini-3.1-pro-preview"')
         })
       );
     });
@@ -192,27 +192,27 @@ describe('OpenRouterDynamicTextClient', () => {
 
       // Pass different model in options
       await client.createCompletion(testMessages, {
-        model: 'google/gemini-3-pro-preview'
+        model: 'google/gemini-3.1-pro-preview'
       });
 
       // Should use options.model, not currentModel
       expect(mockFetch).toHaveBeenCalledWith(
         'https://openrouter.ai/api/v1/chat/completions',
         expect.objectContaining({
-          body: expect.stringContaining('"model":"google/gemini-3-pro-preview"')
+          body: expect.stringContaining('"model":"google/gemini-3.1-pro-preview"')
         })
       );
     });
 
     it('should log the model being used', async () => {
       await client.createCompletion(testMessages, {
-        model: 'google/gemini-3-pro-preview'
+        model: 'google/gemini-3.1-pro-preview'
       });
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
         'Calling OpenRouter text completion',
         expect.objectContaining({
-          model: 'google/gemini-3-pro-preview',
+          model: 'google/gemini-3.1-pro-preview',
           messageCount: 1
         })
       );
@@ -231,7 +231,7 @@ describe('OpenRouterDynamicTextClient', () => {
       });
 
       const request2 = client.createCompletion(testMessages, {
-        model: 'google/gemini-3-pro-preview'
+        model: 'google/gemini-3.1-pro-preview'
       });
 
       const request3 = client.createCompletion(testMessages, {
@@ -253,7 +253,7 @@ describe('OpenRouterDynamicTextClient', () => {
 
       expect(models).toEqual([
         'anthropic/claude-sonnet-4',
-        'google/gemini-3-pro-preview',
+        'google/gemini-3.1-pro-preview',
         'openai/gpt-5.1'
       ]);
     });

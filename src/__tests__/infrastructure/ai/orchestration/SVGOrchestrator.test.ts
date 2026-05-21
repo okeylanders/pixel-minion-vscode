@@ -1,5 +1,7 @@
 import { SVGOrchestrator } from '@ai';
 import { LoggingService } from '@logging';
+import { OpenRouterDynamicTextClient } from '../../../../infrastructure/ai/clients/OpenRouterDynamicTextClient';
+import { TextClient, TextCompletionResult } from '../../../../infrastructure/ai/clients/TextClient';
 
 describe('SVGOrchestrator', () => {
   let orchestrator: SVGOrchestrator;
@@ -168,6 +170,82 @@ describe('SVGOrchestrator', () => {
         // The regex should capture from first <svg to last </svg>, getting both
         expect(result).toContain('id="second"');
       });
+    });
+  });
+
+  describe('client dispatch (Recraft vs text models)', () => {
+    const buildClient = (svgContent: string): jest.Mocked<TextClient> => {
+      const result: TextCompletionResult = {
+        content: svgContent,
+        finishReason: 'stop',
+      };
+      return {
+        getModel: jest.fn().mockReturnValue('mock'),
+        isConfigured: jest.fn().mockResolvedValue(true),
+        createCompletion: jest.fn().mockResolvedValue(result),
+      };
+    };
+
+    const RAW_SVG = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
+
+    it('routes recraft/* models to the vector-image client', async () => {
+      const textClient = buildClient(RAW_SVG);
+      const vectorClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+      orchestrator.setVectorImageClient(vectorClient);
+
+      await orchestrator.generateSVG('a red star', {
+        model: 'recraft/recraft-v4.1-pro-vector',
+        aspectRatio: '1:1',
+      });
+
+      expect(vectorClient.createCompletion).toHaveBeenCalledTimes(1);
+      expect(textClient.createCompletion).not.toHaveBeenCalled();
+      const [, options] = vectorClient.createCompletion.mock.calls[0];
+      expect(options).toMatchObject({ model: 'recraft/recraft-v4.1-pro-vector' });
+    });
+
+    it('routes non-recraft models to the text client', async () => {
+      const textClient = buildClient(RAW_SVG);
+      const vectorClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+      orchestrator.setVectorImageClient(vectorClient);
+
+      await orchestrator.generateSVG('a red star', {
+        model: 'openai/gpt-5.3-codex',
+        aspectRatio: '1:1',
+      });
+
+      expect(textClient.createCompletion).toHaveBeenCalledTimes(1);
+      expect(vectorClient.createCompletion).not.toHaveBeenCalled();
+    });
+
+    it('throws a clear error when a recraft model is selected without a vector client', async () => {
+      const textClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+      // Intentionally do NOT call setVectorImageClient.
+
+      await expect(
+        orchestrator.generateSVG('a red star', {
+          model: 'recraft/recraft-v4-vector',
+          aspectRatio: '1:1',
+        })
+      ).rejects.toThrow(/Vector image client not configured/);
+      expect(textClient.createCompletion).not.toHaveBeenCalled();
+    });
+
+    it('throws a clear error when no text client is configured for a non-recraft model', async () => {
+      const vectorClient = buildClient(RAW_SVG);
+      orchestrator.setVectorImageClient(vectorClient);
+      // Intentionally do NOT call setClient.
+
+      await expect(
+        orchestrator.generateSVG('a red star', {
+          model: 'openai/gpt-5.3-codex',
+          aspectRatio: '1:1',
+        })
+      ).rejects.toThrow(/No text client configured/);
+      expect(vectorClient.createCompletion).not.toHaveBeenCalled();
     });
   });
 });

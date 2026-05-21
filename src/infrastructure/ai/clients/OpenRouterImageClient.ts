@@ -180,7 +180,8 @@ export class OpenRouterImageClient implements ImageGenerationClient {
   }
 
   private extractMimeType(dataUrl: string): string | null {
-    const match = dataUrl.match(/^data:(image\/\w+);base64,/);
+    // Accept compound MIME subtypes like svg+xml in addition to simple ones (png, jpeg, webp).
+    const match = dataUrl.match(/^data:(image\/[\w.+-]+);base64,/);
     return match?.[1] ?? null;
   }
 
@@ -216,8 +217,13 @@ export class OpenRouterImageClient implements ImageGenerationClient {
   private getModalitiesForModel(model: string): Array<'image' | 'text'> {
     const normalizedModel = model.toLowerCase();
 
-    // Flux and Sourceful endpoints are image-only and reject ["image", "text"].
-    if (normalizedModel.startsWith('black-forest-labs/') || normalizedModel.startsWith('sourceful/')) {
+    // Flux, Sourceful, Recraft, ByteDance Seedream, and xAI Grok Imagine endpoints
+    // are image-only and reject ["image", "text"] with a 404 "no endpoints found" error.
+    if (normalizedModel.startsWith('black-forest-labs/') ||
+        normalizedModel.startsWith('sourceful/') ||
+        normalizedModel.startsWith('recraft/') ||
+        normalizedModel.startsWith('bytedance-seed/') ||
+        normalizedModel.startsWith('x-ai/')) {
       return ['image'];
     }
 

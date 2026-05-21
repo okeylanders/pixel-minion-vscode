@@ -9,6 +9,7 @@ export type {
 } from './TextClient';
 export { OpenRouterTextClient } from './OpenRouterTextClient';
 export { OpenRouterDynamicTextClient } from './OpenRouterDynamicTextClient';
+export { OpenRouterImageSVGClient } from './OpenRouterImageSVGClient';
 
 // Image generation client
 export type {
