@@ -9,6 +9,128 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-05-20
+
+### Overview
+
+Adds Recraft vector SVG support as a parallel path in the SVG suite, expands the image and SVG catalogs across multiple providers (Recraft raster, Grok Imagine, Claude Opus 4.7, GPT-5.4, Gemini Flash 3.5), fixes the Seedream 4.5 modality bug, and tightens catalog correctness (mislabel, stale pricing, dead-endpoint cleanup).
+
+**Key Highlights:**
+
+- 🎨 **Recraft Vector SVG** - Native vector output via Recraft's image-output models, integrated through a new TextClient adapter so the SVG tab's preview / refine / save flow works unchanged
+- ⭐ **Claude Opus 4.7** - Promoted to the top SVG recommendation
+- 🐛 **Seedream 4.5 fix** - Was 404'ing because it rejects `["image","text"]` modalities; added to the image-only branch
+- 🧭 **Refine UX** - Disabled with a hint when a Recraft vector model is selected (Recraft regenerates from scratch instead of iterating)
+
+**PR:** #11 - feat: expand model catalog — Recraft (vector + raster), Grok Imagine, new SVG text models
+
+---
+
+### Features
+
+#### Recraft Vector SVG Integration (PR #11)
+
+**What It Does:**
+
+Adds native vector SVG generation to the SVG tab via Recraft's `text+image → image` models. The output is real `<svg xmlns="...">...</svg>` markup, base64-encoded inside a `data:image/svg+xml` URL.
+
+**Technical Implementation:**
+
+The existing SVG suite reuses text models (Gemini, Claude, GPT) via `OpenRouterDynamicTextClient`, expecting SVG markup inside markdown code blocks. Recraft is fundamentally different — it outputs SVG via the image-generation pathway with `modalities: ['image']` and returns the document in `message.images[0].image_url.url`.
+
+To avoid a deep refactor, a new `OpenRouterImageSVGClient` implements the existing `TextClient` interface but internally:
+- Calls `/chat/completions` with `modalities: ['image']`
+- Validates the response shape and decodes the base64 SVG payload
+- Returns the raw markup in `TextCompletionResult.content` so `SVGOrchestrator.extractSVG()` works unchanged
+
+`SVGOrchestrator` gained a `selectClient()` method that routes on model prefix (`recraft/*` → vector client, everything else → text client).
+
+**Files Added:**
+
+- `src/infrastructure/ai/clients/OpenRouterImageSVGClient.ts` - New TextClient adapter for image-output SVG models
+- `src/__tests__/infrastructure/ai/clients/OpenRouterImageSVGClient.test.ts` - 4 unit tests covering the happy path, both error paths, and default-model fallback
+
+**Files Modified:**
+
+- `src/infrastructure/ai/orchestration/SVGOrchestrator.ts` - Added `setVectorImageClient()` + `selectClient()` dispatch
+- `src/application/handlers/MessageHandler.ts` - Inject the new client alongside the text client
+- `src/infrastructure/ai/clients/index.ts` + `src/infrastructure/ai/index.ts` - Export the new client
+- `src/__tests__/infrastructure/ai/orchestration/SVGOrchestrator.test.ts` - Added 4 dispatch tests (Recraft routing, text-client routing, both missing-client error paths)
+
+#### Catalog Expansion
+
+**SVG models added:**
+
+- `recraft/recraft-v4.1-pro-vector` - ⭐ Recommended, default. ~$0.08/image. 1:1 only.
+- `recraft/recraft-v4-vector` - Budget tier. ~$0.02/image. 1:1 only.
+- `anthropic/claude-opus-4.7` - ⭐ Recommended for code-based SVG generation. $5/$25 per Mtok.
+- `openai/gpt-5.4` - $2.50/$15 per Mtok.
+- `google/gemini-3.5-flash` - $1.50/$9 per Mtok, slots between Gemini Flash 3.0 and Pro 3.1.
+
+**Image models added:**
+
+- `recraft/recraft-v4.1-pro` - ~$0.06/image (raster)
+- `recraft/recraft-v4-pro` - ~$0.06/image (raster)
+- `recraft/recraft-v4` - ~$0.04/image (raster)
+- `recraft/recraft-v3` - ~$0.04/image (raster)
+- `x-ai/grok-imagine-image-quality` - ~$0.05/image, returns JPEG (raster)
+
+**Files Modified:**
+
+- `src/infrastructure/ai/providers/OpenRouterProvider.ts` - 11 new entries, 2 stale entries removed, mislabel and pricing fixes
+- `package.json` - Default SVG model switched to `recraft/recraft-v4.1-pro-vector`
+- `src/application/handlers/domain/SettingsHandler.ts` - Fallback default aligned
+
+#### Refine Button UX for Recraft
+
+**What It Does:**
+
+When a Recraft vector model is selected and a conversation is open, the Refine input below the SVG preview is disabled and shows a placeholder explaining that Recraft generates fresh output instead of iterating on the prior turn. Users are directed to start a new generation to change the prompt.
+
+**Why:** Recraft's image-output path doesn't multi-turn cleanly — sending the prior SVG markup back as text in an `assistant` role doesn't communicate "your prior output" to a model that expects image inputs. Rather than ship a half-working Refine, we explicitly gate it.
+
+**Files Modified:**
+
+- `src/presentation/webview/components/views/SVGGenerationView.tsx` - Conditional disabled / placeholder for `ContinueChatInput`
+
+---
+
+### Fixed
+
+#### Seedream 4.5 Modality Bug
+
+- **Issue**: `bytedance-seed/seedream-4.5` was being called with `modalities: ['image', 'text']` and returning 404 `No endpoints found that support the requested output modalities`. Same shape as the FLUX / Sourceful image-only providers, but `bytedance-seed/` was missing from the image-only branch.
+- **Fix**: Added `bytedance-seed/` to `OpenRouterImageClient.getModalitiesForModel`. Also added `recraft/` and `x-ai/` to the same branch since Recraft and Grok Imagine behave the same way.
+- **Impact**: Seedream image generations now succeed.
+- **Commit**: `84bec72`
+
+#### `extractMimeType` Regex Drops Compound MIME Subtypes
+
+- **Issue**: Regex `^data:(image\/\w+);base64,` doesn't match `image/svg+xml` because `\w` excludes `+`. Would have silently dropped SVG image payloads.
+- **Fix**: Updated to `^data:(image\/[\w.+-]+);base64,` to accept compound MIME subtypes.
+- **Commit**: `36d5aa0`
+
+#### Catalog Correctness
+
+- **Mislabel**: `anthropic/claude-opus-4` was showing `displayName: 'Claude Opus 4.5'` but `claude-opus-4` is a different model from `claude-opus-4.5`. Display name now reads "Claude Opus 4".
+- **Pricing**: `gemini-3-flash-preview` listed at $0.15/$0.60, actual OpenRouter pricing is $0.50/$3.00 per Mtok.
+- **Dead endpoints removed**: `google/gemini-2.5-flash-image-preview` (image) and `google/gemini-3-pro-preview` (SVG) had no live endpoints.
+- **Commit**: `36d5aa0`
+
+---
+
+### Architecture Notes
+
+The Recraft integration intentionally uses a parallel client (`OpenRouterImageSVGClient`) rather than branching inside `OpenRouterDynamicTextClient`. This keeps each client's API call shape coherent — the dynamic text client never has to know about image modalities — and isolates the dispatch decision in `SVGOrchestrator.selectClient`. Trade-off: prefix-based dispatch (`model.startsWith('recraft/')`) duplicates a prefix-classification concern that also lives in `OpenRouterImageClient.getModalitiesForModel`. Acceptable until a third axis emerges; flagged in the PR review action plan (`.claude/review-action-plan-2026-05-20.md`) for future consolidation.
+
+### Stats
+
+- 15 files changed, +433 / -62
+- Tests: 168 passing (was 160; +8 new tests across the new client and the new orchestrator dispatch)
+- 1 PR (#11), 7 commits
+
+---
+
 ## [1.2.3] - 2026-04-24
 
 ### Overview
