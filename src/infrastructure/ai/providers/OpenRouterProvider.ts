@@ -31,12 +31,12 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
 ];
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
-  { id: 'recraft/recraft-v4.1-pro-vector', displayName: '⭐ Recraft V4.1 Pro Vector (native SVG, 1:1 only)', outputCost: 0.08 },
+  { id: 'anthropic/claude-opus-4.7', displayName: '⭐ Claude Opus 4.7 - Recommended', inputCost: 5.00, outputCost: 25.00 },
+  { id: 'recraft/recraft-v4.1-pro-vector', displayName: 'Recraft V4.1 Pro Vector (native SVG, 1:1 only)', outputCost: 0.08 },
   { id: 'recraft/recraft-v4-vector', displayName: 'Recraft V4 Vector (native SVG, budget, 1:1 only)', outputCost: 0.02 },
   { id: 'google/gemini-3.1-pro-preview', displayName: 'Gemini Pro 3.1', inputCost: 2.00, outputCost: 12.00 },
   { id: 'google/gemini-3.5-flash', displayName: 'Gemini Flash 3.5', inputCost: 1.50, outputCost: 9.00 },
   { id: 'google/gemini-3-flash-preview', displayName: 'Gemini Flash 3.0', inputCost: 0.50, outputCost: 3.00 },
-  { id: 'anthropic/claude-opus-4.7', displayName: 'Claude Opus 4.7', inputCost: 5.00, outputCost: 25.00 },
   { id: 'anthropic/claude-opus-4.6', displayName: 'Claude Opus 4.6', inputCost: 5.00, outputCost: 25.00 },
   { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4', inputCost: 15.00, outputCost: 75.00 },
   { id: 'openai/gpt-5.4', displayName: 'OpenAI: GPT-5.4', inputCost: 2.50, outputCost: 15.00 },
@@ -61,4 +61,4 @@ export const OPENROUTER_CONFIG: ProviderConfig = {
 export const DEFAULT_IMAGE_MODEL = 'google/gemini-3.1-flash-image-preview';
 
 /** Default model for SVG generation */
-export const DEFAULT_SVG_MODEL = 'openai/gpt-5.3-codex';
+export const DEFAULT_SVG_MODEL = 'recraft/recraft-v4.1-pro-vector';
