@@ -37,11 +37,17 @@
 
 ---
 
-## 🎉 What's New in v1.2.3
+## 🎉 What's New in v1.3.0
 
-> **🖼️ GPT-5.4 Image 2** - Added OpenAI's latest image model from OpenRouter to the image model dropdown
+> **🎨 Native Vector SVG with Recraft** - New default SVG model produces real `<svg>` markup natively (no more code-generation). Recraft V4.1 Pro Vector + V4 Vector added.
 >
-> **💸 Current Model Pricing** - Updated Nano Banana 2 pricing metadata to match OpenRouter's current model API
+> **⭐ Claude Opus 4.7** - Promoted to the top SVG recommendation for high-quality code-based SVG generation
+>
+> **🖼️ More Image Models** - Recraft raster lineup (V4.1 Pro, V4 Pro, V4, V3) and xAI's Grok Imagine added to the image dropdown
+>
+> **🔤 More SVG Text Models** - OpenAI GPT-5.4 and Google Gemini Flash 3.5 added for code-based SVG generation
+>
+> **🐛 Seedream 4.5 Fix** - Now generates successfully (was 404'ing due to a modality bug)
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 

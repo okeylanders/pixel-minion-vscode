@@ -6,6 +6,40 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [1.3.0] - 2026-05-20
+
+### Added
+
+- **Recraft Vector SVG Models** - Native vector (SVG) generation from prompts via Recraft's image-output models
+  - ⭐ Recraft V4.1 Pro Vector (now the default SVG model)
+  - Recraft V4 Vector (budget tier)
+  - Output is real `<svg>` markup, not raster traced to vectors
+- **New Image Models**
+  - Recraft raster: V4.1 Pro, V4 Pro, V4, V3 (text-to-image)
+  - Grok Imagine (Image Quality) - xAI's image generation model
+- **New SVG Text Models**
+  - ⭐ Claude Opus 4.7 - now the top recommendation for high-quality SVG codegen
+  - OpenAI GPT-5.4
+  - Google Gemini Flash 3.5
+
+### Fixed
+
+- **Seedream 4.5 generation errors** - Was sending unsupported `image+text` output modalities, getting 404. Now correctly requests `image` only.
+- **Gemini Flash 3.0 pricing** - Catalog had stale $0.15/$0.60, now correctly reflects $0.50/$3.00 per million tokens.
+- **Claude Opus 4 mislabel** - Was displayed as "Claude Opus 4.5" but pointed to the different `claude-opus-4` model. Display name now matches the model.
+
+### Changed
+
+- **Default SVG model** is now Recraft V4.1 Pro Vector (was GPT-5.3 Codex). Existing users keep their current selection.
+- **Refine** input on the SVG tab is automatically disabled when a Recraft vector model is selected, with a hint explaining that Recraft regenerates from scratch instead of iterating. Start a new generation to change the prompt.
+- Recraft vector entries display "1:1 only" because Recraft ignores `aspect_ratio` for vector output. Raster Recraft models honor the aspect ratio normally.
+
+### Removed
+
+- **Stale catalog entries** with no live OpenRouter endpoints: Gemini 2.5 Flash Image Preview (image tab), Gemini Pro 3.0 (SVG tab).
+
+---
+
 ## [1.2.3] - 2026-04-24
 
 ### Added
