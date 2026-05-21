@@ -32,7 +32,7 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'anthropic/claude-opus-4.7', displayName: '⭐ Claude Opus 4.7 - Recommended', inputCost: 5.00, outputCost: 25.00 },
-  { id: 'recraft/recraft-v4.1-pro-vector', displayName: 'Recraft V4.1 Pro Vector (native SVG, 1:1 only)', outputCost: 0.08 },
+  { id: 'recraft/recraft-v4.1-pro-vector', displayName: '⭐ Recraft V4.1 Pro Vector (native SVG, 1:1 only) - Recommended', outputCost: 0.08 },
   { id: 'recraft/recraft-v4-vector', displayName: 'Recraft V4 Vector (native SVG, budget, 1:1 only)', outputCost: 0.02 },
   { id: 'google/gemini-3.1-pro-preview', displayName: 'Gemini Pro 3.1', inputCost: 2.00, outputCost: 12.00 },
   { id: 'google/gemini-3.5-flash', displayName: 'Gemini Flash 3.5', inputCost: 1.50, outputCost: 9.00 },
