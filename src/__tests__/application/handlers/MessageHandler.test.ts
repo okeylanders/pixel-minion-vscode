@@ -72,14 +72,14 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
+          payload: expect.objectContaining({
             totals: {
               promptTokens: 0,
               completionTokens: 0,
               totalTokens: 0,
               costUsd: 0,
             },
-          },
+          }),
         })
       );
     });
@@ -134,14 +134,14 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
+          payload: expect.objectContaining({
             totals: {
               promptTokens: 100,
               completionTokens: 50,
               totalTokens: 150,
               costUsd: 0.01,
             },
-          },
+          }),
         })
       );
     });
@@ -168,14 +168,14 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
+          payload: expect.objectContaining({
             totals: {
               promptTokens: 300,
               completionTokens: 150,
               totalTokens: 450,
               costUsd: 0.03,
             },
-          },
+          }),
         })
       );
     });
@@ -193,53 +193,16 @@ describe('MessageHandler', () => {
 
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          payload: {
+          payload: expect.objectContaining({
             totals: expect.objectContaining({
               promptTokens: 100,
               completionTokens: 0,
               totalTokens: 100,
             }),
-          },
+          }),
         })
       );
     });
   });
 
-  describe('resetTokenUsage', () => {
-    it('should reset token usage via message', async () => {
-      // First apply some usage
-      handler.applyTokenUsage({
-        promptTokens: 100,
-        completionTokens: 50,
-        totalTokens: 150,
-        costUsd: 0.01,
-      });
-
-      postMessage.mockClear();
-
-      // Send reset message
-      const resetMessage = createEnvelope(
-        MessageType.RESET_TOKEN_USAGE,
-        'webview.settings',
-        {}
-      );
-
-      await handler.handleMessage(resetMessage);
-
-      expect(mockLogger.info).toHaveBeenCalledWith('Token usage reset');
-      expect(postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
-            totals: {
-              promptTokens: 0,
-              completionTokens: 0,
-              totalTokens: 0,
-              costUsd: 0,
-            },
-          },
-        })
-      );
-    });
-  });
 });

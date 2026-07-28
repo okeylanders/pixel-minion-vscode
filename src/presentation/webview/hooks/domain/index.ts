@@ -17,10 +17,12 @@ export type {
 export { useTokenTracking } from './useTokenTracking';
 export type {
   TokenTrackingState,
-  TokenTrackingActions,
   TokenTrackingPersistence,
   UseTokenTrackingReturn,
 } from './useTokenTracking';
+
+export { useOpenRouterBalance } from './useOpenRouterBalance';
+export type { UseOpenRouterBalanceReturn } from './useOpenRouterBalance';
 
 export { useImageGeneration } from './useImageGeneration';
 export type {

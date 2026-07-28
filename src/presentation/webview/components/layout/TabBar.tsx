@@ -11,8 +11,7 @@ import { TabId } from '@messages';
 export interface Tab {
   id: TabId;
   label: string;
-  /** Optional emoji/icon (e.g., '🖼️', '📐') - renders before label */
-  icon?: string;
+  icon?: React.ReactNode;
 }
 
 export interface TabBarProps {

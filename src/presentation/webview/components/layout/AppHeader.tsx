@@ -8,12 +8,13 @@
  * SVG uses currentColor for theme adaptation.
  */
 import React from 'react';
+import { TokenUsage } from '@messages';
+import { UseOpenRouterBalanceReturn } from '@hooks/domain';
 
 export interface AppHeaderProps {
-  /** Token count to display (placeholder for future TOKEN_USAGE integration) */
-  tokenCount?: number;
-  /** Estimated cost to display */
-  tokenCost?: number;
+  balances: UseOpenRouterBalanceReturn;
+  lastRequest?: TokenUsage;
+  requestedAt?: number;
 }
 
 /**
@@ -75,23 +76,88 @@ const PixelMinionIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 export function AppHeader({
-  tokenCount = 0,
-  tokenCost = 0,
+  balances,
+  lastRequest,
+  requestedAt,
 }: AppHeaderProps): JSX.Element {
-  const formattedCost = tokenCost.toFixed(3);
+  const [expanded, setExpanded] = React.useState(false);
+  const remaining = balances.balance?.credits?.remaining;
+  const balanceText = balances.isLoading
+    ? '…'
+    : balances.balance?.status === 'no_key'
+      ? 'no key'
+      : remaining !== undefined
+        ? `$${remaining.toFixed(2)}`
+        : balances.balance?.keyLimit?.limitRemaining !== null &&
+            balances.balance?.keyLimit?.limitRemaining !== undefined
+          ? `$${balances.balance.keyLimit.limitRemaining.toFixed(2)}`
+          : '—';
+  const lastCost = lastRequest?.costUsd;
 
   return (
-    <header className="app-header">
-      <div className="app-header-left">
-        <h1 className="app-title">Pixel Minion</h1>
-        <p className="app-subtitle">AI-powered graphics generation</p>
-      </div>
-      <div className="app-header-right">
-        <PixelMinionIcon className="app-header-icon" />
-        <span className="token-widget">
-          {tokenCount.toLocaleString()} tokens | ${formattedCost}
-        </span>
-      </div>
-    </header>
+    <div className="app-header-shell">
+      <header className="app-header">
+        <div className="app-header-mark" aria-hidden="true">
+          <PixelMinionIcon className="app-header-icon" />
+        </div>
+        <div className="app-header-titles">
+          <h1 className="app-title">Pixel Minion</h1>
+          <p className="app-subtitle">AI-powered graphics generation</p>
+        </div>
+        <button
+          type="button"
+          className={`pm-balance-summary${expanded ? ' expanded' : ''}`}
+          onClick={() => setExpanded(value => !value)}
+          title="Show OpenRouter account details"
+        >
+          <span className="pm-provider-dot" />
+          <span>OpenRouter</span>
+          <strong>{balanceText}</strong>
+          <span aria-hidden="true">{expanded ? '⌃' : '⌄'}</span>
+        </button>
+        <button
+          type="button"
+          className={`app-header-refresh${balances.isLoading ? ' spinning' : ''}`}
+          onClick={balances.refresh}
+          disabled={balances.isLoading}
+          title="Refresh OpenRouter balance"
+          aria-label="Refresh OpenRouter balance"
+        >
+          ↻
+        </button>
+      </header>
+
+      {expanded && (
+        <section className="pm-account-strip">
+          <div>
+            <span>ACCOUNT BALANCE</span>
+            <strong>{balanceText}</strong>
+            {balances.balance?.credits && (
+              <small>
+                ${balances.balance.credits.totalUsage.toFixed(2)} used of ${balances.balance.credits.totalCredits.toFixed(2)}
+              </small>
+            )}
+          </div>
+          <div>
+            <span>LAST REQUEST</span>
+            <strong>{lastCost !== undefined ? `$${lastCost.toFixed(4)}` : '—'}</strong>
+            <small>
+              {lastRequest
+                ? `${lastRequest.totalTokens.toLocaleString()} tokens${requestedAt ? ` · ${new Date(requestedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`
+                : 'No request this session'}
+            </small>
+          </div>
+          <div>
+            <span>UPDATED</span>
+            <strong>
+              {balances.balance?.fetchedAt
+                ? new Date(balances.balance.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                : '—'}
+            </strong>
+            <small>{balances.balance?.reason ?? 'Refreshes after generation'}</small>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

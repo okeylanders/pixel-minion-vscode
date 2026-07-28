@@ -29,10 +29,25 @@ import {
   SettingsPayload,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
-import { HelloWorldHandler, SettingsHandler, TextHandler, ImageGenerationHandler, SVGGenerationHandler, EnhanceHandler } from './domain';
+import {
+  HelloWorldHandler,
+  SettingsHandler,
+  TextHandler,
+  ImageGenerationHandler,
+  SVGGenerationHandler,
+  EnhanceHandler,
+  AccountBalanceHandler,
+} from './domain';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OpenRouterImageClient, ImageOrchestrator, OpenRouterDynamicTextClient, OpenRouterImageSVGClient, SVGOrchestrator } from '@ai';
+import {
+  OpenRouterImageClient,
+  ImageOrchestrator,
+  OpenRouterDynamicTextClient,
+  OpenRouterImageSVGClient,
+  SVGOrchestrator,
+  OpenRouterAccountClient,
+} from '@ai';
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -42,6 +57,7 @@ export class MessageHandler {
   private readonly imageGenerationHandler: ImageGenerationHandler;
   private readonly svgGenerationHandler: SVGGenerationHandler;
   private readonly enhanceHandler: EnhanceHandler;
+  private readonly accountBalanceHandler: AccountBalanceHandler;
 
   // Token usage accumulator - tracks total usage across the session
   private tokenTotals: TokenUsage = {
@@ -101,6 +117,11 @@ export class MessageHandler {
       logger,
       (usage) => this.applyTokenUsage(usage)
     );
+    this.accountBalanceHandler = new AccountBalanceHandler(
+      postMessage,
+      new OpenRouterAccountClient(secretStorage, logger),
+      logger
+    );
 
     // Register routes
     this.registerRoutes();
@@ -126,34 +147,27 @@ export class MessageHandler {
       }
 
       this.logger.debug('Token usage applied', this.tokenTotals);
-      this.broadcastTokenUsage();
+      this.broadcastTokenUsage(usage);
+      this.accountBalanceHandler.schedulePostRequestRefresh();
     } catch (error) {
       this.logger.error('Failed to apply token usage update', error);
     }
   }
 
   /**
-   * Reset token usage to zero
-   */
-  private resetTokenUsage(): void {
-    this.tokenTotals = {
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      costUsd: 0,
-    };
-    this.logger.info('Token usage reset');
-    this.broadcastTokenUsage();
-  }
-
-  /**
    * Broadcast current token totals to webview
    */
-  private broadcastTokenUsage(): void {
+  private broadcastTokenUsage(lastRequest?: TokenUsage): void {
     const message = createEnvelope<TokenUsageUpdatePayload>(
       MessageType.TOKEN_USAGE_UPDATE,
       'extension.settings',
-      { totals: { ...this.tokenTotals } }
+      {
+        totals: { ...this.tokenTotals },
+        ...(lastRequest ? {
+          lastRequest: { ...lastRequest },
+          requestedAt: Date.now(),
+        } : {}),
+      }
     );
     this.postMessage(message);
   }
@@ -212,10 +226,10 @@ export class MessageHandler {
       )
     );
 
-    // Token usage
+    // OpenRouter account balance
     this.router.register(
-      MessageType.RESET_TOKEN_USAGE,
-      () => this.resetTokenUsage()
+      MessageType.REQUEST_OPENROUTER_BALANCE,
+      () => this.accountBalanceHandler.handleRequest()
     );
 
     // Image Generation domain

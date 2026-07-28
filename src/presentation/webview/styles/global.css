@@ -48,53 +48,141 @@ body {
   overflow: hidden;
 }
 
-/* App Header - Prose Minion style */
-.app-header {
-  padding: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
+/* App Header — Frame Minion house-style marquee, adapted for Pixel Minion. */
+.app-header-shell {
+  flex-shrink: 0;
+  background: var(--pm-panel);
+  border-bottom: 1px solid var(--pm-border-soft);
 }
 
-.app-header-left {
+.app-header {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 11px 14px 13px;
+  background: color-mix(in oklab, var(--pm-text) 3%, var(--pm-panel));
+}
+
+.app-header::after {
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  left: 14px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--pm-accent), transparent);
+  opacity: 0.75;
+}
+
+.app-header-mark {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--pm-accent);
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+}
+
+.app-header-titles {
+  min-width: 0;
+  flex: 1;
 }
 
 .app-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .app-subtitle {
   margin: 0;
-  font-size: 0.875rem;
-  color: var(--vscode-descriptionForeground);
-}
-
-.app-header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--spacing-xs);
+  color: var(--pm-text-muted);
+  font-size: 10.5px;
 }
 
 .app-header-icon {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  color: var(--vscode-foreground);
+  width: 35px;
+  height: 35px;
 }
 
-.token-widget {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--vscode-list-highlightForeground, var(--vscode-textLink-foreground));
+.pm-balance-summary {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 1px 6px;
+  align-items: center;
+  padding: 5px 7px;
+  color: var(--pm-text-muted);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
 }
+
+.pm-balance-summary:hover,
+.pm-balance-summary.expanded {
+  background: var(--pm-card);
+  border-color: var(--pm-border-soft);
+}
+
+.pm-balance-summary strong {
+  color: var(--pm-text);
+  font-family: var(--pm-mono);
+  font-size: 11px;
+}
+
+.pm-provider-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: oklch(0.72 0.16 220);
+  box-shadow: 0 0 0 2px color-mix(in oklab, oklch(0.72 0.16 220) 25%, transparent);
+}
+
+.app-header-refresh {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  color: var(--pm-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius-sm);
+  cursor: pointer;
+}
+.app-header-refresh:hover:not(:disabled) { color: var(--pm-text); background: var(--pm-field-hover); }
+.app-header-refresh.spinning { animation: pm-spin 0.9s linear infinite; }
+@keyframes pm-spin { to { transform: rotate(360deg); } }
+
+.pm-account-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 14px 12px;
+}
+
+.pm-account-strip > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 10px;
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-left: 2px solid var(--pm-accent);
+  border-radius: var(--pm-radius);
+}
+.pm-account-strip span { color: var(--pm-text-dim); font-size: 9px; letter-spacing: 0.08em; }
+.pm-account-strip strong { color: var(--pm-text); font-family: var(--pm-mono); font-size: 15px; }
+.pm-account-strip small { overflow: hidden; color: var(--pm-text-muted); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
 
 .app-content {
   flex: 1;
@@ -193,14 +281,14 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--vscode-editor-background);
+  background-color: var(--pm-bg);
   z-index: 100;
   overflow-y: auto;
   padding: var(--spacing-sm);
 }
 
 .settings-overlay-content {
-  max-width: 600px;
+  max-width: 680px;
   margin: 0 auto;
 }
 
@@ -255,21 +343,35 @@ body {
 /* Settings sections (cards) */
 .settings-section {
   margin-top: var(--spacing-sm);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
 }
 
-.settings-section-title {
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-  font-size: 1.3em;
-  font-weight: 600;
-  color: var(--vscode-foreground);
-  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
-  padding-bottom: var(--spacing-xs);
+.settings-section-heading {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pm-border-soft);
 }
+
+.settings-section-kicker {
+  color: var(--pm-accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.settings-section-title {
+  margin: 1px 0 0;
+  padding: 0;
+  color: var(--pm-text);
+  font-size: 14px;
+  font-weight: 600;
+  border: 0;
+}
+
+.settings-model-grid { display: grid; gap: 12px; }
 
 /* Settings field labels and descriptions */
 .settings-label {
@@ -374,21 +476,9 @@ body {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
-/* Reset Token Button - Danger/destructive style */
-.reset-token-button {
-  padding: 6px 12px;
-  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-  color: var(--vscode-inputValidation-errorForeground, #fff);
-  border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-family: var(--vscode-font-family);
-  transition: background 0.2s ease;
-}
-
-.reset-token-button:hover {
-  background: var(--vscode-inputValidation-errorBorder, #be1100);
+@media (max-width: 520px) {
+  .app-header { flex-wrap: wrap; }
+  .pm-account-strip { grid-template-columns: 1fr; }
 }
 
 /* OpenRouter Alert - Warning banner when API key not configured */

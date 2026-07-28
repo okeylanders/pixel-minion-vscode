@@ -7,11 +7,11 @@
 import { ProviderConfig, ModelDefinition } from '../../../shared/types/providers';
 
 export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
-  { id: 'google/gemini-3.1-flash-image', displayName: '⭐ Nano Banana 2 (Gemini 3.1 Flash Image) - Recommended', outputCost: 60 },
-  { id: 'google/gemini-3.1-flash-image-preview', displayName: 'Nano Banana 2 (Gemini 3.1 Flash Image Preview)', outputCost: 60 },
+  { id: 'google/gemini-3.1-flash-image', displayName: '⭐ Nano Banana 2 (Gemini 3.1 Flash Image) - Recommended', inputCost: 0.5, outputCost: 60 },
+  { id: 'google/gemini-3.1-flash-image-preview', displayName: 'Nano Banana 2 (Gemini 3.1 Flash Image Preview)', inputCost: 0.5, outputCost: 60 },
   { id: 'google/gemini-3-pro-image', displayName: '⭐ Nano Banana Pro (Gemini 3 Pro Image)', inputCost: 2, outputCost: 120 },
   { id: 'google/gemini-3-pro-image-preview', displayName: 'Nano Banana Pro (Gemini 3 Pro Image Preview)', inputCost: 2, outputCost: 120 },
-  { id: 'google/gemini-3.1-flash-lite-image', displayName: 'Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)', outputCost: 30 },
+  { id: 'google/gemini-3.1-flash-lite-image', displayName: 'Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)', inputCost: 0.25, outputCost: 30 },
   { id: 'google/gemini-2.5-flash-image', displayName: 'Nano Banana (Gemini 2.5 Flash Image)', inputCost: 0.3, outputCost: 30 },
   { id: 'openai/gpt-image-2', displayName: '⭐ GPT Image 2', outputCost: 30 },
   { id: 'openai/gpt-image-1', displayName: 'GPT Image 1', outputCost: 40 },

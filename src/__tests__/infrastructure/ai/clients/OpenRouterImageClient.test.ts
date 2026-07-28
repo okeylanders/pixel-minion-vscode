@@ -59,7 +59,8 @@ describe('OpenRouterImageClient', () => {
     const imageOnlyModels = [
       'black-forest-labs/flux.2-flex',
       'sourceful/riverflow-v2-fast',
-      'recraft/recraft-v4.1-pro',
+      'recraft/recraft-v4-pro',
+      'openai/gpt-image-2',
       'bytedance-seed/seedream-4.5',
       'x-ai/grok-imagine-image-quality',
     ];
@@ -85,6 +86,17 @@ describe('OpenRouterImageClient', () => {
       aspectRatio: '1:1',
       messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }] }],
       seed: 789,
+    });
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.modalities).toEqual(['image', 'text']);
+  });
+
+  it('uses image+text modalities for Recraft V4.1 models', async () => {
+    await client.generateImages({
+      model: 'recraft/recraft-v4.1-pro',
+      aspectRatio: '1:1',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'A poster' }] }],
     });
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);

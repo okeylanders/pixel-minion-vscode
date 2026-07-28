@@ -20,6 +20,8 @@ export interface TokenUsage {
  */
 export interface TokenUsageUpdatePayload {
   totals: TokenUsage;
+  lastRequest?: TokenUsage;
+  requestedAt?: number;
 }
 
 /**
