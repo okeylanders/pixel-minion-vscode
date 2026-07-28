@@ -14,12 +14,30 @@ export interface ModelSelectorProps {
   disabled?: boolean;
 }
 
+const costUnitFor = (modelId: string): string => {
+  if (modelId.startsWith('black-forest-labs/')) return 'MP';
+  if (modelId.startsWith('google/') || modelId.startsWith('openai/') || modelId.startsWith('microsoft/')) {
+    return modelId.includes('image') ? '1M image tokens' : '1M tokens';
+  }
+  if (modelId.startsWith('anthropic/')) return '1M tokens';
+  return 'image';
+};
+
+const formatCost = (model: ModelDefinition): string | undefined => {
+  if (model.inputCost === undefined && model.outputCost === undefined) return undefined;
+  const unit = costUnitFor(model.id);
+  const input = model.inputCost === undefined ? '' : `$${model.inputCost}/in`;
+  const output = model.outputCost === undefined ? '' : `$${model.outputCost}/out`;
+  return `${input}${input && output ? ' · ' : ''}${output} per ${unit}`;
+};
+
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   models,
   selectedModel,
   onModelChange,
   disabled = false,
 }) => {
+  const [isBrowserOpen, setIsBrowserOpen] = React.useState(false);
   const hasSelected = models.some((m) => m.id === selectedModel);
   const options = hasSelected
     ? models
@@ -27,20 +45,66 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <div className="model-selector">
-      <label htmlFor="model-select">Model</label>
-      <select
-        id="model-select"
-        value={selectedModel}
-        onChange={(e) => onModelChange(e.target.value)}
+      <label>Model</label>
+      <button
+        type="button"
+        className="model-select model-browser-trigger"
+        onClick={() => setIsBrowserOpen(true)}
         disabled={disabled}
-        className="model-select"
+        aria-haspopup="dialog"
+        aria-label={`Browse models. Current model: ${options.find(model => model.id === selectedModel)?.displayName ?? selectedModel}`}
       >
-        {options.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.displayName}
-          </option>
-        ))}
-      </select>
+        <span>{options.find(model => model.id === selectedModel)?.displayName ?? selectedModel}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {isBrowserOpen && (
+        <div
+          className="model-browser-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Model browser"
+          onClick={() => setIsBrowserOpen(false)}
+        >
+          <section className="model-browser" onClick={event => event.stopPropagation()}>
+            <header className="model-browser-header">
+              <div>
+                <span>MODEL BROWSER</span>
+                <h2>Choose a model</h2>
+              </div>
+              <button type="button" onClick={() => setIsBrowserOpen(false)} aria-label="Close model browser">×</button>
+            </header>
+            <input
+              autoFocus
+              className="model-browser-search"
+              placeholder="Search models…"
+              onChange={event => {
+                const query = event.currentTarget.value.toLowerCase();
+                document.querySelectorAll<HTMLElement>('[data-model-name]').forEach(card => {
+                  card.hidden = !card.dataset.modelName?.includes(query);
+                });
+              }}
+            />
+            <div className="model-browser-list">
+              {options.map(model => (
+                <button
+                  type="button"
+                  key={model.id}
+                  data-model-name={`${model.displayName} ${model.id}`.toLowerCase()}
+                  className={`model-browser-option${model.id === selectedModel ? ' selected' : ''}`}
+                  onClick={() => {
+                    onModelChange(model.id);
+                    setIsBrowserOpen(false);
+                  }}
+                >
+                  <strong>{model.displayName.replace(/⭐\s*|\s*- Recommended/g, '')}</strong>
+                  <small>{model.id}</small>
+                  {formatCost(model) && <em>{formatCost(model)}</em>}
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
