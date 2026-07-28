@@ -11,7 +11,7 @@
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
   border: none;
-  border-radius: 2px;
+  border-radius: var(--pm-radius-sm);
   cursor: pointer;
   font-size: 12px;
 }
@@ -29,10 +29,10 @@
   position: relative;
   width: 100%;
   max-width: 300px;
-  border: 1px solid var(--vscode-panel-border);
+  border: 1px solid var(--pm-border-soft);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--vscode-editor-inactiveSelectionBackground);
+  background: var(--pm-inset);
 }
 
 .single-image-preview img {

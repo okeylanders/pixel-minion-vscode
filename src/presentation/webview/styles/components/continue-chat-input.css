@@ -2,8 +2,8 @@
   display: flex;
   gap: 8px;
   padding: 8px;
-  background: var(--vscode-sideBar-background);
-  border-top: 1px solid var(--vscode-panel-border);
+  background: var(--pm-panel);
+  border-top: 1px solid var(--pm-border-soft);
   position: sticky;
   bottom: 0;
 }
@@ -11,16 +11,17 @@
 .continue-chat-input-field {
   flex: 1;
   padding: 10px 14px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 2px;
+  background: var(--pm-inset);
+  color: var(--pm-text-input);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
   font-size: 13px;
   outline: none;
 }
 
 .continue-chat-input-field:focus {
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 .continue-chat-input-field:disabled {
@@ -36,7 +37,7 @@
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: none;
-  border-radius: 2px;
+  border-radius: var(--pm-radius);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;

@@ -11,24 +11,30 @@
 }
 
 .model-selector label {
-  font-size: calc(var(--vscode-font-size) - 1px);
-  color: var(--vscode-descriptionForeground);
+  font-size: 11px;
+  color: var(--pm-text-muted);
 }
 
 .model-select {
   padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--vscode-font-family);
+  font-family: var(--pm-sans);
   font-size: var(--vscode-font-size);
-  color: var(--vscode-dropdown-foreground);
-  background-color: var(--vscode-dropdown-background);
-  border: 1px solid var(--vscode-dropdown-border);
-  border-radius: var(--radius-sm);
+  color: var(--pm-text);
+  background-color: var(--pm-field);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
   cursor: pointer;
+}
+
+.model-select:hover:not(:disabled) {
+  background-color: var(--pm-field-hover);
+  border-color: var(--pm-border-strong);
 }
 
 .model-select:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 .model-select:disabled {

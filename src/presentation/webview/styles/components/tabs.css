@@ -69,7 +69,8 @@
   align-items: center;
   justify-content: center;
   color: currentColor;
-  font-size: 18px;
+  /* Icon SVGs are sized 1em, so font-size is the single control point. */
+  font-size: 24px;
   line-height: 1;
 }
 

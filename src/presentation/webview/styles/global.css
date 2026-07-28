@@ -381,7 +381,7 @@ body {
 /* Divider */
 .divider {
   height: 1px;
-  background-color: var(--vscode-editorWidget-border);
+  background-color: var(--pm-border-soft);
   margin: var(--spacing-md) 0;
 }
 
@@ -395,9 +395,9 @@ body {
 
 /* Well - card-like container for grouping form elements (Prose Minion design) */
 .well {
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
 }
 
@@ -459,7 +459,7 @@ body {
 .settings-close-button {
   background: var(--vscode-button-background);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--pm-radius);
   color: var(--vscode-button-foreground);
   font-size: 0.875rem;
   cursor: pointer;
@@ -546,34 +546,41 @@ body {
 .settings-input {
   width: 100%;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: var(--radius-md);
-  font-family: var(--vscode-font-family);
+  background: var(--pm-inset);
+  color: var(--pm-text-input);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  font-family: var(--pm-sans);
   font-size: var(--vscode-font-size);
 }
 
 .settings-input:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 .settings-select {
   width: 100%;
   padding: 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: var(--radius-md);
-  font-family: var(--vscode-font-family);
+  background: var(--pm-field);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  font-family: var(--pm-sans);
   font-size: var(--vscode-font-size);
   cursor: pointer;
 }
 
+.settings-select:hover {
+  background: var(--pm-field-hover);
+  border-color: var(--pm-border-strong);
+}
+
 .settings-select:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 /* Settings button group */
@@ -588,7 +595,7 @@ body {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--pm-radius);
   cursor: pointer;
   font-size: 0.875rem;
   transition: background 0.2s ease;
@@ -614,9 +621,10 @@ body {
 
 /* OpenRouter Alert - Warning banner when API key not configured */
 .openrouter-alert {
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-left: 2px solid var(--pm-warn);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
   margin: var(--spacing-md);
 }
