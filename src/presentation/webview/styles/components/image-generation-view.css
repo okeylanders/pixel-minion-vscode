@@ -65,7 +65,7 @@
 /* Divider between input and conversation */
 .image-generation-divider {
   border: none;
-  border-top: 1px solid var(--vscode-panel-border);
+  border-top: 1px solid var(--pm-border-soft);
   margin: 4px 0;
 }
 

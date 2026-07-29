@@ -158,7 +158,7 @@ export class SettingsHandler {
     return {
       maxConversationTurns: config.get<number>('maxConversationTurns', legacyConfig.get('maxConversationTurns', 10)),
       openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'openai/gpt-5.1')),
-      imageModel: config.get<string>('imageModel', 'google/gemini-3.1-flash-image-preview'),
+      imageModel: config.get<string>('imageModel', 'google/gemini-3.1-flash-image'),
       svgModel: config.get<string>('svgModel', 'recraft/recraft-v4.1-pro-vector'),
     };
   }

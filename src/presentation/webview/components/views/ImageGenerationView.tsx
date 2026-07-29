@@ -103,6 +103,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             models={OPENROUTER_IMAGE_MODELS}
             selectedModel={model}
             onModelChange={setModel}
+            kind="image"
             disabled={isLoading}
           />
           <AspectRatioSelector

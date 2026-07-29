@@ -95,6 +95,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             models={OPENROUTER_SVG_MODELS}
             selectedModel={model}
             onModelChange={setModel}
+            kind="svg"
             disabled={isLoading}
           />
           <AspectRatioSelector

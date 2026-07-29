@@ -67,7 +67,7 @@
   content: '';
   display: block;
   height: 1px;
-  background: var(--vscode-panel-border);
+  background: var(--pm-border-soft);
   margin-top: 8px;
   opacity: 0.5;
 }

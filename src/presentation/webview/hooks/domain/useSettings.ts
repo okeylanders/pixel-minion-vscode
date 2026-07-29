@@ -68,10 +68,10 @@ export function useSettings(
     initialState?.openRouterModel ?? 'openai/gpt-5.1'
   );
   const [imageModel, setImageModel] = useState(
-    initialState?.imageModel ?? 'google/gemini-3.1-flash-image-preview'
+    initialState?.imageModel ?? 'google/gemini-3.1-flash-image'
   );
   const [svgModel, setSvgModel] = useState(
-    initialState?.svgModel ?? 'openai/gpt-5.3-codex'
+    initialState?.svgModel ?? 'recraft/recraft-v4.1-pro-vector'
   );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

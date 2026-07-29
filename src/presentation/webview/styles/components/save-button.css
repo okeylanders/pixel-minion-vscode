@@ -3,7 +3,7 @@
   background: var(--vscode-button-secondaryBackground);
   color: var(--vscode-button-secondaryForeground);
   border: none;
-  border-radius: 2px;
+  border-radius: var(--pm-radius-sm);
   cursor: pointer;
   font-size: 14px;
   min-width: 32px;

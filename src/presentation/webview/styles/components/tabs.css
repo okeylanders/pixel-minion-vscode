@@ -6,47 +6,56 @@
  */
 
 .tab-bar {
-  display: flex;
-  background-color: var(--vscode-sideBar-background, var(--vscode-editor-background));
-  padding: var(--spacing-xs) var(--spacing-sm);
-  gap: var(--spacing-xs);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  padding: 12px 14px 14px;
+  background: transparent;
 }
 
-/* Button-style tabs (Prose Minion design) */
 .tab-button {
-  flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--vscode-button-secondaryBackground);
-  border: 2px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
-  color: var(--vscode-button-secondaryForeground);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: var(--vscode-font-family);
-  font-size: 0.875rem;
-  font-weight: 500;
   display: flex;
+  min-width: 0;
+  min-height: 70px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-xs);
+  gap: 8px;
+  padding: 11px 4px 9px;
+  color: var(--pm-text-muted);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--pm-sans);
+  text-align: center;
+  transition: background 100ms, border-color 100ms, box-shadow 100ms, color 100ms;
 }
 
 .tab-button:hover:not(:disabled) {
-  background-color: var(--vscode-button-secondaryHoverBackground);
-  border-color: var(--vscode-focusBorder);
-  transform: translateY(-1px);
+  color: var(--pm-text);
+  background: var(--pm-field);
+  border-color: var(--pm-border-strong);
 }
 
-.tab-button:focus {
-  outline: none;
-  border-color: var(--vscode-focusBorder);
+.tab-button:focus-visible {
+  outline: 2px solid var(--pm-accent);
+  outline-offset: 2px;
 }
 
 .tab-button.active {
-  background-color: var(--vscode-editor-background);
-  border-color: var(--vscode-focusBorder);
+  color: var(--pm-text);
+  background: color-mix(in oklab, var(--pm-accent) 10%, var(--pm-card));
+  border-color: var(--pm-accent);
   font-weight: 600;
-  color: var(--vscode-foreground);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 1px var(--pm-accent-ring),
+    0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.tab-button.active .tab-icon {
+  color: var(--pm-accent);
 }
 
 .tab-button:disabled {
@@ -56,12 +65,23 @@
 }
 
 .tab-icon {
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  /* Icon SVGs are sized 1em, so font-size is the single control point. */
+  font-size: 24px;
   line-height: 1;
 }
 
 .tab-label {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Legacy .tab class (kept for backwards compatibility) */

@@ -48,52 +48,271 @@ body {
   overflow: hidden;
 }
 
-/* App Header - Prose Minion style */
-.app-header {
-  padding: var(--spacing-md);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-md);
+/* App Header — Frame Minion house-style marquee, adapted for Pixel Minion. */
+.app-header-shell {
+  flex-shrink: 0;
+  background: var(--pm-panel);
+  border-bottom: 1px solid var(--pm-border-soft);
 }
 
-.app-header-left {
+.app-header {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: center;
+  gap: 10px;
+  min-height: 74px;
+  padding: 11px 14px 13px;
+  background: color-mix(in oklab, var(--pm-text) 3%, var(--pm-panel));
+}
+
+.app-header::after {
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  left: 14px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, transparent, var(--pm-accent), transparent);
+  opacity: 0.75;
+}
+
+.app-header-mark {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--pm-accent);
+  background: var(--pm-inset);
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+}
+
+.app-header-titles {
+  min-width: 0;
+  flex: 1;
 }
 
 .app-title {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--vscode-foreground);
+  color: var(--pm-text);
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .app-subtitle {
   margin: 0;
-  font-size: 0.875rem;
-  color: var(--vscode-descriptionForeground);
-}
-
-.app-header-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--spacing-xs);
+  color: var(--pm-text-muted);
+  font-size: 10.5px;
 }
 
 .app-header-icon {
-  width: 64px;
-  height: 64px;
-  flex-shrink: 0;
-  color: var(--vscode-foreground);
+  width: 35px;
+  height: 35px;
 }
 
-.token-widget {
+.pm-balance-summary {
+  display: grid;
+  min-width: 125px;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 7px;
+  align-items: center;
+  padding: 6px 8px;
+  color: var(--pm-text-muted);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pm-radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+}
+
+.pm-balance-summary:hover,
+.pm-balance-summary.expanded {
+  background: var(--pm-card);
+  border-color: var(--pm-border-soft);
+}
+
+.pm-balance-summary strong {
+  grid-column: 1 / 3;
+  padding-left: 14px;
+  color: var(--pm-text);
+  font-family: var(--pm-mono);
   font-size: 12px;
+  line-height: 1;
+}
+
+.pm-balance-summary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pm-balance-summary-chevron {
+  display: inline-flex;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  color: var(--pm-text-dim);
+}
+
+.pm-provider-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: oklch(0.72 0.16 220);
+  box-shadow: 0 0 0 2px color-mix(in oklab, oklch(0.72 0.16 220) 25%, transparent);
+}
+
+.pm-balances-strip {
+  padding: 12px 14px 14px;
+}
+
+.pm-balances-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.pm-balances-strip-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--pm-text-dim);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pm-balances-strip-title:hover {
+  color: var(--pm-text-muted);
+}
+
+.pm-balances-refresh {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--pm-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--pm-radius-sm);
+  cursor: pointer;
+}
+.pm-balances-refresh:hover:not(:disabled) {
+  color: var(--pm-text);
+  background: var(--pm-field-hover);
+}
+.pm-balances-refresh:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.pm-balances-refresh.spinning svg {
+  animation: pm-spin 0.9s linear infinite;
+}
+@keyframes pm-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pm-balance-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-left: 2px solid var(--pm-accent);
+  border-radius: var(--pm-radius);
+}
+
+.pm-balance-provider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--pm-text);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pm-balance-amount {
+  margin-top: 2px;
+  color: var(--pm-text);
+  font-family: var(--pm-mono);
+  font-size: 18px;
   font-weight: 600;
-  color: var(--vscode-list-highlightForeground, var(--vscode-textLink-foreground));
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.pm-balance-label {
+  color: var(--pm-text-dim);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pm-balance-sub {
+  margin-top: 4px;
+  color: var(--pm-text-muted);
+  font-family: var(--pm-mono);
+  font-size: 10.5px;
+}
+
+.pm-balance-bar {
+  height: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+  background: var(--pm-field);
+  border-radius: 999px;
+}
+
+.pm-balance-bar span {
+  display: block;
+  height: 100%;
+  background: oklch(0.72 0.16 220);
+  border-radius: inherit;
+  transition: width 200ms ease;
+}
+
+.pm-balance-status {
+  margin: 4px 0;
+  color: var(--pm-text-dim);
+  font-size: 11px;
+}
+
+.pm-balance-meta {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+  padding-top: 7px;
+  color: var(--pm-text-muted);
+  border-top: 1px solid var(--pm-border-soft);
+  font-size: 9.5px;
+}
+
+.pm-balance-meta span {
+  display: flex;
+  min-width: 0;
+  gap: 7px;
+}
+
+.pm-balance-meta b {
+  min-width: 66px;
+  color: var(--pm-text-dim);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .app-content {
@@ -162,7 +381,7 @@ body {
 /* Divider */
 .divider {
   height: 1px;
-  background-color: var(--vscode-editorWidget-border);
+  background-color: var(--pm-border-soft);
   margin: var(--spacing-md) 0;
 }
 
@@ -176,9 +395,9 @@ body {
 
 /* Well - card-like container for grouping form elements (Prose Minion design) */
 .well {
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
 }
 
@@ -193,14 +412,14 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--vscode-editor-background);
+  background-color: var(--pm-bg);
   z-index: 100;
   overflow-y: auto;
   padding: var(--spacing-sm);
 }
 
 .settings-overlay-content {
-  max-width: 600px;
+  max-width: 680px;
   margin: 0 auto;
 }
 
@@ -240,7 +459,7 @@ body {
 .settings-close-button {
   background: var(--vscode-button-background);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--pm-radius);
   color: var(--vscode-button-foreground);
   font-size: 0.875rem;
   cursor: pointer;
@@ -255,21 +474,35 @@ body {
 /* Settings sections (cards) */
 .settings-section {
   margin-top: var(--spacing-sm);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
 }
 
-.settings-section-title {
-  margin-top: 0;
-  margin-bottom: var(--spacing-md);
-  font-size: 1.3em;
-  font-weight: 600;
-  color: var(--vscode-foreground);
-  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-editorWidget-border));
-  padding-bottom: var(--spacing-xs);
+.settings-section-heading {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pm-border-soft);
 }
+
+.settings-section-kicker {
+  color: var(--pm-accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.settings-section-title {
+  margin: 1px 0 0;
+  padding: 0;
+  color: var(--pm-text);
+  font-size: 14px;
+  font-weight: 600;
+  border: 0;
+}
+
+.settings-model-grid { display: grid; gap: 12px; }
 
 /* Settings field labels and descriptions */
 .settings-label {
@@ -313,34 +546,41 @@ body {
 .settings-input {
   width: 100%;
   padding: 6px 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: var(--radius-md);
-  font-family: var(--vscode-font-family);
+  background: var(--pm-inset);
+  color: var(--pm-text-input);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  font-family: var(--pm-sans);
   font-size: var(--vscode-font-size);
 }
 
 .settings-input:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 .settings-select {
   width: 100%;
   padding: 8px;
-  background: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: var(--radius-md);
-  font-family: var(--vscode-font-family);
+  background: var(--pm-field);
+  color: var(--pm-text);
+  border: 1px solid var(--pm-border);
+  border-radius: var(--pm-radius);
+  font-family: var(--pm-sans);
   font-size: var(--vscode-font-size);
   cursor: pointer;
 }
 
+.settings-select:hover {
+  background: var(--pm-field-hover);
+  border-color: var(--pm-border-strong);
+}
+
 .settings-select:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--pm-accent);
+  box-shadow: 0 0 0 2px var(--pm-accent-ring);
 }
 
 /* Settings button group */
@@ -355,7 +595,7 @@ body {
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--radius-md);
+  border-radius: var(--pm-radius);
   cursor: pointer;
   font-size: 0.875rem;
   transition: background 0.2s ease;
@@ -374,28 +614,17 @@ body {
   background: var(--vscode-button-secondaryHoverBackground);
 }
 
-/* Reset Token Button - Danger/destructive style */
-.reset-token-button {
-  padding: 6px 12px;
-  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-  color: var(--vscode-inputValidation-errorForeground, #fff);
-  border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-family: var(--vscode-font-family);
-  transition: background 0.2s ease;
-}
-
-.reset-token-button:hover {
-  background: var(--vscode-inputValidation-errorBorder, #be1100);
+@media (max-width: 520px) {
+  .app-header { flex-wrap: wrap; }
+  .pm-balance-summary { min-width: 118px; }
 }
 
 /* OpenRouter Alert - Warning banner when API key not configured */
 .openrouter-alert {
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--radius-lg);
+  background: var(--pm-card);
+  border: 1px solid var(--pm-border-soft);
+  border-left: 2px solid var(--pm-warn);
+  border-radius: var(--pm-radius);
   padding: var(--spacing-md);
   margin: var(--spacing-md);
 }

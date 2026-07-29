@@ -217,13 +217,18 @@ export class OpenRouterImageClient implements ImageGenerationClient {
   private getModalitiesForModel(model: string): Array<'image' | 'text'> {
     const normalizedModel = model.toLowerCase();
 
-    // Flux, Sourceful, Recraft, ByteDance Seedream, and xAI Grok Imagine endpoints
-    // are image-only and reject ["image", "text"] with a 404 "no endpoints found" error.
+    // Recraft V4.1 variants can output both image and text.
+    if (normalizedModel.startsWith('recraft/recraft-v4.1')) {
+      return ['image', 'text'];
+    }
+
+    // Image-only endpoints reject ["image", "text"].
     if (normalizedModel.startsWith('black-forest-labs/') ||
         normalizedModel.startsWith('sourceful/') ||
-        normalizedModel.startsWith('recraft/') ||
         normalizedModel.startsWith('bytedance-seed/') ||
-        normalizedModel.startsWith('x-ai/')) {
+        normalizedModel.startsWith('openai/gpt-image-') ||
+        normalizedModel.startsWith('x-ai/grok-imagine-image-') ||
+        normalizedModel.startsWith('recraft/')) {
       return ['image'];
     }
 

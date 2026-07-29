@@ -8,6 +8,32 @@
  */
 
 :root {
+  /* Pixel Minion house style: theme-aware warm surfaces and electric accent. */
+  --pm-anchor: var(--vscode-editor-background);
+  --pm-warm: #cf9a57;
+  --pm-bg: var(--pm-anchor);
+  --pm-panel: color-mix(in oklab, var(--pm-anchor) 94%, var(--pm-warm));
+  --pm-card: color-mix(in oklab, var(--pm-anchor) 90%, var(--pm-warm));
+  --pm-field: color-mix(in oklab, var(--pm-anchor) 84%, var(--pm-warm));
+  --pm-field-hover: color-mix(in oklab, var(--pm-anchor) 78%, var(--pm-warm));
+  --pm-inset: color-mix(in oklab, var(--pm-anchor) 93%, #000);
+  --pm-border: color-mix(in srgb, var(--pm-warm) 20%, transparent);
+  --pm-border-soft: color-mix(in srgb, var(--pm-warm) 12%, transparent);
+  --pm-border-strong: color-mix(in srgb, var(--pm-warm) 30%, transparent);
+  --pm-text: var(--vscode-foreground);
+  --pm-text-muted: var(--vscode-descriptionForeground);
+  --pm-text-dim: var(--vscode-disabledForeground, var(--pm-text-muted));
+  --pm-text-input: var(--vscode-input-foreground, var(--pm-text));
+  --pm-accent: var(--vscode-textLink-foreground, #58a6ff);
+  --pm-accent-ring: color-mix(in srgb, var(--pm-accent) 32%, transparent);
+  --pm-ok: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen));
+  --pm-warn: var(--vscode-charts-yellow, var(--vscode-terminal-ansiYellow));
+  --pm-err: var(--vscode-errorForeground, var(--vscode-terminal-ansiRed));
+  --pm-mono: var(--vscode-editor-font-family, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  --pm-sans: var(--vscode-font-family);
+  --pm-radius: 6px;
+  --pm-radius-sm: 4px;
+
   /* Custom spacing system */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
