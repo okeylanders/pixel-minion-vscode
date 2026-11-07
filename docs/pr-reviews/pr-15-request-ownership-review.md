@@ -8,7 +8,7 @@
 
 **Status (2026-11-07):** N-01 fixed in `fddaf41`; the witness's two expected-behavior assertions now pass (10 / 10). The inherited #13 and #14 findings are resolved on their branches and merged in (`afba2aa`). 42 suites / 646 tests pass; see [Resolution status](#resolution-status).
 
-**Verdict: approve the scoped P2 request-ownership changes, with one nonblocking follow-up.** No new blocking defect was found in the ordinary generation, refinement, enhancement or save flows. This is not approval to release or merge the full stack: the existing #13 and #14 findings remain open.
+**Original verdict at `a2d1dc0`: approve the scoped P2 request-ownership changes, with one nonblocking follow-up.** No new blocking defect was found in the ordinary generation, refinement, enhancement or save flows. At that original review, #13 and #14 findings remained open; the original verdict did not approve release or merge of the full stack.
 
 ## Status by item
 
@@ -86,3 +86,20 @@ npx jest --runInBand --roots docs/pr-reviews/witnesses --testMatch '**/pr-15-req
   - Docs: the `CHANGELOG.md` save bullet, `docs/CHANGELOG-DETAILED.md` (the `handleError` description and a review follow-up section), and the CLAUDE.md / AGENTS.md request-ownership invariant now include saves.
 - **Stack:** `afba2aa` merges #14, including #13's fixes, with no conflicts. `2252c30` adds the now-required `accountEpoch` to `AppErrorRouting.test.tsx`'s balance push.
 - **Validation:** `npx jest` 42 suites / 646 tests; the three `tsc --noEmit` projects clean; `npm run build` passes with the three usual webpack size warnings; `npm run lint` unchanged at 9 errors / 20 warnings.
+
+## Independent re-review: 2026-11-07
+
+**Reviewed current code head:** `f91deda6c1b1313fec430b022bb125b1b3b58f3c`.
+
+**Verdict: approve the scoped #15 changes. N-01 is independently verified closed; no #15-specific finding remains open.** The five-line ownership addition in each hook matches the pending save by correlation ID, clears only that save, and returns ownership so App does not discard the error. Existing concurrent generations/refinements and other image saves remain pending, while late answers for the settled save are ignored.
+
+Independently reran on this head:
+
+- **42 production suites / 646 tests passed**, including the hook regressions and both real-App router cases.
+- The original committed review witness now passes **all 10 tests**, including both formerly failing N-01 assertions.
+- All three TypeScript projects passed with `--noEmit`.
+- Production webpack build passed with the same three size/performance warnings.
+- Lint still reports **9 errors / 20 warnings**; it is not green.
+- No remote commit status entries or PR-triggered workflow runs were returned for this head. Remote CI is not claimed green.
+
+The upstream #13/#14 fixes are present through `afba2aa`; their focused re-reviews remain separate. This follow-up does not independently approve #16, perform an installed-VSIX acceptance pass, or authorize merging the stack. Only this review document was changed during publication; no production edits or merge were performed.
