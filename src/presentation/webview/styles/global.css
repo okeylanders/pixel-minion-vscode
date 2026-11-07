@@ -177,7 +177,9 @@ body {
 }
 
 /* Narrow sidebars: drop the tagline and the pill's provider name so the
-   title stays whole on one line. */
+   title stays whole on one line. The amount then moves up onto the dot's
+   row, so the pill is one line (dot · amount · chevron), not a lone dot
+   above the figure. */
 @container px-header (max-width: 340px) {
   .app-header {
     gap: 10px;
@@ -194,6 +196,16 @@ body {
 
   .app-header .px-balance-summary-name {
     display: none;
+  }
+
+  .app-header .px-balance-summary-amount {
+    grid-column: 2;
+    grid-row: 1;
+    padding-left: 0;
+  }
+
+  .app-header .px-balance-summary-chevron {
+    grid-row: 1;
   }
 }
 
