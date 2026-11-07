@@ -30,10 +30,13 @@
   border-radius: var(--px-radius-field);
 }
 
+/* Info-blue TEXT leans toward the foreground (as --px-accent-text does for
+   ember): raw charts-blue on the field is ~3.2:1 on Light Modern. At 60% it
+   stays blue and reads ~4.9:1 there, ~5.5:1 Dark Modern, ~6.4:1 Flame. */
 .conversation-prompt-label {
   display: block;
   margin-bottom: 4px;
-  color: var(--px-info);
+  color: color-mix(in oklab, var(--px-info) 60%, var(--px-text));
   font-family: var(--px-mono);
   font-size: 10.5px;
   font-weight: 600;
