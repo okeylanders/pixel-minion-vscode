@@ -6,7 +6,7 @@
  */
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MessageEnvelope, MessageType, createEnvelope } from '@messages';
+import { MessageEnvelope, MessageType, OpenRouterBalancePayload, createEnvelope } from '@messages';
 import { App } from '../../../presentation/webview/App';
 
 const mockPost = jest.fn();
@@ -207,8 +207,9 @@ it('does not rewrite webview state when an unrelated message re-renders the app'
 
   // A balance push re-renders App but changes no persisted state.
   deliver(createEnvelope(MessageType.OPENROUTER_BALANCE_DATA, 'extension.account', {
-    status: 'ok', creditsStatus: 'ok', credits: { totalCredits: 10, totalUsage: 1, remaining: 9 }, fetchedAt: Date.now(),
-  }));
+    status: 'ok', creditsStatus: 'ok', credits: { totalCredits: 10, totalUsage: 1, remaining: 9 },
+    accountEpoch: 0, fetchedAt: Date.now(),
+  } satisfies OpenRouterBalancePayload));
 
   expect(writes).toBeGreaterThan(0);
   expect(mockSetState.mock.calls.length).toBe(writes);
