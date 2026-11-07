@@ -5,16 +5,18 @@
 **Code head:** `e946faae8e4a074e7a62ab1166afeca8e024fbf3`  
 **Stack base:** `57bab8382dad17a32a02bb18cdd23dcb8b8f38c3` (`claude/design-overhaul-review-m5ojwb`, draft PR #12)
 
+**Status (2026-11-07):** both findings addressed in follow-up commits on the same branch. F-01 fixed in `b19a691`; N-01 fixed (same-key retention with an explicit stale marker, not narrowed) in `068bc16`. The review witness is deleted and replaced by an expected-behavior regression. 31 suites / 370 tests pass; see [Resolution status](#resolution-status).
+
 **Verdict: changes requested for F-01.** One remaining account-switch correctness gap in the C4 fix. The rest of the scoped code review found no further blocking defects. This is a review of the stacked fix-up, not approval to release the entire stack or merge #12.
 
 ## Status by item
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| F-01 | P2 / medium | Replacing the API key leaves the previous account's figures visible until the new account fetch completes | ⏳ Open |
-| N-01 | P3 / low, nonblocking | The claim that failed refreshes retain good figures is broader than the implemented exceptional-throw fallback | ⏳ Open: clarify the claim or track the remaining behavior |
+| F-01 | P2 / medium | Replacing the API key leaves the previous account's figures visible until the new account fetch completes | ✅ Fixed in `b19a691` |
+| N-01 | P3 / low, nonblocking | The claim that failed refreshes retain good figures is broader than the implemented exceptional-throw fallback | ✅ Fixed in `068bc16` (transport failures now retain, marked stale) |
 
-## F-01: clear account A's figures when account B becomes active
+## ✅ Fixed - F-01: clear account A's figures when account B becomes active
 
 **Location:** `src/application/handlers/domain/AccountBalanceHandler.ts:40–42`.
 
@@ -22,7 +24,7 @@
 
 This is the remaining part of C4, which the prior ledger marks fixed. The cache and in-flight generation protection correctly prevent A's results from being stored as B's result, but they do not remove A's already displayed figures when ownership changes.
 
-**Independent reproduction:** [pr-13-key-replacement-repro.cjs](witnesses/pr-13-key-replacement-repro.cjs). From the repository root after installing dependencies:
+**Independent reproduction:** `pr-13-key-replacement-repro.cjs` (deleted in `b19a691`; replaced by `src/__tests__/presentation/webview/hooks/domain/balanceKeyChange.test.tsx`). From the repository root after installing dependencies, at the reviewed head:
 
 ```sh
 node docs/pr-reviews/witnesses/pr-13-key-replacement-repro.cjs
@@ -37,7 +39,7 @@ The witness loads the actual `OpenRouterAccountClient`, `AccountBalanceService`,
 
 **Requested correction:** signal the ownership change to the webview immediately and clear the old account figures before waiting for B's network response. Keep this distinct from a same-account refresh, where retaining previous figures can be appropriate. Preserve request/epoch ordering so a delayed A response cannot restore A's figures after the reset. Add a regression that holds the replacement fetch unresolved and asserts that A's figures are already gone, then confirms B's response appears. The committed witness asserts the observed defect and should be replaced by the expected-behavior regression when fixed.
 
-## N-01: narrow the failed-refresh retention claim
+## ✅ Fixed - N-01: narrow the failed-refresh retention claim (resolved by retaining, not narrowing)
 
 The PR description says “a failed refresh keeps the last good figures.” The R3 fix preserves the service cache when `getBalance()` rejects. However, the real account client converts ordinary network, HTTP and malformed-response failures into resolved `unavailable` results. `AccountBalanceService` then caches a new payload without the previous figures, and the hook accepts its newer `fetchedAt`.
 
@@ -72,3 +74,23 @@ Focused checks of eight account/settings suites (106 tests) and four overlay/mot
 - The installed-VSIX 360 px Dark, Light and High Contrast acceptance pass remains owed, as already recorded by the author.
 - Picker internals/pricing, request ownership, generated SVG DOM isolation and dedicated Image API transport remain in their documented later phases. Passing this scoped review will not imply those risks are resolved.
 - No production code changes, provider charges, merge, auto-merge or deployment were performed. Publication adds only this report and its executable review witness.
+
+## Resolution status
+
+Follow-up commits on `claude/pixel-minion-design-review-dhbqpd`. Validation after the fixes: `npx jest` 31 suites / 370 tests (was 30 / 341); `tsc --noEmit` clean for `tsconfig.json`, `tsconfig.webview.json` and `tsconfig.test.json`; `npm run build` passes with the same three webpack size warnings; `npm run lint` unchanged at 11 errors / 22 warnings (all pre-existing, none in changed code).
+
+- **F-01 ✅ `b19a691`.** Ownership travels with the data instead of relying on arrival order.
+  - `OpenRouterBalancePayload.accountEpoch` (required) is the service's key-generation counter, stamped when the fetch starts (`AccountBalanceService.accountEpoch()`).
+  - `AccountBalanceHandler.handleApiKeyChanged()` invalidates, then posts `OPENROUTER_BALANCE_RESET { accountEpoch }` synchronously, before the new key's fetch. `useOpenRouterBalance.handleBalanceReset` sets `balance` to `null` (the header's existing "…" loading state) and `isLoading` until a payload for that epoch arrives.
+  - The hook ignores payloads from an older epoch, so a delayed A reply can't restore A's figures. It still settles the request such a reply answers, so the spinner can't stick. A newer epoch replaces figures regardless of `fetchedAt`; within one epoch the newest-wins rule is unchanged, so same-account refreshes keep their figures.
+  - The handler's thrown-load fallback is stamped with the epoch read *before* the load, so a request for A that fails after the switch is discarded instead of showing "unavailable" for B.
+  - **Regression:** `balanceKeyChange.test.tsx` drives the real `OpenRouterAccountClient`, `AccountBalanceService` and `AccountBalanceHandler` into the real hook (fetch and secret storage stubbed). It holds B's `/credits` reply, asserts A's $75 is gone and `isLoading` is true before B settles, then that B's $1 appears; that A's real reply delivered after the reset (before and after B lands) is ignored; and that a failed-A fallback after the switch is ignored. The first three cases fail with the reset post removed. Unit cases in `useOpenRouterBalance.test.tsx`, `AccountBalanceHandler.test.ts`, `AccountBalanceService.test.ts` and `MessageHandler.test.ts` pin the ordering and epoch rules.
+  - The witness, which asserted the defect, is deleted.
+- **N-01 ✅ `068bc16`.** Chose retention over narrowing the claim: the change stayed inside the service plus a small UI marker.
+  - `AccountBalanceService` remembers each figure's last good read for the current key. When a refresh can't read a figure for a transient reason (`network`, `rate_limited`, `server_error`, `malformed`, `http_error`), it carries that figure over and sets `stale: { figuresFetchedAt, issue }`. Only the failed figure is carried; the original read time survives repeated failures; success clears the marker.
+  - `invalid_key` (401) and `forbidden` (403) forget the figure instead (an answer, not a glitch), and a later glitch can't resurrect it. `invalidate()` and a `no_key` result clear the memory, so stale figures never cross a key change. The payload keeps its issues, so the 15 s failed-result TTL still retries soon.
+  - UI: the amount is muted (`is-stale`; a zero balance keeps its warning colour), the card says "Showing last known figures: <why>.", the meta row reads "Updated <read time> · last known · couldn't refresh", and the pill tooltip gives the reason.
+  - Tests cover each transient kind, per-figure carry, repeated failures, 401/403, key change and key cleared, the rendered marker, and a real-client integration case where `fetch` rejects (not a mocked client method that throws).
+  - **Partial-failure scope.** When one call succeeds and the other fails transiently, the fresh figure is shown and the failed one is carried. When the failure is a 401/403, the existing "unavailable" copy is unchanged.
+- **Docs.** `CHANGELOG.md` and `docs/CHANGELOG-DETAILED.md` describe both behaviors. The PR #12 ledger's C4 and R3 rows now point at these commits and say what `d513145` covered. The CLAUDE.md / AGENTS.md "Balance ownership" invariant records the epoch and stale rules.
+- **Not changed:** the PR #13 description still says "a failed refresh keeps the last good figures"; after `068bc16` that is accurate for both thrown and transport failures.

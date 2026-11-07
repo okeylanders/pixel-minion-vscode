@@ -57,6 +57,18 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
   - A refresh dims the value instead of blanking it.
   - The pill carries `aria-expanded` and `aria-controls`.
 - **Token tracking.** The unused session token-total pipeline is removed. `TOKEN_USAGE_UPDATE` now carries `{ lastRequest, requestedAt }` only, and "Last request" / "Updated" show a date when it isn't today.
+- **Account ownership (PR #13 review F-01).** Replacing the key used to leave the previous account's figures on screen, not loading, until the new key's fetch settled (up to the client's 8 s timeout).
+  - `OpenRouterBalancePayload.accountEpoch` is required: the service's key-generation counter (`accountEpoch()`), stamped at fetch start.
+  - `AccountBalanceHandler.handleApiKeyChanged()` invalidates, posts `OPENROUTER_BALANCE_RESET { accountEpoch }`, then force-fetches. `useOpenRouterBalance.handleBalanceReset` clears the figures and reports `isLoading` until a payload for that epoch lands.
+  - The hook drops payloads from an older epoch (still settling the request they answer), and a newer epoch replaces figures regardless of `fetchedAt`. Same-account refreshes are unchanged.
+  - The handler's thrown-load fallback is stamped with the epoch read before the load, so a request for the old key that fails after the switch is discarded too.
+  - Regression `balanceKeyChange.test.tsx` drives the real client, service and handler into the real hook with the new key's fetch held. It replaces the review witness `pr-13-key-replacement-repro.cjs`, which asserted the defect and is deleted.
+- **Last known figures through transient failures (PR #13 review N-01).** The R3 fix (`d513145`) kept the last figures only when a load *threw*; the real client resolves offline / 429 / 5xx / unreadable replies as `unavailable`, which replaced good figures.
+  - `AccountBalanceService` remembers each figure's last good read for the current key. A transient failure carries that figure over and sets `stale: { figuresFetchedAt, issue }`. Only the failed figure is carried, and the read time survives repeated failures.
+  - `invalid_key` (401) and `forbidden` (403) are answers, not glitches: they forget the figure, and a later glitch can't resurrect it. `invalidate()` and a `no_key` result clear the memory, so nothing crosses a key change.
+  - The payload keeps `keyIssue` / `creditsIssue`, so the 15 s failed-result TTL still drives a quick retry.
+  - UI: muted amount (`is-stale`; zero keeps its colour), "Showing last known figures: <why>." in the card, "Updated <read time> · last known · couldn't refresh", and the reason in the pill tooltip.
+  - Tests: service cases for each transient kind, per-figure carry, repeated failures, 401/403, key change and key cleared; a real-client integration case in `balanceRefreshFailure.test.tsx` (fetch rejects, not a mocked client method).
 
 ### Models (PR A)
 
@@ -69,7 +81,7 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
 
 - `.tsx` tests run under jsdom via a per-file docblock; `tsconfig.test.json` adds JSX and DOM settings; `.css` imports are stubbed. No new dependencies.
 - `tsc -p tsconfig.webview.json` now actually type-checks the webview. It previously inherited `exclude: ["src/presentation/webview"]` and checked 0 of 52 files.
-- Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A.
+- Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A → 30 / 341 after its R4 follow-up → 31 / 370 after the PR #13 review follow-up.
 
 ## [1.3.0] - 2026-05-20
 
