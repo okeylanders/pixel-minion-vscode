@@ -119,7 +119,6 @@ describe('modelBrowserOptions', () => {
       ['google/gemini-nano-banana-2.1', '2026-10-06'],
       ['sourceful/riverflow-v2.6-pro', '2026-10-29'],
       ['bytedance-seed/seedream-5-0-flash', '2026-10-01'],
-      ['recraft/recraft-v4.1-flash', '2026-09-23'],
       ['microsoft/mai-image-2.6', '2026-09-04'],
       ['microsoft/mai-image-2.6-flash', '2026-09-04'],
       ['bytedance-seed/seedream-5-0-lite', '2026-08-13'],
@@ -186,7 +185,6 @@ describe('modelBrowserOptions', () => {
       ['sourceful/riverflow-v2-pro', '≈ $0.15 | image @ 1K', '$0.20'],
       ['bytedance-seed/seedream-5-0-pro', '≈ $0.045 | image @ 1K', '$0.003'],
       ['x-ai/grok-imagine-image-2.0', '≈ $0.04 | image @ 1K', '$0.01 each'],
-      ['recraft/recraft-v4.1-flash', '≈ $0.007 | image', undefined],
     ])('labels %s at its lowest list tier and explains what can cost more', (id, label, detail) => {
       const option = modelDefinitionToBrowserOption(imageModel(id));
       expect(option.costLabel).toBe(label);

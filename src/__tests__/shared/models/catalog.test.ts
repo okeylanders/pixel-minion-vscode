@@ -48,6 +48,20 @@ describe('shared model catalogs', () => {
     expect(model.transport).not.toBe('images');
   });
 
+  /*
+   * Pixel's Refine always sends the previous turn's image as a reference
+   * (ImageOrchestrator.continueConversation passes conversation.lastImages),
+   * and attached references survive a model switch. Until capability-aware
+   * controls gate both (roadmap P3/P4), a model that accepts no reference
+   * image would be sent image input it can't take, so none may be listed.
+   * Recraft V4.1 Flash is deferred for exactly this (PR #14 review F-01).
+   */
+  it.each(OPENROUTER_IMAGE_MODELS)('accepts at least one reference image for Refine: $id', model => {
+    expect({ id: model.id, maxReferences: model.referenceImages?.max })
+      .toEqual({ id: model.id, maxReferences: expect.any(Number) });
+    expect(model.referenceImages?.max).toBeGreaterThanOrEqual(1);
+  });
+
   it.each(OPENROUTER_SVG_MODELS)('prices $id in the shape its kind needs', model => {
     if (model.kind === 'native-vector') {
       expect(model.imagePricing?.unit).toBe('image');

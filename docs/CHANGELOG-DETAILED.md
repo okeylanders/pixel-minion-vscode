@@ -57,6 +57,18 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
   - A refresh dims the value instead of blanking it.
   - The pill carries `aria-expanded` and `aria-controls`.
 - **Token tracking.** The unused session token-total pipeline is removed. `TOKEN_USAGE_UPDATE` now carries `{ lastRequest, requestedAt }` only, and "Last request" / "Updated" show a date when it isn't today.
+- **Account ownership (PR #13 review F-01).** Replacing the key used to leave the previous account's figures on screen, not loading, until the new key's fetch settled (up to the client's 8 s timeout).
+  - `OpenRouterBalancePayload.accountEpoch` is required: the service's key-generation counter (`accountEpoch()`), stamped at fetch start.
+  - `AccountBalanceHandler.handleApiKeyChanged()` invalidates, posts `OPENROUTER_BALANCE_RESET { accountEpoch }`, then force-fetches. `useOpenRouterBalance.handleBalanceReset` clears the figures and reports `isLoading` until a payload for that epoch lands.
+  - The hook drops payloads from an older epoch (still settling the request they answer), and a newer epoch replaces figures regardless of `fetchedAt`. Same-account refreshes are unchanged.
+  - The handler's thrown-load fallback is stamped with the epoch read before the load, so a request for the old key that fails after the switch is discarded too.
+  - Regression `balanceKeyChange.test.tsx` drives the real client, service and handler into the real hook with the new key's fetch held. It replaces the review witness `pr-13-key-replacement-repro.cjs`, which asserted the defect and is deleted.
+- **Last known figures through transient failures (PR #13 review N-01).** The R3 fix (`d513145`) kept the last figures only when a load *threw*; the real client resolves offline / 429 / 5xx / unreadable replies as `unavailable`, which replaced good figures.
+  - `AccountBalanceService` remembers each figure's last good read for the current key. A transient failure carries that figure over and sets `stale: { figuresFetchedAt, issue }`. Only the failed figure is carried, and the read time survives repeated failures.
+  - `invalid_key` (401) and `forbidden` (403) are answers, not glitches: they forget the figure, and a later glitch can't resurrect it. `invalidate()` and a `no_key` result clear the memory, so nothing crosses a key change.
+  - The payload keeps `keyIssue` / `creditsIssue`, so the 15 s failed-result TTL still drives a quick retry.
+  - UI: muted amount (`is-stale`; zero keeps its colour), "Showing last known figures: <why>." in the card, "Updated <read time> · last known · couldn't refresh", and the reason in the pill tooltip.
+  - Tests: service cases for each transient kind, per-figure carry, repeated failures, 401/403, key change and key cleared; a real-client integration case in `balanceRefreshFailure.test.tsx` (fetch rejects, not a mocked client method).
 
 ### Models (PR A)
 
@@ -69,7 +81,7 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
 
 - `.tsx` tests run under jsdom via a per-file docblock; `tsconfig.test.json` adds JSX and DOM settings; `.css` imports are stubbed. No new dependencies.
 - `tsc -p tsconfig.webview.json` now actually type-checks the webview. It previously inherited `exclude: ["src/presentation/webview"]` and checked 0 of 52 files.
-- Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A.
+- Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A → 30 / 341 after its R4 follow-up → 31 / 370 after the PR #13 review follow-up.
 
 ### PR B — Model picker parity and catalog refresh
 
@@ -120,9 +132,9 @@ Stacked on PR A (`claude/pixel-minion-design-review-dhbqpd`). Branch `claude/pix
 
 Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.md) §1e / §2d, filtered by the same day's `/chat/completions` probe. Models the probe found Image-API-only (GPT Image 2.5 / 2.6, FLUX.3, Qwen Image, Krea, Muse) are not added; `OpenRouterImageClient.test.ts` still fails if any reaches a catalog. Every new or changed price has a source comment (`[endpoints]`, `[chat feed]`, `[bench]`).
 
-- Image: 27 → 36.
-  - Added (9): `google/gemini-nano-banana-2.1` ⭐ (out $30/1M; prompt $1.5/1M; estimate ≈ $0.036 @ 1K is OpenRouter's measured benchmark median and says so, because Google's token count couldn't be verified), `bytedance-seed/seedream-5-0-{pro,lite,flash}`, `microsoft/mai-image-2.6`, `microsoft/mai-image-2.6-flash`, `recraft/recraft-v4.1-flash` (refs 0–0), `sourceful/riverflow-v2.6-pro`, `x-ai/grok-imagine-image-2.0`.
-  - Left out although chat-routable: `recraft/recraft-v4-styles` / `-styles-pro` (refs 1–10 required; no Generate gating until P3/P4). Commented in `ImageModels.ts`.
+- Image: 27 → 35.
+  - Added (8): `google/gemini-nano-banana-2.1` ⭐ (out $30/1M; prompt $1.5/1M; estimate ≈ $0.036 @ 1K is OpenRouter's measured benchmark median and says so, because Google's token count couldn't be verified), `bytedance-seed/seedream-5-0-{pro,lite,flash}`, `microsoft/mai-image-2.6`, `microsoft/mai-image-2.6-flash`, `sourceful/riverflow-v2.6-pro`, `x-ai/grok-imagine-image-2.0`.
+  - Left out although chat-routable: `recraft/recraft-v4-styles` / `-styles-pro` (refs 1–10 required; no Generate gating until P3/P4) and `recraft/recraft-v4.1-flash` (refs 0–0; Refine always sends the previous image, so it waits for the same gating). Commented in `ImageModels.ts`. Flash was in the first cut of this PR; the PR #14 review (F-01) caught it and `8e53acd` deferred it.
   - Drift: input-image rates for GPT-5.4 Image 2 ($8/1M), GPT-5 Image ($10), GPT-5 Image Mini ($2.5); Riverflow V2 Pro / Fast `input: 0.2` per reference with a basis that says so; measured-above-list notes for Riverflow V2.6 Pro ($0.157), V2.5 Pro ($0.248), V2.5 Fast ($0.029) (audit O6); `@ 1K` qualifiers on tiered Riverflow rows; `supportsSeed: false` wherever the endpoint record lists no `seed` (Gemini, GPT, MAI, Riverflow, Recraft, Grok).
   - `openai/gpt-5-image-mini`: `retiresOn: '2026-12-01'` (chat feed `expiration_date`) → "retiring Dec 1, 2026" warn badge. Not added to `RETIRED_MODELS`: it is still served.
 - SVG: 8 → 12 (2 native vector + 10 code), per audit §2d.
@@ -140,18 +152,24 @@ Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.
 - Why not 48,000: 32,000 doubles the headroom, stays under the smallest output cap of any endpoint serving a curated code model (65,536 for Gemini 3.8 Flash and Gemini 4 Argon on vertex/us, 2026-11-07), and bounds a runaway turn at $1.60 on Fable 5.1's output rate ($2.40 at 48,000).
 - `CLAUDE.md` / `AGENTS.md` claimed 48,000 for text and SVG clients; corrected to 16,384 / 32,000.
 
+#### PR #14 review follow-up (`8e53acd`)
+
+- **F-01: Recraft V4.1 Flash deferred.** The row's `referenceImages: { min: 0, max: 0 }` was descriptive only. `ImageOrchestrator.continueConversation` sends `conversation.lastImages` as references on every Refine, attachments survive a model switch, and the uploader stays enabled, so normal use would send `image_url` parts to a text-only endpoint. The owner chose deferral over gating now: the row, its browser metadata and its modality-snapshot entry are removed, and `ImageModels.ts` records it beside Recraft V4 Styles (both return with P3/P4 capability-aware controls).
+- **Guard:** `shared/models/catalog.test.ts` now requires every curated image model to accept at least one reference image (`referenceImages.max ≥ 1`). It replaces the review witness `pr-14-text-only-image-repro.cjs`, which asserted the defect and is deleted.
+
 #### Not in this PR
 
 - No request or routing change apart from M1: modalities still come from id prefixes (catalog-driven modalities and the Image API transport are P3), `SVGOrchestrator.selectClient` and the Refine gate still key on `recraft/` (P5b; a catalog test pins that every native-vector row is `recraft/` until then), no aspect ratio is sent to vector models, and no capability field is enforced.
-- Image-API-only models, Recraft Styles (both kinds) and Krea K3 Edit wait for P3 (transport + reference gating).
+- Image-API-only models, Recraft Styles (both kinds), Recraft V4.1 Flash and Krea K3 Edit wait for P3 (transport + reference gating).
 - The GPT per-image estimate basis ("@ 1K · high" vs OpenRouter's measured medians, audit O5) is unchanged pending the family-wide decision.
 - `README.md`'s model tables were already stale before this PR (they list Claude Opus 4.7 and GPT-5.1 Codex); left for the release pass.
 
 #### Tests
 
 - 28 suites / 322 tests → 32 suites / 497 tests. `tsc` (host and webview) clean; `npm run build` passes; ESLint unchanged (11 pre-existing errors, 22 warnings).
+- After merging PR A's review follow-ups and the PR #14 review fix: 35 suites / 575 tests.
 - Ported from Frame: `ModelBrowserModal.test.tsx` (7), `ModelBrowserSelect.test.tsx` (2), the "image pricing labels" block of `modelBrowserOptions.test.ts` (limited to Pixel's rows). Sample data renamed away from fal.ai.
-- New: modal overlay/ARIA/scroll/reset/footer cases; select label, `aria-expanded` and helper cases; `SVGModelSelector.test.tsx` (kind grouping, custom cards); `shared/models/catalog.test.ts` (defaults shipped, no retired id listed, every retired id moves to a shipped model, coherent capabilities, SVG pricing shape per kind, native vector ⇔ `recraft/` while routing keys on it); refresh-specific label, rate, date and retiring-badge cases; the modality snapshot gained the 9 new image ids; `SVGOrchestrator` pins `maxTokens: 32000`.
+- New: modal overlay/ARIA/scroll/reset/footer cases; select label, `aria-expanded` and helper cases; `SVGModelSelector.test.tsx` (kind grouping, custom cards); `shared/models/catalog.test.ts` (defaults shipped, no retired id listed, every retired id moves to a shipped model, coherent capabilities, SVG pricing shape per kind, native vector ⇔ `recraft/` while routing keys on it); refresh-specific label, rate, date and retiring-badge cases; the modality snapshot gained the 8 new image ids; `SVGOrchestrator` pins `maxTokens: 32000`.
 - `modelBrowserOptions.test.ts` moved to `__tests__/presentation/webview/components/shared/` to mirror the source.
 
 ### P2: request ownership hardening (`claude/pixel-minion-request-ownership-dhbqpd`)
@@ -172,7 +190,7 @@ Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [par
 
 - **Correlation ids** (`src/presentation/webview/utils/requestId.ts`, `newRequestId(prefix)`): `image-` / `svg-` + `generate`, `continue`, `enhance`, `save`, `clear`. The host already echoed `correlationId` on responses, statuses and errors; no host routing change was needed.
 - **Dispatch snapshots** (`useImageGeneration.ts`, `useSVGGeneration.ts`): a `pending` ref holds `{ correlationId, prompt, settings, referenceSvgText }`. The response handler ignores any other correlation id and builds the turn from the snapshot. This replaces `pendingPrompt` state plus a `useCallback(..., [])` that always read the first render's `referenceSvgText` (null), so attached SVG text was never recorded with a turn.
-- **Ownership-aware errors**: `handleError` now returns `boolean` (owned or not). It settles the pending generation or enhance it matches, or shows an error for its own `*-clear-` request; anything else returns `false` and changes nothing. `App.tsx` gives every `ERROR` to both hooks. An error from a non-request host (`extension.settings`, …) that neither hook owns is shown in the active tab through the new `showError(text)` action, without touching any spinner. Previously enhance and settings errors went to both hooks and cleared both spinners.
+- **Ownership-aware errors**: `handleError` now returns `boolean` (owned or not). It settles the pending generation, enhance or (since `fddaf41`) save it matches, or shows an error for its own `*-clear-` request; anything else returns `false` and changes nothing. `App.tsx` gives every `ERROR` to both hooks. An error from a non-request host (`extension.settings`, …) that neither hook owns is shown in the active tab through the new `showError(text)` action, without touching any spinner. Previously enhance and settings errors went to both hooks and cleared both spinners.
 - **SVG text once**: `generate()` sends the raw prompt plus `referenceSvgText`; only `ImageConversationManager.addUserMessage` appends `Reference SVG:` (it was appended in the hook and again in the manager). The SVG tab already sent it once on generate, but re-sent the draft attachment on every refinement.
 - **Thread settings**: new `ImageThreadSettings` / `SVGThreadSettings` (`{ model, aspectRatio }`) in `@messages`, set from the dispatch snapshot on success, persisted as optional `threadSettings`. `continueChat` sends them instead of the draft controls. In memory the host already ignored the draft values, but re-hydration after a host restart used them, so the effective model depended on whether the host had restarted. Persisted state without `threadSettings` falls back to its saved `model`/`aspectRatio`, which is exactly what the old code sent. Frame's P3 `ImageThreadSettings` (mode, resolution) extends this shape.
 - **No draft attachments on refine**: `referenceSvgText` was removed from `ImageGenerationContinuePayload` and `SVGGenerationContinuePayload`; `continueChat` sends only prompt, id, history and thread settings. The Image host already dropped draft raster references (the payload had no field for them).
@@ -188,6 +206,12 @@ An independent adversarial review of `a2d5115` (round 5) found two webview/host 
 - **R5-S8, late enhance** (`useImageGeneration`, `useSVGGeneration`): `pendingEnhance` is now `{ correlationId, prompt }`. `generate()` and `clearConversation()` call `dropPendingEnhance()` (ref cleared, `isEnhancing` false), so the answer is ignored; before, Generate dispatched "a fox" and the answer then replaced the box with the enhanced text under the running request, and Clear left the spinner running and was refilled. The answer is applied with a functional update only while `current.trim()` still equals the sent prompt, so an edit made during the enhance wins. Generate is **not** blocked while enhancing: it commits to the text on screen (which the turn snapshot records), and blocking it would make a lost enhance reply disable Generate too. The discarded enhance still costs its one small text call.
 - **R5-S9a, throws outside a handler's try** (`MessageHandler.handleMessage`): any rejection from `router.route` is logged and answered with `ERROR` (`source: 'extension.router'`, `code: 'UNHANDLED_ERROR'`, a generic message pointing at the output log) carrying the request's `correlationId`. Example: `EnhanceHandler` and both generation handlers log `prompt.substring(0, 50)` before their `try`, so a payload without a prompt threw into the provider's log-only catch and the request's spinner never stopped. If a domain handler had already answered, the extra error is stale and the webview drops it. A message that is not an envelope is ignored with a `warn`. New `MessageSource` `'extension.router'`.
 - **R5-S9c, uncorrelated errors** (`App.tsx`): the unclaimed-error rule now keys on the id, not the source. An error neither hook claims is dropped only when its `correlationId` is an Image/SVG tab id (`isGenerationTabRequestId`, `utils/requestId.ts`): such an error answers a request that is no longer outstanding. Everything else, including an error from `extension.imageGeneration` / `svgGeneration` / `enhance` with no id, is shown in the visible tab (P2 dropped those). `REQUEST_SOURCES` is gone.
+
+#### PR #15 review follow-up (`fddaf41`, `2252c30`)
+
+- **N-01, router errors for saves** (`useImageGeneration`, `useSVGGeneration`): the router fallback's correlated `ERROR` for an outstanding `image-save-…` / `svg-save-…` id returned `false` from both hooks, so App dropped it as stale and the save stayed on "Saving…". `handleError` now claims it: the image hook deletes that `pendingSaves` entry and recomputes `savingImageIds` (other images' saves stay pending), the SVG hook clears `pendingSave` and `saveState`; both show the error and return `true`. The generation / enhance refs are untouched, so a refinement or new generation keeps running. A repeat or unknown save id is still unclaimed (dropped), and a late `*_SAVE_RESULT` for the settled save is ignored.
+- Tests: a hook case per tab (refinement running; image also with a second save pending) and two `AppErrorRouting.test.tsx` cases through the real App router (image refine and SVG new generation running). The review witness `docs/pr-reviews/witnesses/pr-15-request-ownership.test.tsx` now passes 10 / 10 and is kept.
+- `2252c30`: `AppErrorRouting.test.tsx`'s balance push carries `accountEpoch` (required since the merged #13 fix) and `satisfies OpenRouterBalancePayload`.
 
 #### Host
 
@@ -208,7 +232,7 @@ An independent adversarial review of `a2d5115` (round 5) found two webview/host 
 
 #### Test coverage
 
-516 → 569 tests (34 → 40 suites) at `a2d5115`; 583 tests (41 suites) with `adcdb92`. Counts are on top of PR B (34 suites / 516 tests).
+516 → 569 tests (34 → 40 suites) at `a2d5115`; 583 tests (41 suites) with `adcdb92`. Counts are on top of PR B (34 suites / 516 tests). After merging the #13 / #14 review fixes and N-01: 646 tests (42 suites).
 
 - `ImageOrchestrator.test.ts` (new; adapted from Frame `ImageConversationModes.test.ts:120,163,203`, without modes and store): rollback of prompt and seed, first-turn release, a re-hydrated thread keeps its history on failure, one provider request under concurrency, clear refused mid-turn, SVG sent once (fresh and after re-hydration). Drives the real `OpenRouterImageClient` against a mocked `fetch`, so assertions are on request bodies.
 - `SVGOrchestrator.test.ts`: rollback after a provider error and after a reply with no SVG, first-turn release, concurrency, SVG text once.

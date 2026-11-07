@@ -252,6 +252,11 @@ export function useSVGGeneration(
     } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current.correlationId) {
       pendingEnhance.current = null;
       setIsEnhancing(false);
+    } else if (pendingSave.current && message.correlationId === pendingSave.current.correlationId) {
+      // The host couldn't handle the save at all (the router's fallback), so
+      // no SVG_SAVE_RESULT will follow: settle only that save.
+      pendingSave.current = null;
+      setSaveState(null);
     } else if (!message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`)) {
       return false;
     }

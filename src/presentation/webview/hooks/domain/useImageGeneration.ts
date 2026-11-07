@@ -287,6 +287,11 @@ export function useImageGeneration(
     } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current.correlationId) {
       pendingEnhance.current = null;
       setIsEnhancing(false);
+    } else if (message.correlationId && pendingSaves.current.has(message.correlationId)) {
+      // The host couldn't handle the save at all (the router's fallback), so
+      // no IMAGE_SAVE_RESULT will follow: settle only that save.
+      pendingSaves.current.delete(message.correlationId);
+      setSavingImageIds(new Set(pendingSaves.current.values()));
     } else if (!message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`)) {
       return false;
     }

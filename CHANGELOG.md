@@ -18,6 +18,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **OpenRouter balance in the header.**
   - See your remaining credit at a glance and expand it for details.
   - It refreshes automatically after each generation and whenever you change your API key.
+  - Switching to a different API key clears the old account's balance straight away while the new one loads.
+  - If a refresh can't reach OpenRouter, the last known balance stays on screen, marked as last known.
   - It tells you clearly when the balance can't be read, the key is invalid, or you're offline.
 - **Accessibility**
   - Full keyboard support for tabs and dialogs: arrow keys move between tabs, focus stays inside an open dialog and returns when it closes, and Escape closes only the top dialog.
@@ -28,7 +30,6 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Seedream 5.0 Pro, Seedream 5.0 Lite and Seedream 5.0 Flash
   - MAI-Image 2.6 and MAI-Image 2.6 Flash
   - Riverflow V2.6 Pro
-  - Recraft V4.1 Flash (prompt only, no reference images)
   - Grok Imagine Image 2.0
 - **New SVG code models**
   - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
@@ -52,7 +53,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **A failed turn is not sent again.** When a generation or refinement fails, its prompt is dropped instead of being resent with your next refinement. Starting a second refinement of the same conversation while one is running is refused instead of mixing the two.
 - **An attached SVG reaches the model once.** On the Image tab, an attached SVG's markup was sent twice with the first prompt. It is now sent once and stays with the turn it was attached to, including after VS Code restarts.
 - **Refine keeps the conversation's own settings.** A refinement always uses the model and aspect ratio the conversation started with, also after a restart, and no longer picks up attachments added afterwards: those apply to your next Generate, and a note says so.
-- **"Saved" means saved.** The checkmark now waits until the file is written. Cancelling the save dialog or a failed write no longer shows "Saved", and a cancel is no longer reported as an error.
+- **"Saved" means saved.** The checkmark now waits until the file is written. Cancelling the save dialog or a failed write no longer shows "Saved", and a cancel is no longer reported as an error. A save the extension couldn't handle at all stops spinning and says why, without interrupting a generation in progress.
 - **WebP and GIF images keep their format when saved.** Files are named after the image's real format (`.png`, `.jpg`, `.webp`, `.gif`) instead of always `.jpg`. Data that isn't a supported image is refused instead of being saved under the wrong name.
 - A failed settings change now shows its error in the tab you are looking at, without stopping a generation in progress.
 - The panel no longer re-saves all of its state, including every generated image, each time it redraws.
