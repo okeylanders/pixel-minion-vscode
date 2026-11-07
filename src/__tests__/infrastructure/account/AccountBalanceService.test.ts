@@ -1,0 +1,292 @@
+import {
+  AccountBalanceService,
+  BALANCE_CACHE_TTL_MS,
+  MIN_FORCED_REFRESH_INTERVAL_MS,
+  POST_REQUEST_REFRESH_DELAY_MS,
+} from '../../../infrastructure/account';
+import type { OpenRouterAccountCallResult } from '../../../infrastructure/ai/clients/OpenRouterAccountClient';
+import type { OpenRouterCredits, OpenRouterKeyLimit } from '@messages';
+
+type KeyResult = OpenRouterAccountCallResult<OpenRouterKeyLimit>;
+type CreditsResult = OpenRouterAccountCallResult<OpenRouterCredits>;
+
+const KEY_OK: KeyResult = {
+  status: 'ok',
+  data: { limit: 5, limitRemaining: 4.5, resetWindow: 'monthly' },
+};
+const creditsOk = (remaining: number): CreditsResult => ({
+  status: 'ok',
+  data: { totalCredits: 100, totalUsage: 100 - remaining, remaining },
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve };
+}
+
+describe('AccountBalanceService', () => {
+  const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+  let client: { fetchKeyLimit: jest.Mock; fetchCredits: jest.Mock };
+  let service: AccountBalanceService;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-11-07T12:00:00Z'));
+    jest.clearAllMocks();
+    client = {
+      fetchKeyLimit: jest.fn().mockResolvedValue(KEY_OK),
+      fetchCredits: jest.fn().mockResolvedValue(creditsOk(72.5)),
+    };
+    service = new AccountBalanceService(client as never, logger as never);
+  });
+
+  afterEach(() => {
+    service.dispose();
+    expect(jest.getTimerCount()).toBe(0);
+    jest.useRealTimers();
+  });
+
+  const fetchCount = () => client.fetchCredits.mock.calls.length;
+
+  describe('combining /key and /credits', () => {
+    it('keeps the key limit when /credits is forbidden and records why credits failed', async () => {
+      client.fetchCredits.mockResolvedValue({
+        status: 'unavailable',
+        issue: { kind: 'forbidden', httpStatus: 403 },
+      });
+
+      await expect(service.getBalance()).resolves.toEqual({
+        status: 'ok',
+        keyLimit: KEY_OK.status === 'ok' ? KEY_OK.data : undefined,
+        creditsStatus: 'unavailable',
+        creditsIssue: { kind: 'forbidden', httpStatus: 403 },
+        fetchedAt: Date.now(),
+      });
+    });
+
+    it('is unavailable when both calls fail, keeping each reason', async () => {
+      client.fetchKeyLimit.mockResolvedValue({ status: 'unavailable', issue: { kind: 'invalid_key', httpStatus: 401 } });
+      client.fetchCredits.mockResolvedValue({ status: 'unavailable', issue: { kind: 'invalid_key', httpStatus: 401 } });
+
+      await expect(service.getBalance()).resolves.toEqual({
+        status: 'unavailable',
+        creditsStatus: 'unavailable',
+        keyIssue: { kind: 'invalid_key', httpStatus: 401 },
+        creditsIssue: { kind: 'invalid_key', httpStatus: 401 },
+        fetchedAt: Date.now(),
+      });
+    });
+
+    it('reports no_key when no key is stored', async () => {
+      client.fetchKeyLimit.mockResolvedValue({ status: 'no_key' });
+      client.fetchCredits.mockResolvedValue({ status: 'no_key' });
+
+      await expect(service.getBalance()).resolves.toEqual({
+        status: 'no_key',
+        creditsStatus: 'no_key',
+        fetchedAt: Date.now(),
+      });
+    });
+
+    it('passes both figures through when both calls succeed', async () => {
+      const balance = await service.getBalance();
+
+      expect(balance).toEqual({
+        status: 'ok',
+        keyLimit: { limit: 5, limitRemaining: 4.5, resetWindow: 'monthly' },
+        credits: { totalCredits: 100, totalUsage: 27.5, remaining: 72.5 },
+        creditsStatus: 'ok',
+        fetchedAt: Date.now(),
+      });
+    });
+  });
+
+  describe('cache and in-flight sharing', () => {
+    it('serves the cache for 120 s, then fetches again', async () => {
+      await service.getBalance();
+      jest.advanceTimersByTime(BALANCE_CACHE_TTL_MS - 1);
+      await service.getBalance();
+      expect(fetchCount()).toBe(1);
+
+      jest.advanceTimersByTime(1);
+      await service.getBalance();
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('shares one fetch between concurrent callers', async () => {
+      const [a, b] = await Promise.all([service.getBalance(), service.getBalance()]);
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      const [c, d] = await Promise.all([service.getBalance(true), service.getBalance(true)]);
+
+      expect(fetchCount()).toBe(2);
+      expect(a).toBe(b);
+      expect(c).toBe(d);
+    });
+
+    it('honors forceRefresh, but not more than once a second', async () => {
+      await service.getBalance();
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS - 1);
+      await service.getBalance(true);
+      expect(fetchCount()).toBe(1);
+
+      jest.advanceTimersByTime(1);
+      client.fetchCredits.mockResolvedValue(creditsOk(70));
+      const forced = await service.getBalance(true);
+      expect(fetchCount()).toBe(2);
+      expect(forced.credits?.remaining).toBe(70);
+    });
+
+    it('does not hand a forced caller the result of an earlier non-forced fetch', async () => {
+      const first = deferred<CreditsResult>();
+      client.fetchCredits.mockReturnValueOnce(first.promise);
+      client.fetchCredits.mockResolvedValueOnce(creditsOk(60));
+
+      const mountLoad = service.getBalance();
+      const manualRefresh = service.getBalance(true);
+      first.resolve(creditsOk(72.5));
+
+      await expect(mountLoad).resolves.toEqual(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 72.5 }),
+      }));
+      await expect(manualRefresh).resolves.toEqual(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 60 }),
+      }));
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('keeps the last good figures when a forced refresh rejects', async () => {
+      const good = await service.getBalance();
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      client.fetchKeyLimit.mockRejectedValueOnce(new Error('keychain locked'));
+
+      await expect(service.getBalance(true)).rejects.toThrow('keychain locked');
+
+      await expect(service.getBalance()).resolves.toBe(good);
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('lets a rejected fetch propagate and retries on the next call', async () => {
+      client.fetchKeyLimit.mockRejectedValueOnce(new Error('keychain locked'));
+
+      await expect(service.getBalance()).rejects.toThrow('keychain locked');
+      await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({ status: 'ok' }));
+    });
+  });
+
+  describe('invalidate (key saved, replaced or cleared)', () => {
+    it('drops the cached figures of the previous key', async () => {
+      await service.getBalance();
+      service.invalidate();
+      client.fetchKeyLimit.mockResolvedValue({ status: 'no_key' });
+      client.fetchCredits.mockResolvedValue({ status: 'no_key' });
+
+      await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({ status: 'no_key' }));
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('never returns or caches figures fetched with the previous key', async () => {
+      const oldKeyCredits = deferred<CreditsResult>();
+      client.fetchCredits.mockReturnValueOnce(oldKeyCredits.promise);
+
+      const startedBeforeChange = service.getBalance();
+      service.invalidate();
+      client.fetchCredits.mockResolvedValue(creditsOk(5));
+      const afterChange = service.getBalance(true);
+      oldKeyCredits.resolve(creditsOk(999));
+
+      await expect(afterChange).resolves.toEqual(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 5 }),
+      }));
+      await expect(startedBeforeChange).resolves.toEqual(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 5 }),
+      }));
+      await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 5 }),
+      }));
+    });
+  });
+
+  describe('scheduled post-request refresh', () => {
+    it('coalesces a burst into one forced fetch, 10 s after the last call', async () => {
+      const listener = jest.fn();
+      service.addRefreshListener(listener);
+      await service.getBalance();
+      client.fetchCredits.mockResolvedValue(creditsOk(71));
+
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(4_000);
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(4_000);
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS - 1);
+      expect(listener).not.toHaveBeenCalled();
+      expect(fetchCount()).toBe(1);
+
+      await jest.advanceTimersByTimeAsync(1);
+      expect(fetchCount()).toBe(2);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+        credits: expect.objectContaining({ remaining: 71 }),
+      }));
+    });
+
+    it('skips the fetch when nobody is listening', async () => {
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS);
+
+      expect(fetchCount()).toBe(0);
+    });
+
+    it('cancels the pending refresh when the last listener unsubscribes (webview disposed)', async () => {
+      const unsubscribe = service.addRefreshListener(jest.fn());
+      service.scheduleRefresh();
+      unsubscribe();
+
+      expect(jest.getTimerCount()).toBe(0);
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS);
+      expect(fetchCount()).toBe(0);
+    });
+
+    it('dispose() clears the pending refresh and ignores later schedules', async () => {
+      const listener = jest.fn();
+      service.addRefreshListener(listener);
+      service.scheduleRefresh();
+
+      service.dispose();
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS);
+
+      expect(fetchCount()).toBe(0);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('keeps notifying other listeners when one throws', async () => {
+      const broken = jest.fn(() => { throw new Error('webview gone'); });
+      const healthy = jest.fn();
+      service.addRefreshListener(broken);
+      service.addRefreshListener(healthy);
+
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS);
+
+      expect(healthy).toHaveBeenCalledTimes(1);
+      expect(logger.error).toHaveBeenCalledWith('OpenRouter balance listener threw', expect.any(Error));
+    });
+
+    it('logs and swallows a failed scheduled fetch', async () => {
+      const listener = jest.fn();
+      service.addRefreshListener(listener);
+      client.fetchKeyLimit.mockRejectedValueOnce(new Error('keychain locked'));
+
+      service.scheduleRefresh();
+      await jest.advanceTimersByTimeAsync(POST_REQUEST_REFRESH_DELAY_MS);
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        'Scheduled OpenRouter balance refresh failed',
+        expect.any(Error)
+      );
+    });
+  });
+});

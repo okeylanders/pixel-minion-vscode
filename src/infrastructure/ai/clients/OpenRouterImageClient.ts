@@ -18,6 +18,18 @@ import {
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 
+/** Model-id prefixes whose endpoints only produce images (no text output). */
+const IMAGE_ONLY_MODEL_PREFIXES: readonly string[] = [
+  'black-forest-labs/',
+  'sourceful/',
+  'bytedance-seed/',
+  'openai/gpt-image-',
+  'x-ai/grok-imagine-image-',
+  'recraft/',
+  'krea/',
+  'microsoft/mai-image-',
+];
+
 export class OpenRouterImageClient implements ImageGenerationClient {
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
 
@@ -217,18 +229,11 @@ export class OpenRouterImageClient implements ImageGenerationClient {
   private getModalitiesForModel(model: string): Array<'image' | 'text'> {
     const normalizedModel = model.toLowerCase();
 
-    // Recraft V4.1 variants can output both image and text.
-    if (normalizedModel.startsWith('recraft/recraft-v4.1')) {
-      return ['image', 'text'];
-    }
-
-    // Image-only endpoints reject ["image", "text"].
-    if (normalizedModel.startsWith('black-forest-labs/') ||
-        normalizedModel.startsWith('sourceful/') ||
-        normalizedModel.startsWith('bytedance-seed/') ||
-        normalizedModel.startsWith('openai/gpt-image-') ||
-        normalizedModel.startsWith('x-ai/grok-imagine-image-') ||
-        normalizedModel.startsWith('recraft/')) {
+    // Image-only endpoints reject ["image", "text"] with a 404 ("No endpoints
+    // found that support the requested output modalities"). Every Recraft model,
+    // V4.1 included, declares output ["image"] only. Prefix routing is a stopgap
+    // until modalities come from catalog capability data.
+    if (IMAGE_ONLY_MODEL_PREFIXES.some(prefix => normalizedModel.startsWith(prefix))) {
       return ['image'];
     }
 

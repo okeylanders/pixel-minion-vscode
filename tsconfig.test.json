@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@/*": ["src/*"],
+      "@shared/*": ["src/shared/*"],
+      "@messages": ["src/shared/types/messages/index.ts"],
+      "@messages/*": ["src/shared/types/messages/*"],
+      "@handlers/*": ["src/application/handlers/*"],
+      "@services/*": ["src/infrastructure/api/services/*"],
+      "@secrets": ["src/infrastructure/secrets"],
+      "@ai": ["src/infrastructure/ai"],
+      "@ai/*": ["src/infrastructure/ai/*"],
+      "@providers/*": ["src/infrastructure/ai/providers/*"],
+      "@logging": ["src/infrastructure/logging"],
+      "@resources": ["src/infrastructure/resources"],
+      "@resources/*": ["src/infrastructure/resources/*"],
+      "@components/*": ["src/presentation/webview/components/*"],
+      "@hooks": ["src/presentation/webview/hooks"],
+      "@hooks/*": ["src/presentation/webview/hooks/*"],
+      "@utils/*": ["src/presentation/webview/utils/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", ".vscode-test", "dist"]
+}

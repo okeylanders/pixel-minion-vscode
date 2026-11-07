@@ -7,3 +7,4 @@ export * from './secrets';
 export * from './ai';
 export * from './logging';
 export * from './resources';
+export * from './account';

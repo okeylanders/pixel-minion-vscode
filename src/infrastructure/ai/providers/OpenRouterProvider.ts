@@ -40,7 +40,6 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'recraft/recraft-v4-pro', displayName: 'Recraft V4 Pro', outputCost: 0.25 },
   { id: 'recraft/recraft-v4', displayName: 'Recraft V4', outputCost: 0.04 },
   { id: 'recraft/recraft-v3', displayName: 'Recraft V3', outputCost: 0.04 },
-  { id: 'x-ai/grok-imagine-image-quality', displayName: 'Grok Imagine Image Quality', inputCost: 0.01, outputCost: 0.05 },
 ];
 
 export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
@@ -48,7 +47,6 @@ export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
   { id: 'recraft/recraft-v4.1-vector', displayName: 'Recraft V4.1 Vector (native SVG, budget, 1:1 only)', outputCost: 0.08 },
   { id: 'anthropic/claude-fable-5', displayName: '⭐ Claude Fable 5 (code SVG) - Recommended', inputCost: 10, outputCost: 50 },
   { id: 'anthropic/claude-opus-5', displayName: '⭐ Claude Opus 5 (code SVG) - Recommended', inputCost: 5, outputCost: 25 },
-  { id: 'anthropic/claude-opus-5-fast', displayName: 'Claude Opus 5 Fast (code SVG)', inputCost: 10, outputCost: 50 },
   { id: 'openai/gpt-5.6-sol', displayName: '⭐ GPT-5.6 Sol (code SVG) - Recommended', inputCost: 5, outputCost: 30 },
   { id: 'openai/gpt-5.6-sol-pro', displayName: 'GPT-5.6 Sol Pro (code SVG)', inputCost: 5, outputCost: 30 },
   { id: 'openai/gpt-5.4', displayName: 'GPT-5.4 (code SVG)', inputCost: 2.5, outputCost: 15 },
@@ -72,3 +70,15 @@ export const DEFAULT_IMAGE_MODEL = 'google/gemini-3.1-flash-image';
 
 /** Default model for SVG generation */
 export const DEFAULT_SVG_MODEL = 'recraft/recraft-v4.1-pro-vector';
+
+/**
+ * Model ids OpenRouter has delisted (no live endpoints), mapped to the catalog
+ * model a saved selection should move to. SettingsHandler applies this on read
+ * and persists the replacement, so a stale `pixelMinion.imageModel` or
+ * `pixelMinion.svgModel` never reaches a request. Verified 2026-11-07 against
+ * `/api/v1/models`, `/api/v1/images/models` and each id's `/endpoints` record.
+ */
+export const RETIRED_MODEL_REPLACEMENTS: Readonly<Record<string, string>> = {
+  'x-ai/grok-imagine-image-quality': DEFAULT_IMAGE_MODEL,
+  'anthropic/claude-opus-5-fast': 'anthropic/claude-opus-5',
+};

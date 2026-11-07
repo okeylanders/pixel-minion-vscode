@@ -30,6 +30,7 @@ const mockSecretStorage = {
 const mockConfig = {
   get: jest.fn(),
   update: jest.fn(),
+  inspect: jest.fn(),
 };
 
 describe('SettingsHandler', () => {
@@ -85,6 +86,97 @@ describe('SettingsHandler', () => {
           correlationId: 'correlation-123',
         })
       );
+    });
+  });
+
+  describe('retired model migration', () => {
+    const requestSettings = () => handler.handleRequestSettings(
+      createEnvelope(MessageType.REQUEST_SETTINGS, 'webview.settings', {})
+    );
+
+    const savedSettings = (overrides: Record<string, string>) => {
+      mockConfig.get.mockImplementation((key: string, defaultValue: unknown) => {
+        const settings: Record<string, unknown> = {
+          maxConversationTurns: 10,
+          openRouterModel: 'openai/gpt-5.1',
+          imageModel: 'google/gemini-3.1-flash-image',
+          svgModel: 'recraft/recraft-v4.1-pro-vector',
+          ...overrides,
+        };
+        return settings[key] ?? defaultValue;
+      });
+    };
+
+    it('reports the replacement for a delisted saved model instead of the dead id', async () => {
+      savedSettings({
+        imageModel: 'x-ai/grok-imagine-image-quality',
+        svgModel: 'anthropic/claude-opus-5-fast',
+      });
+
+      await requestSettings();
+
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SETTINGS_DATA,
+        payload: {
+          maxConversationTurns: 10,
+          openRouterModel: 'openai/gpt-5.1',
+          imageModel: 'google/gemini-3.1-flash-image',
+          svgModel: 'anthropic/claude-opus-5',
+        },
+      }));
+    });
+
+    it('persists the replacement in the scope that held the delisted id, once', async () => {
+      mockConfig.update.mockResolvedValue(undefined);
+      mockConfig.inspect.mockImplementation((key: string) => (
+        key === 'imageModel'
+          ? { key, globalValue: 'x-ai/grok-imagine-image-quality' }
+          : { key, workspaceValue: 'anthropic/claude-opus-5-fast' }
+      ));
+
+      await requestSettings();
+      await requestSettings();
+
+      expect(mockConfig.update.mock.calls).toEqual([
+        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Global],
+        ['svgModel', 'anthropic/claude-opus-5', vscode.ConfigurationTarget.Workspace],
+      ]);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; switching imageModel to google/gemini-3.1-flash-image'
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Model anthropic/claude-opus-5-fast is no longer available on OpenRouter; switching svgModel to anthropic/claude-opus-5'
+      );
+    });
+
+    it('leaves live model selections alone', async () => {
+      mockConfig.inspect.mockImplementation((key: string) => ({
+        key,
+        globalValue: key === 'imageModel' ? 'openai/gpt-image-2' : 'anthropic/claude-opus-5',
+      }));
+
+      await requestSettings();
+
+      expect(mockConfig.update).not.toHaveBeenCalled();
+    });
+
+    it('still answers the settings request when persisting the replacement fails', async () => {
+      savedSettings({ imageModel: 'x-ai/grok-imagine-image-quality' });
+      mockConfig.inspect.mockImplementation((key: string) => (
+        key === 'imageModel' ? { key, globalValue: 'x-ai/grok-imagine-image-quality' } : { key }
+      ));
+      mockConfig.update.mockRejectedValue(new Error('read-only settings'));
+
+      await requestSettings();
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to migrate retired imageModel selection',
+        expect.any(Error)
+      );
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SETTINGS_DATA,
+        payload: expect.objectContaining({ imageModel: 'google/gemini-3.1-flash-image' }),
+      }));
     });
   });
 
