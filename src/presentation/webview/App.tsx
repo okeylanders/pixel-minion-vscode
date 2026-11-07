@@ -38,6 +38,7 @@ import {
   useOpenRouterBalance,
 } from './hooks';
 import { useOverlayDismiss } from './hooks/useOverlayDismiss';
+import { useReducedMotion } from './hooks/useReducedMotion';
 
 const TABS: Tab[] = [
   { id: 'image', label: 'Image', icon: <TabImageIcon /> },
@@ -54,6 +55,9 @@ export function App(): JSX.Element {
   const [activeTab, setActiveTab] = useState<TabId>(
     (persistedState.activeTab as TabId) || 'image'
   );
+
+  // Reduced motion (OS or VS Code setting): stamped on the root for CSS.
+  const reducedMotion = useReducedMotion();
 
   // Settings overlay state (triggered from title bar gear icon)
   const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
@@ -161,7 +165,7 @@ export function App(): JSX.Element {
   });
 
   return (
-    <div className="app-container">
+    <div className="app-container" data-reduced-motion={reducedMotion ? '' : undefined}>
       <AppHeader
         balances={balances}
         lastRequest={tokenTracking.lastRequest}

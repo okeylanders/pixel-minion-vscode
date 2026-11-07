@@ -6,11 +6,13 @@
  * and theme-independent — Pixel's signature in the family. Shared by the
  * header and the Settings overlay so there is one mark, not two.
  *
- * The animated logo arrives as `headerLogoUri`; without it (or while it
- * can't load) a static inline copy of the same artwork renders instead.
+ * The animated logo arrives as `headerLogoUri`. A static inline copy of the
+ * same artwork renders instead when the URI is missing or fails to load, and
+ * when the user prefers reduced motion (the logo's pixels blink forever).
  */
 import React from 'react';
 import { getWebviewGlobals } from '../../webviewGlobals';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface BrandMarkProps {
   /** Placement class: sizes the tile (`app-header-mark`, `settings-header-logo`). */
@@ -73,10 +75,11 @@ export const PixelMinionLogo: React.FC<{ className?: string }> = ({ className })
 export function BrandMark({ className = '' }: BrandMarkProps): JSX.Element {
   const { headerLogoUri } = getWebviewGlobals();
   const [logoFailed, setLogoFailed] = React.useState(false);
+  const reducedMotion = useReducedMotion();
 
   return (
     <span className={`brand-tile ${className}`.trim()} aria-hidden="true">
-      {headerLogoUri && !logoFailed ? (
+      {headerLogoUri && !logoFailed && !reducedMotion ? (
         <img className="brand-tile-img" src={headerLogoUri} alt="" onError={() => setLogoFailed(true)} />
       ) : (
         <PixelMinionLogo className="brand-tile-img" />

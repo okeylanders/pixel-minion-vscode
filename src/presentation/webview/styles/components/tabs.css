@@ -40,11 +40,6 @@
   border-color: var(--px-border-strong);
 }
 
-.tab-button:focus-visible {
-  outline: 2px solid var(--px-accent);
-  outline-offset: 2px;
-}
-
 .tab-button.active {
   color: var(--px-text);
   background: color-mix(in oklab, var(--px-accent) 10%, var(--px-card));

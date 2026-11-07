@@ -126,6 +126,7 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
       scriptUri: scriptUri.toString(),
       globals: {
         loadingAnimationUri: assetUri('loading-animation-pixel-minion.gif'),
+        loadingStillUri: assetUri('pixel-minion-icon.png'),
         headerLogoUri: assetUri('pixel-minion-logo-animated-color.svg'),
       },
     });

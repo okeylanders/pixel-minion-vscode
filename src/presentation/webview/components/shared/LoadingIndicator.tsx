@@ -4,13 +4,15 @@
  * Features:
  * - Spinner animation
  * - Loading message
- * - Animated loading gif (vertically stacked)
+ * - Animated loading gif (vertically stacked); a still image when the user
+ *   prefers reduced motion
  * - Optional progress bar
  * - Optional ticker message (scrolling text)
  * - Optional cancel button
  */
 import React from 'react';
 import { getWebviewGlobals } from '../../webviewGlobals';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 export interface LoadingProgress {
   current: number;
@@ -37,6 +39,9 @@ export function LoadingIndicator({
   onCancel,
   className = '',
 }: LoadingIndicatorProps): JSX.Element | null {
+  // Before the early return: hooks run on every render.
+  const reducedMotion = useReducedMotion();
+
   if (!isLoading) {
     return null;
   }
@@ -47,10 +52,11 @@ export function LoadingIndicator({
     : undefined;
 
   // Get loading animation URI from global config
-  const { loadingAnimationUri } = getWebviewGlobals();
+  const { loadingAnimationUri, loadingStillUri } = getWebviewGlobals();
+  const loadingImageUri = reducedMotion ? loadingStillUri : loadingAnimationUri;
 
   return (
-    <div className={`loading-indicator ${className}`}>
+    <div className={`loading-indicator ${className}`} role="status">
       {/* Vertically stacked: Spinner + Message + Animation */}
       <div className="loading-stack">
         <div className="loading-spinner-row">
@@ -67,12 +73,12 @@ export function LoadingIndicator({
           )}
         </div>
 
-        {/* Animated loading gif */}
-        {loadingAnimationUri && (
+        {/* Animated loading gif (still image under reduced motion) */}
+        {loadingImageUri && (
           <img
-            src={loadingAnimationUri}
-            alt="Loading animation"
-            className="loading-animation"
+            src={loadingImageUri}
+            alt=""
+            className={`loading-animation${reducedMotion ? ' loading-still' : ''}`}
           />
         )}
 

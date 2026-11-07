@@ -432,7 +432,6 @@
 
 .model-browser-trigger strong { font-size: 12px; font-weight: 600; }
 .model-browser-trigger small { color: var(--px-text-dim); font-family: var(--px-mono); font-size: 10px; }
-.model-browser-trigger:focus-visible { outline: 2px solid var(--px-accent); outline-offset: 1px; }
 .model-browser-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @supports not (height: 100dvh) {

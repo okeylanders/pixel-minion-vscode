@@ -8,6 +8,8 @@
 export interface PixelMinionWebviewGlobals {
   /** Animated GIF shown while a generation is in flight. */
   loadingAnimationUri?: string;
+  /** Still image shown instead of the GIF when the user prefers reduced motion. */
+  loadingStillUri?: string;
   /** Animated colour logo shown in the header and Settings brand tiles. */
   headerLogoUri?: string;
 }

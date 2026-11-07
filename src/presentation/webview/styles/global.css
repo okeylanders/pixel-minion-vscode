@@ -51,6 +51,38 @@ body {
   background: var(--px-bg);
 }
 
+/* One focus ring for every interactive control (fields keep their own
+   border + ring focus style in input.css). */
+.app-container :is(button, [role="tab"], summary, a):focus-visible {
+  outline: 2px solid var(--px-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Reduced motion — the OS setting or VS Code's workbench.reduceMotion, which
+   App stamps as data-reduced-motion (a media query can't see VS Code's).
+   No lifts, tickers or rotating chevrons; spinners slow down rather than
+   stop so "busy" stays visible. The logo and loading GIF swap to stills in
+   BrandMark / LoadingIndicator. */
+.app-container[data-reduced-motion] .model-browser-card,
+.app-container[data-reduced-motion] .model-browser-card:hover {
+  transform: none;
+  transition-property: background, border-color, box-shadow;
+}
+
+.app-container[data-reduced-motion] .svg-code-toggle svg,
+.app-container[data-reduced-motion] .progress-bar {
+  transition: none;
+}
+
+.app-container[data-reduced-motion] :is(.spinner, .save-button-spinner) {
+  animation-duration: 2.4s;
+}
+
+.app-container[data-reduced-motion] .guide-ticker {
+  animation: none;
+  white-space: normal;
+}
+
 /* App Header — the family "branded marquee": brand tile, title + tagline,
    collapsed balance on the right, and ONE brand hairline as the bottom rule.
    The shell is a size container so the lockup can compact itself at narrow
@@ -724,7 +756,12 @@ body {
 .loading-animation {
   width: 80%;
   max-width: 400px;
-  border-radius: var(--radius-md);
+  border-radius: var(--px-radius-card);
+}
+
+/* The reduced-motion still is the square app icon: keep it small. */
+.loading-animation.loading-still {
+  width: 96px;
 }
 
 .loading-cancel-button {
