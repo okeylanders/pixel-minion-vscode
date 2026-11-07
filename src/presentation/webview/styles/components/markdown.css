@@ -45,14 +45,14 @@
   font-size: 0.9em;
   padding: 0.1em 0.3em;
   background-color: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
-  border-radius: var(--radius-sm);
+  border-radius: var(--px-radius-sm);
 }
 
 .markdown pre {
   margin: var(--spacing-md) 0;
   padding: var(--spacing-md);
   background-color: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.1));
-  border-radius: var(--radius-md);
+  border-radius: var(--px-radius-field);
   overflow-x: auto;
 }
 

@@ -84,6 +84,39 @@
   transition: border-color 100ms, box-shadow 100ms;
 }
 
+/* Select on the family field: the native arrow is replaced by the family's
+   line chevron (the model trigger's glyph), so the value text lands on the
+   same inset as the text fields instead of Chromium's extra ~4px. */
+.select-control {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.select-control > select {
+  appearance: none;
+  padding-right: 32px;
+}
+
+.select-control::after {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  content: "";
+  color: var(--px-text-muted);
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.select-control:has(> select:disabled)::after {
+  opacity: 0.5;
+}
+
 /* Secret input (password masked) */
 .input-secret {
   font-family: var(--px-mono);

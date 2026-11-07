@@ -22,7 +22,7 @@
   width: 100%;
   min-width: 0;
   height: var(--px-control-h);
-  padding: 0 8px 0 11px;
+  padding: 0 11px;
   color: var(--px-text-input);
   background: var(--px-field);
   border: 1px solid var(--px-border);
