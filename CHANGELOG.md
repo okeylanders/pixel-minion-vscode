@@ -30,7 +30,6 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Seedream 5.0 Pro, Seedream 5.0 Lite and Seedream 5.0 Flash
   - MAI-Image 2.6 and MAI-Image 2.6 Flash
   - Riverflow V2.6 Pro
-  - Recraft V4.1 Flash (prompt only, no reference images)
   - Grok Imagine Image 2.0
 - **New SVG code models**
   - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol

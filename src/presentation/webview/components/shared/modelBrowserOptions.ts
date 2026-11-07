@@ -53,7 +53,6 @@ const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
   'google/gemini-nano-banana-2.1': { releaseDate: '2026-10-06', narrative: 'Flash-tier successor to Nano Banana 2 and Nano Banana Pro: stronger product recontextualization and editing at half Nano Banana 2’s output-token rate.' },
   'sourceful/riverflow-v2.6-pro': { releaseDate: '2026-10-29', narrative: 'Flagship Riverflow 2.6 for text-to-image and edits, planning each image before it renders.' },
   'bytedance-seed/seedream-5-0-flash': { releaseDate: '2026-10-01', narrative: 'Fast Seedream editing with up to 14 references.' },
-  'recraft/recraft-v4.1-flash': { releaseDate: '2026-09-23', narrative: 'Fast Recraft generation from text prompts.' },
   'microsoft/mai-image-2.6': { releaseDate: '2026-09-04', narrative: 'MAI image generation and reference-guided editing, with up to five reference images.' },
   'microsoft/mai-image-2.6-flash': { releaseDate: '2026-09-04', narrative: 'Lower-latency MAI image generation and editing with lower image-token rates than the standard tier.' },
   'bytedance-seed/seedream-5-0-lite': { releaseDate: '2026-08-13', narrative: 'Seedream 5.0’s broad-knowledge tier for polished concepts and complex prompts, rendered at 2K or 4K.' },
