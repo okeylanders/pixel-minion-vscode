@@ -1,27 +1,55 @@
-import { ModelDefinition } from '../../../../shared/types/providers';
-import { ModelBrowserOption } from './modelBrowserTypes';
+// Ported from frame-minion@40e7949 packages/core/src/presentation/webview/components/shared/modelBrowserOptions.ts; keep in sync
+/**
+ * Maps catalog rows to Model Browser options.
+ *
+ * Shared with Frame: the provider/family/label helpers, the unit-aware image
+ * pricing labels and `modelDefinitionToBrowserOption`. Pixel deltas:
+ *   - `PROVIDER_LABELS` keeps Frame's image/text providers (not its video
+ *     ones) and adds `krea`, `qwen`.
+ *   - Metadata narratives say "image" where Frame's say "frame".
+ *   - Metadata may carry `retiresOn` (OpenRouter `expiration_date`), shown as
+ *     a warn badge. Frame has no expiring image model yet; upstream with one.
+ *   - `imagePricingLabel` / `imageUnitBadgeLabel` take an output noun so the
+ *     SVG tab can say "| SVG" (default "image" keeps Frame's labels).
+ *   - `svgModelToBrowserOption` and its metadata are Pixel-only.
+ * Frame's text, video and orchestrator mappers have no Pixel consumer and
+ * are not ported.
+ */
+import type {
+  CodeSvgModelDefinition,
+  ImageModelDefinition,
+  ImagePricing,
+  SvgModelDefinition,
+} from '@shared/types/providers';
+import type { ModelBrowserBadge, ModelBrowserOption } from './modelBrowserTypes';
 
-export type ModelBrowserKind = 'image' | 'svg';
-
-const providerNames: Record<string, string> = {
+const PROVIDER_LABELS: Record<string, string> = {
   anthropic: 'Anthropic',
   'black-forest-labs': 'Black Forest Labs',
   'bytedance-seed': 'ByteDance Seed',
   google: 'Google',
+  inclusionai: 'inclusionAI',
   krea: 'Krea',
+  meta: 'Meta',
   microsoft: 'Microsoft',
   openai: 'OpenAI',
+  qwen: 'Qwen',
   recraft: 'Recraft',
   sourceful: 'Sourceful',
   'x-ai': 'xAI',
 };
 
 interface ModelMetadata {
-  releaseDate: string;
+  /** OpenRouter `created`, as YYYY-MM-DD. */
+  releaseDate?: string;
   narrative: string;
+  description?: string;
+  /** OpenRouter `expiration_date`, as YYYY-MM-DD (Pixel-only). */
+  retiresOn?: string;
 }
 
-const MODEL_METADATA: Record<string, ModelMetadata> = {
+const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
+  // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
   'google/gemini-3.1-flash-image': { releaseDate: '2026-06-18', narrative: 'Default-quality Nano Banana 2: strong prompt following and editing for polished images without jumping to the Pro price tier.' },
   'google/gemini-3.1-flash-image-preview': { releaseDate: '2026-02-26', narrative: 'Preview build of Nano Banana 2, retained for compatibility with projects tuned against the earlier model.' },
   'google/gemini-3-pro-image': { releaseDate: '2026-06-18', narrative: "Google's premium image model for high-fidelity edits, difficult prompt adherence, and final-quality work." },
@@ -49,6 +77,10 @@ const MODEL_METADATA: Record<string, ModelMetadata> = {
   'recraft/recraft-v4-pro': { releaseDate: '2026-05-07', narrative: 'Older premium Recraft V4 model, retained for projects tuned to that generation.' },
   'recraft/recraft-v4': { releaseDate: '2026-05-07', narrative: 'Earlier Recraft V4 model for economical design-style generation.' },
   'recraft/recraft-v3': { releaseDate: '2026-05-07', narrative: 'Legacy Recraft option for compatibility with older style tests.' },
+};
+
+const SVG_MODEL_METADATA: Record<string, ModelMetadata> = {
+  // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
   'recraft/recraft-v4.1-pro-vector': { releaseDate: '2026-05-13', narrative: "Recraft's premium native-vector lane for polished, scalable SVG artwork without code generation." },
   'recraft/recraft-v4.1-vector': { releaseDate: '2026-05-13', narrative: 'Budget native-vector generation for scalable SVG drafts and graphic exploration.' },
   'anthropic/claude-fable-5': { releaseDate: '2026-06-09', narrative: "Anthropic's long-horizon creative model, well suited to intricate SVG composition and iterative visual refinement." },
@@ -59,102 +91,212 @@ const MODEL_METADATA: Record<string, ModelMetadata> = {
   'google/gemini-3.1-pro-preview': { releaseDate: '2026-02-19', narrative: 'Preview Pro model for visual interpretation and complex SVG prompt following.' },
 };
 
-const cleanLabel = (label: string): string =>
-  label.replace(/⭐\s*/g, '').replace(/\s*-\s*Recommended/g, '');
+function providerFromId(id: string): string {
+  const slug = id.split('/')[0] ?? 'custom';
+  return PROVIDER_LABELS[slug] ?? slug;
+}
 
-const providerFor = (id: string): string =>
-  providerNames[id.replace(/^~/, '').split('/')[0]] ?? id.split('/')[0];
+function familyFromLabel(label: string, fallback: string): string {
+  const normalized = stripRecommended(label).replace(/^.+?:\s*/, '');
+  const firstWord = normalized.split(/\s+/)[0];
+  return firstWord || fallback;
+}
 
-const familyFor = (model: ModelDefinition): string => {
-  const label = cleanLabel(model.displayName);
-  if (/gemini|nano banana/i.test(label)) return 'Gemini Image';
-  if (/gpt.*image/i.test(label)) return 'GPT Image';
-  if (/gpt/i.test(label)) return 'GPT';
-  if (/claude/i.test(label)) return 'Claude';
-  if (/recraft/i.test(label)) return 'Recraft';
-  if (/flux/i.test(label)) return 'FLUX';
-  if (/riverflow/i.test(label)) return 'Riverflow';
-  return label.split(/\s+/).slice(0, 2).join(' ');
-};
+function stripRecommended(label: string): string {
+  return label
+    .replace(/^⭐\s*/, '')
+    .replace(/^[-* ]*Recommended[: -]*/i, '')
+    .replace(/\s*[—-]\s*Recommended\s*$/i, '')
+    .trim();
+}
 
-const nativeCost = (model: ModelDefinition, kind: ModelBrowserKind): string | undefined => {
-  const { id, inputCost, outputCost } = model;
-  if (inputCost === undefined && outputCost === undefined) return undefined;
-  if (kind === 'svg' && !id.startsWith('recraft/')) {
-    return `$${inputCost ?? 0}/$${outputCost ?? 0} per 1M text tokens`;
+function costPair(inputCost?: number, outputCost?: number): string | undefined {
+  if (inputCost == null && outputCost == null) return undefined;
+  if (inputCost != null && outputCost != null) return `$${inputCost}/$${outputCost} per 1M`;
+  if (outputCost != null) return `$${outputCost} output`;
+  return `$${inputCost} input`;
+}
+
+/** Trim float noise for display: 30 → "$30", 0.039 → "$0.039". */
+function formatUsd(value: number): string {
+  return `$${Number(value.toFixed(6))}`;
+}
+
+/** Native rates stay visible alongside per-image comparisons. */
+function imageNativePricingLabel(pricing: ImagePricing): string {
+  const output = formatUsd(pricing.output);
+  const rate = pricing.input != null ? `${formatUsd(pricing.input)}/${output}` : output;
+  switch (pricing.unit) {
+    case 'image':
+      return `${rate}/image`;
+    case 'megapixel':
+      return `${rate} per megapixel`;
+    case 'image-token':
+      return `${rate} per 1M image tokens`;
   }
-  if (kind === 'svg' && id.startsWith('recraft/')) return `$${outputCost}/SVG`;
-  if (id.startsWith('black-forest-labs/')) return `$${outputCost}/megapixel`;
-  if (id.startsWith('google/') || id.startsWith('openai/') || id.startsWith('microsoft/')) {
-    return inputCost === undefined
-      ? `$${outputCost}/1M image tokens`
-      : `$${inputCost}/$${outputCost} per 1M image tokens`;
-  }
-  return `$${outputCost}/image`;
-};
+}
 
-const estimateCost = (model: ModelDefinition, kind: ModelBrowserKind): string | undefined => {
-  const { id, inputCost = 0, outputCost } = model;
-  if (outputCost === undefined) return undefined;
+/** `noun` names one output in the label ("image"; the SVG tab passes "SVG"). */
+function imagePricingLabel(pricing: ImagePricing, noun = 'image'): string {
+  if (pricing.unit === 'image' && pricing.output === 0) return 'Free';
+  const perImage = pricing.approxUsdPerImage ?? (pricing.unit === 'image' ? pricing.output : undefined);
+  if (perImage != null) {
+    return `≈ ${formatUsd(perImage)} | ${noun}${pricing.approxNote ? ` ${pricing.approxNote}` : ''}`;
+  }
+  return imageNativePricingLabel(pricing);
+}
 
-  if (kind === 'svg') {
-    if (id.startsWith('recraft/')) return `≈ $${outputCost.toFixed(3)}/SVG`;
-    // Explicit house assumption: typical SVG request ≈1k input + 4k output tokens.
-    const estimate = inputCost * 0.001 + outputCost * 0.004;
-    return `≈ $${estimate.toFixed(3)}/SVG`;
-  }
+function imagePricingDescription(pricing: ImagePricing): string | undefined {
+  if (pricing.unit === 'image') return pricing.approxBasis;
+  if (pricing.approxUsdPerImage == null) return undefined;
+  const rateOrder = pricing.input != null ? ' (input/output)' : ' (output)';
+  const basis = pricing.approxBasis ?? 'Output estimate; prompt and reference-image charges may be additional.';
+  return `${imageNativePricingLabel(pricing)}${rateOrder}. ${basis}`;
+}
 
-  if (id.startsWith('black-forest-labs/')) return `≈ $${outputCost.toFixed(3)} at 1 MP`;
-  if (id.startsWith('google/') || id.startsWith('openai/') || id.startsWith('microsoft/')) {
-    // Comparable estimate across token-billed image models. Actual cost varies
-    // with resolution/quality; the browser states the 1,290-token assumption.
-    return `≈ $${((outputCost / 1_000_000) * 1_290).toFixed(3)}/image`;
+function imageUnitBadgeLabel(unit: ImagePricing['unit'], noun = 'image'): string {
+  switch (unit) {
+    case 'image':
+      return `per ${noun}`;
+    case 'megapixel':
+      return 'per megapixel';
+    case 'image-token':
+      return 'per token';
   }
-  return `≈ $${outputCost.toFixed(3)}/image`;
-};
+}
 
-const descriptionFor = (model: ModelDefinition, kind: ModelBrowserKind): string => {
-  if (model.description) return model.description;
-  if (kind === 'svg' && model.id.startsWith('recraft/')) {
-    return 'Native vector generation. Returns SVG image output directly from OpenRouter.';
-  }
-  if (kind === 'svg') {
-    return 'Generates editable SVG markup as code; estimate assumes roughly 1k input and 4k output tokens.';
-  }
-  if (model.id.startsWith('recraft/') && model.id.includes('utility')) {
-    return 'Utility-oriented image editing and transformation model.';
-  }
-  return 'OpenRouter image generation model with text and supported reference-image inputs.';
-};
+function recommendedBadge(label: string): ModelBrowserBadge[] {
+  return label.includes('⭐') || /recommended/i.test(label)
+    ? [{ label: 'recommended', tone: 'accent' }]
+    : [];
+}
 
-export function modelToBrowserOption(
-  model: ModelDefinition,
-  kind: ModelBrowserKind
-): ModelBrowserOption {
-  const isRecommended = /⭐|recommended/i.test(model.displayName);
-  const metadata = MODEL_METADATA[model.id];
-  const providerCost = nativeCost(model, kind);
-  const estimatedCost = estimateCost(model, kind);
-  const tokenBilled =
-    kind === 'image' &&
-    (model.id.startsWith('google/') || model.id.startsWith('openai/') || model.id.startsWith('microsoft/'));
+/** Pixel-only: a dashed warn badge for a model OpenRouter will stop serving. */
+function retiringBadge(metadata?: ModelMetadata): ModelBrowserBadge[] {
+  if (!metadata?.retiresOn) return [];
+  const date = new Date(`${metadata.retiresOn}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return [];
+  const label = date.toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  });
+  return [{ label: `retiring ${label}`, tone: 'warn' }];
+}
+
+export function modelDefinitionToBrowserOption(model: ImageModelDefinition): ModelBrowserOption {
+  const provider = providerFromId(model.id);
+  const metadata = IMAGE_MODEL_METADATA[model.id];
+  const pricing = model.imagePricing;
   return {
     id: model.id,
-    label: cleanLabel(model.displayName),
-    description: descriptionFor(model, kind),
+    label: stripRecommended(model.displayName),
     narrative: metadata?.narrative,
-    provider: providerFor(model.id),
-    family: familyFor(model),
+    description: model.description ?? metadata?.description ?? model.id,
+    provider,
+    family: familyFromLabel(model.displayName, provider),
     releaseDate: metadata?.releaseDate,
-    costLabel: [providerCost, estimatedCost]
-      .filter(Boolean)
-      .join(' (') + (providerCost && estimatedCost ? ')' : ''),
-    estimateLabel: estimatedCost,
+    // No legacy fallback: `imagePricing` is the only pricing surface on
+    // ImageModelDefinition (absent ⇒ the provider publishes no price).
+    costLabel: pricing ? imagePricingLabel(pricing) : undefined,
+    costDescription: pricing ? imagePricingDescription(pricing) : undefined,
     badges: [
-      ...(isRecommended ? [{ label: 'recommended', tone: 'accent' as const }] : []),
-      { label: kind === 'svg' ? (model.id.startsWith('recraft/') ? 'native SVG' : 'SVG code') : 'image output' },
-      ...(tokenBilled ? [{ label: 'per token' }] : []),
+      ...recommendedBadge(model.displayName),
+      ...retiringBadge(metadata),
+      { label: 'image output' },
+      ...(pricing ? [{ label: imageUnitBadgeLabel(pricing.unit) }] : []),
     ],
     searchText: model.displayName,
+  };
+}
+
+/** Pixel-only: helper under a trigger whose selection isn't in the curated list. */
+export const OFF_LIST_MODEL_HELP = "Not in Pixel Minion's curated list. Requests still use this model id.";
+
+// ── Pixel-only: the SVG tab ──────────────────────────────────────────────
+
+/** The picker's "By Family" groups for the SVG tab: how the model makes SVG. */
+export const SVG_KIND_FAMILY: Record<SvgModelDefinition['kind'], string> = {
+  'native-vector': 'Native SVG',
+  code: 'SVG code',
+};
+
+/**
+ * House assumption for comparing code models: one SVG turn ≈ 1k input +
+ * 4k output tokens. Shown in the card's cost description, never as a price.
+ */
+const SVG_CODE_INPUT_TOKENS = 1_000;
+const SVG_CODE_OUTPUT_TOKENS = 4_000;
+
+function reasonsByDefault(model: CodeSvgModelDefinition): boolean {
+  return model.reasoning?.mandatory === true || model.reasoning?.defaultEnabled === true;
+}
+
+function codeSvgCostDescription(model: CodeSvgModelDefinition): string {
+  const { inputPer1M, outputPer1M } = model.textPricing;
+  const estimate = (inputPer1M * SVG_CODE_INPUT_TOKENS + outputPer1M * SVG_CODE_OUTPUT_TOKENS) / 1_000_000;
+  // The pill already shows the native per-1M rates; this line adds the comparison.
+  const assumption = `≈ ${formatUsd(estimate)} per SVG at about 1k input and 4k output tokens.`;
+  const caveat = reasonsByDefault(model)
+    ? `Reasons by default (${model.reasoning?.defaultEffort} effort); reasoning tokens bill as output, so expect more.`
+    : 'Longer or more detailed SVGs cost more.';
+  return `${assumption} ${caveat}`;
+}
+
+export function svgModelToBrowserOption(model: SvgModelDefinition): ModelBrowserOption {
+  const provider = providerFromId(model.id);
+  const metadata = SVG_MODEL_METADATA[model.id];
+  const shared = {
+    id: model.id,
+    label: stripRecommended(model.displayName),
+    narrative: metadata?.narrative,
+    provider,
+    family: SVG_KIND_FAMILY[model.kind],
+    releaseDate: metadata?.releaseDate,
+    searchText: model.displayName,
+  };
+
+  if (model.kind === 'native-vector') {
+    const pricing = model.imagePricing;
+    return {
+      ...shared,
+      description: model.description ?? metadata?.description
+        ?? 'Returns SVG directly instead of writing code, so it cannot be refined in a follow-up turn. Pixel requests it without an aspect ratio, so the output is square.',
+      costLabel: pricing ? imagePricingLabel(pricing, 'SVG') : undefined,
+      costDescription: pricing ? imagePricingDescription(pricing) : undefined,
+      badges: [
+        ...recommendedBadge(model.displayName),
+        ...retiringBadge(metadata),
+        { label: 'native SVG' },
+        ...(pricing ? [{ label: imageUnitBadgeLabel(pricing.unit, 'SVG') }] : []),
+      ],
+    };
+  }
+
+  return {
+    ...shared,
+    // Falls back to the id, which the card hides: the "SVG code" family and
+    // badge already say what every code model does.
+    description: model.description ?? metadata?.description ?? model.id,
+    costLabel: costPair(model.textPricing.inputPer1M, model.textPricing.outputPer1M),
+    costDescription: codeSvgCostDescription(model),
+    badges: [
+      ...recommendedBadge(model.displayName),
+      ...retiringBadge(metadata),
+      { label: 'SVG code' },
+      { label: 'per token' },
+      ...(model.acceptsImageInput ? [{ label: 'image input' }] : []),
+    ],
+  };
+}
+
+/** Pixel-only: an off-list SVG selection, kept visible as "Custom: <id>". */
+export function customSvgModelToBrowserOption(id: string): ModelBrowserOption {
+  return {
+    id,
+    label: `Custom: ${id}`,
+    description: id,
+    provider: providerFromId(id),
+    family: 'Custom',
+    badges: [],
+    searchText: id,
   };
 }

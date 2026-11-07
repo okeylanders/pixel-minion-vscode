@@ -16,7 +16,7 @@ import {
 } from '@messages';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS } from '../../../infrastructure/ai/providers/OpenRouterProvider';
+import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS } from '../../../shared/models';
 
 /** Settings that hold a catalog model id and must never point at a retired one. */
 const MODEL_SETTING_KEYS = ['imageModel', 'svgModel'] as const;

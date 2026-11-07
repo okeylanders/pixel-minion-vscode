@@ -19,13 +19,14 @@ import { ImageUploader } from '../image/ImageUploader';
 import { ConversationThread } from '../image/ConversationThread';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
-import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS } from '@shared/models';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { LineGlyph } from '../common/LineGlyph';
 import { TabImageIcon } from '../layout/tabIcons';
 import { GeneratedImage } from '@messages';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import '../../styles/components/generation-view.css';
 import '../../styles/components/image-generation-view.css';
 
@@ -119,7 +120,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             models={OPENROUTER_IMAGE_MODELS}
             selectedModel={model}
             onModelChange={setModel}
-            kind="image"
+            unavailableLabel={OFF_LIST_MODEL_HELP}
             disabled={isLoading}
           />
           <AspectRatioSelector

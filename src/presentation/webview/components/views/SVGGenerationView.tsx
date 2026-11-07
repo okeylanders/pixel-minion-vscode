@@ -3,7 +3,7 @@
  *
  * Pattern: Composition of existing SVG generation components
  * Responsibilities:
- * - Compose ModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
+ * - Compose SVGModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
  * - Receive hook instance as prop (prose-minion pattern)
  * - Handle SVG save state tracking
  *
@@ -11,14 +11,15 @@
  */
 import React from 'react';
 import { UseSVGGenerationReturn } from '../../hooks/domain/useSVGGeneration';
-import { ModelSelector } from '../image/ModelSelector';
+import { SVGModelSelector } from '../svg/SVGModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { SingleImageUploader } from '../svg/SingleImageUploader';
 import { SVGPreview } from '../svg/SVGPreview';
 import { SVGCodeView } from '../svg/SVGCodeView';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
-import { OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_SVG_MODELS } from '@shared/models';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { SaveButton } from '../shared/SaveButton';
@@ -95,11 +96,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
       <div className="well">
         {/* Header: Model and Aspect Ratio, stacked full width */}
         <div className="generation-header">
-          <ModelSelector
+          <SVGModelSelector
             models={OPENROUTER_SVG_MODELS}
             selectedModel={model}
             onModelChange={setModel}
-            kind="svg"
+            unavailableLabel={OFF_LIST_MODEL_HELP}
             disabled={isLoading}
           />
           <AspectRatioSelector

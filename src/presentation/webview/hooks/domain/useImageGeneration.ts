@@ -18,7 +18,7 @@ import {
   ImageSaveResultPayload,
   EnhancePromptResponsePayload,
 } from '@messages';
-import { DEFAULT_IMAGE_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { DEFAULT_IMAGE_MODEL } from '@shared/models';
 
 // Sourceful models have a 4.5MB request size limit for reference images
 const SOURCEFUL_SIZE_LIMIT_BYTES = 4.5 * 1024 * 1024; // 4.5MB

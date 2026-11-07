@@ -1,7 +1,7 @@
 import { OpenRouterImageClient } from '../../../../infrastructure/ai/clients/OpenRouterImageClient';
 import type { SecretStorageService } from '../../../../infrastructure/secrets/SecretStorageService';
 import type { LoggingService } from '../../../../infrastructure/logging/LoggingService';
-import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../shared/models';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;

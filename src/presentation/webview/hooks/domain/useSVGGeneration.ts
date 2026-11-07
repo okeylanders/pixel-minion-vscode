@@ -16,7 +16,7 @@ import {
   SVGConversationHistoryTurn,
   EnhancePromptResponsePayload,
 } from '@messages';
-import { DEFAULT_SVG_MODEL } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { DEFAULT_SVG_MODEL } from '@shared/models';
 
 // 1. State Interface (read-only)
 export interface SVGGenerationState {
