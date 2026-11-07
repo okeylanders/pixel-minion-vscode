@@ -294,7 +294,9 @@ body {
   inset: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 28px var(--px-gutter) 64px;
+  /* No top padding here: a sticky child sticks below its scroller's padding,
+     which would let the cards show through above the header. */
+  padding: 0 var(--px-gutter) 64px;
   color: var(--px-text);
   background: var(--px-bg);
   font-family: var(--px-sans);
@@ -305,15 +307,23 @@ body {
 .settings-overlay-content {
   max-width: 720px;
   margin: 0 auto;
+  padding-top: 28px;
 }
 
+/* Sticky inside the scrolling overlay so Close never leaves the screen on a
+   short sidebar; the opaque background and soft rule keep the cards from
+   showing through as they scroll under it. */
 .settings-header {
-  position: relative;
+  position: sticky;
+  z-index: 1;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-bottom: 18px;
   padding: 12px 0 18px;
+  background: var(--px-bg);
+  border-bottom: 1px solid var(--px-border-soft);
 }
 
 .settings-header-content {
@@ -361,6 +371,31 @@ body {
 
 .settings-close-button:hover {
   background: var(--px-btn-hover);
+}
+
+/* Short sidebars: a slimmer sticky header leaves room for the settings. */
+@media (max-height: 560px) {
+  .settings-header {
+    padding: 8px 0 10px;
+  }
+
+  .settings-header-content {
+    gap: 4px;
+  }
+
+  .settings-header-logo {
+    width: 40px;
+    height: 35px;
+    padding: 3px;
+  }
+
+  .settings-header h2 {
+    font-size: 20px;
+  }
+
+  .settings-close-button {
+    top: 8px;
+  }
 }
 
 /* Settings sections (cards) */
