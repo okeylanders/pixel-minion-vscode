@@ -4,17 +4,18 @@
 - Reviewed source: `e59a5300b3b263c7f8596d1682fb343b8f2c1478`
 - Compared with P2 base: `a2d1dc0f709cfa4348c16740f2169a555c5d2217`
 - Date: 2026-11-07
+- **Status (2026-11-07):** R16-1 fixed in `031477e`, R16-2 fixed in `b853fef`; R16-M1 (installed-VSIX animation check) is still owed and is a manual owner check. The #13 / #14 / #15 review fixes are merged in (`cee70de`). 48 suites / 865 tests pass; see [Resolution status](#resolution-status).
 - **Verdict: changes requested.** The isolated image previews are a substantial improvement, but two gaps remain in the newly introduced saved-document policy. This review does not approve or merge the upstream stack.
 
 ## Status ledger
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| R16-1 | P1 | Repeated classification of a long open element name makes the scanner quadratic and blocks the host/webview | ⏳ Open |
-| R16-2 | P2 | SVG hyperlink auditing (`a[ping]`) bypasses the no-external-requests policy for saved documents | ⏳ Open |
+| R16-1 | P1 | Repeated classification of a long open element name makes the scanner quadratic and blocks the host/webview | ✅ Fixed in `031477e` |
+| R16-2 | P2 | SVG hyperlink auditing (`a[ping]`) bypasses the no-external-requests policy for saved documents | ✅ Fixed in `b853fef` |
 | R16-M1 | Validation | CSS and SMIL animation in an installed VSIX | ⏳ Open; not completed in this review |
 
-## R16-1: Cache the open element's local-name classification
+## ✅ Fixed - R16-1: Cache the open element's local-name classification
 
 Location: `src/shared/svg/SVGDocumentPolicy.ts:545–547`.
 
@@ -45,7 +46,7 @@ This is not a browser-rendering concern: the policy is invoked synchronously aft
 
 **Requested change:** calculate and store the element's local-name classification (or an `isStyle` boolean) when pushing its stack entry; make `inStyle()` constant-time. Add this input family to the performance regression suite, including an input near the document-size cap. Keep end-tag matching separate from the cached classification.
 
-## R16-2: Reject hyperlink-auditing destinations
+## ✅ Fixed - R16-2: Reject hyperlink-auditing destinations
 
 Locations: `src/shared/svg/SVGDocumentPolicy.ts:84` (`URL_ATTRIBUTES`) and `589–610` (`checkAttributes`).
 
@@ -97,3 +98,25 @@ Against `e59a530`, using installed dependencies shared from the P2 checkout afte
 - Installed-VSIX CSS/SMIL animation smoke check: not run and still owed.
 
 Only this review report is published by the review pass. No production code is changed and no PR is merged.
+
+## Resolution status
+
+- **R16-1 ✅ `031477e`.**
+  - The scanner's stack holds `{ name, isStyle }`, with `isStyle` worked out once when the element is pushed. `inStyle()` reads the top entry in constant time, and `endTag()` uses the popped entry's flag. End-tag matching still compares the lower-cased qualified name exactly, separate from the cached classification.
+  - The review's input now scans in about 20 ms at n = 16,000, 32,000 and 64,000 (flat), against 0.9 s / 3.0 s / 12.2 s before the fix on this executor. At the 2 MiB cap (n ≈ 349,000) it takes about 90 ms.
+  - **Audit of other per-token work.** Nothing else in `SVGDocumentPolicy` re-reads another token or walks the open-element stack:
+    - Element, end-tag and attribute names are matched by single-position sticky regexes and lower-cased once each.
+    - Attribute values, entity decoding, `compact()` and the CSS tokenizer are proportional to that value's own bytes.
+    - Classification (forbidden elements, `<style>`, SMIL elements, URL attributes) uses the local name, so there is no namespace-prefix resolution. The only ancestor fact used is the top entry's `isStyle`.
+    - Declarations, processing instructions, comments and CDATA are each consumed by one `indexOf`.
+    - Measured at about 2 MB: balanced deep nesting about 200 ms; 1,000-character names nested about 1,000 deep about 30 ms; a long name around many text runs, a long prefixed name, many `<style>` elements, many SMIL `attributeName`s and many `xmlns:` declarations each 70–130 ms.
+  - **Regressions** (`SVGDocumentPolicy.test.ts`, "long names and deep nesting stay linear (R16-1)"): six accepted documents between 90% and 100% of the cap, each under one second. They cover a long open name with many children, the same prefixed, with many text runs, balanced deep nesting, deep nesting of long names, and a long name around a `<style>` with many CDATA runs. Without the fix they run for minutes. Behaviour checks pin case-insensitive end-tag matching, a mismatched end tag, a prefixed `<style>` still CSS-checked, and `stylex` not treated as `style`.
+- **R16-2 ✅ `b853fef`.**
+  - Any non-empty `ping` is refused, after entity decoding, on any element, under any prefix (`xlink:ping`) and in any case (`PING`). Reason: "sends hyperlink-auditing pings when a link is followed (…)". No per-destination rule is attempted, because the list can mix local and remote entries. An empty `ping=""` names no destination and stays accepted.
+  - SMIL setting `attributeName="ping"` is refused like SMIL on `href` / `src` / `xml:base`.
+  - Considered and left alone, with the reasoning in the code: `target`, `download`, `rel`, `hreflang`, `type`, `referrerpolicy` on `<a>`. They only qualify the navigation `href` makes, and `href` is already held to the document.
+  - **Regressions:** the review's example, direct, entity-encoded (partly and entirely), several destinations (local then external, and all local), whitespace-only, no `href`, `xlink:ping`, `<svg:a>`, a non-`<a>` element, `PING` and SMIL on `ping`, all rejected; an empty ping accepted. The host save handler refuses the review's example without opening a dialog or writing (`GenerationSaveHandlers.test.ts`).
+- **R16-M1 ⏳ still owed:** the CSS / SMIL animation check in an installed VSIX is a manual pass and was not run here.
+- **Docs:** `CHANGELOG.md` (unsafe-SVG bullet), `docs/CHANGELOG-DETAILED.md` (policy list, a PR #16 follow-up section, test totals), the roadmap's P5a row, the PR #12 ledger's R5-S2 note (its audit missed this path), and the CLAUDE.md / AGENTS.md SVG-safety invariant (per-token work, stack classification, `ping`).
+- **Stack:** `cee70de` merges #15, including #13 and #14. The doc conflicts were resolved by keeping both sides: #15's request-ownership line with this branch's SVG-safety line, and #14's roadmap B row with this branch's P5a row.
+- **Validation:** `npx jest` 48 suites / 865 tests; the three `tsc --noEmit` projects clean; `npm run build` passes with the usual webpack size warnings; `npm run lint` unchanged at 9 errors / 20 warnings.
