@@ -1,7 +1,7 @@
 import { OpenRouterImageClient } from '../../../../infrastructure/ai/clients/OpenRouterImageClient';
 import type { SecretStorageService } from '../../../../infrastructure/secrets/SecretStorageService';
 import type { LoggingService } from '../../../../infrastructure/logging/LoggingService';
-import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
@@ -111,17 +111,11 @@ describe('OpenRouterImageClient', () => {
       'google/gemini-3-pro-image-preview': ['image', 'text'],
       'google/gemini-3.1-flash-lite-image': ['image', 'text'],
       'google/gemini-2.5-flash-image': ['image', 'text'],
-      'openai/gpt-image-2': ['image'],
-      'openai/gpt-image-1': ['image'],
-      'openai/gpt-image-1-mini': ['image'],
       'openai/gpt-5.4-image-2': ['image', 'text'],
       'openai/gpt-5-image': ['image', 'text'],
       'openai/gpt-5-image-mini': ['image', 'text'],
       'microsoft/mai-image-2.5-pro': ['image'],
       'microsoft/mai-image-2.5': ['image'],
-      'krea/krea-2-large': ['image'],
-      'krea/krea-2-medium': ['image'],
-      'krea/krea-2-medium-turbo': ['image'],
       'black-forest-labs/flux.2-klein-4b': ['image'],
       'black-forest-labs/flux.2-pro': ['image'],
       'black-forest-labs/flux.2-flex': ['image'],
@@ -139,6 +133,29 @@ describe('OpenRouterImageClient', () => {
       'recraft/recraft-v4': ['image'],
       'recraft/recraft-v3': ['image'],
     };
+
+    /**
+     * Ids OpenRouter rejects on `/chat/completions` with 404 "is an image
+     * generation model and cannot be used with the chat/completions endpoint.
+     * Use the /api/v1/images endpoint instead." Probed 2026-11-07 (the rejection
+     * happens before routing, so the probe is free). Pixel only speaks
+     * chat/completions until the Image API transport lands (roadmap P3), so none
+     * of these may appear in a catalog until then.
+     */
+    const CHAT_BLOCKED_2026_11_07 = [
+      'openai/gpt-image-2', 'openai/gpt-image-1', 'openai/gpt-image-1-mini',
+      'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst',
+      'openai/gpt-image-2.6-flare', 'openai/gpt-image-2.6-sunburst',
+      'krea/krea-2-large', 'krea/krea-2-medium', 'krea/krea-2-medium-turbo', 'krea/k3-edit',
+      'black-forest-labs/flux-3-image', 'black-forest-labs/flux-3-image-klein',
+      'qwen/qwen-image-3', 'qwen/qwen-image-3-pro', 'qwen/qwen-image-2.1-turbo',
+      'meta/muse-image',
+    ];
+
+    it('lists no model that OpenRouter only serves through the Image API', () => {
+      const catalogIds = [...OPENROUTER_IMAGE_MODELS, ...OPENROUTER_SVG_MODELS].map(model => model.id);
+      expect(catalogIds.filter(id => CHAT_BLOCKED_2026_11_07.includes(id))).toEqual([]);
+    });
 
     it('has a snapshot entry for every catalog image model', () => {
       const missing = OPENROUTER_IMAGE_MODELS

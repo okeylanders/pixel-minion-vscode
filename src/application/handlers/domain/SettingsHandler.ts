@@ -16,7 +16,7 @@ import {
 } from '@messages';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { RETIRED_MODEL_REPLACEMENTS } from '../../../infrastructure/ai/providers/OpenRouterProvider';
+import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS } from '../../../infrastructure/ai/providers/OpenRouterProvider';
 
 /** Settings that hold a catalog model id and must never point at a retired one. */
 const MODEL_SETTING_KEYS = ['imageModel', 'svgModel'] as const;
@@ -206,10 +206,14 @@ export class SettingsHandler {
     saved: string | undefined,
     target: vscode.ConfigurationTarget
   ): Promise<void> {
-    const replacement = saved ? RETIRED_MODEL_REPLACEMENTS[saved] : undefined;
-    if (!saved || !replacement) return;
+    const retired = saved ? RETIRED_MODELS[saved] : undefined;
+    if (!saved || !retired) return;
+    const { replacement } = retired;
 
-    this.logger.info(`Model ${saved} is no longer available on OpenRouter; switching ${key} to ${replacement}`);
+    const why = retired.reason === 'delisted'
+      ? 'is no longer available on OpenRouter'
+      : "is only served by OpenRouter's Image API, which Pixel Minion does not use yet";
+    this.logger.info(`Model ${saved} ${why}; switching ${key} to ${replacement}`);
     try {
       await config.update(key, replacement, target);
     } catch (error) {

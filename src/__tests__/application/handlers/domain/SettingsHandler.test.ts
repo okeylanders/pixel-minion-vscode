@@ -149,10 +149,26 @@ describe('SettingsHandler', () => {
       );
     });
 
+    it('moves Image-API-only selections and says why', async () => {
+      savedSettings({ imageModel: 'krea/krea-2-large' });
+      mockConfig.inspect.mockImplementation((key: string) => (
+        key === 'imageModel' ? { key, globalValue: 'krea/krea-2-large' } : { key }
+      ));
+
+      await requestSettings();
+
+      expect(mockConfig.update.mock.calls).toEqual([
+        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Global],
+      ]);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Model krea/krea-2-large is only served by OpenRouter's Image API, which Pixel Minion does not use yet; switching imageModel to google/gemini-3.1-flash-image"
+      );
+    });
+
     it('leaves live model selections alone', async () => {
       mockConfig.inspect.mockImplementation((key: string) => ({
         key,
-        globalValue: key === 'imageModel' ? 'openai/gpt-image-2' : 'anthropic/claude-opus-5',
+        globalValue: key === 'imageModel' ? 'openai/gpt-5.4-image-2' : 'anthropic/claude-opus-5',
       }));
 
       await requestSettings();

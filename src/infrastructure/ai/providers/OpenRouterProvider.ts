@@ -13,17 +13,11 @@ export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
   { id: 'google/gemini-3-pro-image-preview', displayName: 'Nano Banana Pro (Gemini 3 Pro Image Preview)', inputCost: 2, outputCost: 120 },
   { id: 'google/gemini-3.1-flash-lite-image', displayName: 'Nano Banana 2 Lite (Gemini 3.1 Flash Lite Image)', inputCost: 0.25, outputCost: 30 },
   { id: 'google/gemini-2.5-flash-image', displayName: 'Nano Banana (Gemini 2.5 Flash Image)', inputCost: 0.3, outputCost: 30 },
-  { id: 'openai/gpt-image-2', displayName: '⭐ GPT Image 2', outputCost: 30 },
-  { id: 'openai/gpt-image-1', displayName: 'GPT Image 1', outputCost: 40 },
-  { id: 'openai/gpt-image-1-mini', displayName: 'GPT Image 1 Mini', outputCost: 8 },
   { id: 'openai/gpt-5.4-image-2', displayName: 'GPT-5.4 Image 2', outputCost: 30 },
   { id: 'openai/gpt-5-image', displayName: 'GPT-5 Image', outputCost: 40 },
   { id: 'openai/gpt-5-image-mini', displayName: 'GPT-5 Image Mini', outputCost: 8 },
   { id: 'microsoft/mai-image-2.5-pro', displayName: 'MAI-Image 2.5 Pro', inputCost: 5, outputCost: 108 },
   { id: 'microsoft/mai-image-2.5', displayName: 'MAI-Image 2.5', inputCost: 5, outputCost: 47 },
-  { id: 'krea/krea-2-large', displayName: 'Krea 2 Large', outputCost: 0.06 },
-  { id: 'krea/krea-2-medium', displayName: 'Krea 2 Medium', outputCost: 0.03 },
-  { id: 'krea/krea-2-medium-turbo', displayName: 'Krea 2 Medium Turbo', outputCost: 0.015 },
   { id: 'black-forest-labs/flux.2-klein-4b', displayName: 'FLUX.2 Klein 4B', outputCost: 0.014 },
   { id: 'black-forest-labs/flux.2-pro', displayName: 'FLUX.2 Pro', outputCost: 0.03 },
   { id: 'black-forest-labs/flux.2-flex', displayName: 'FLUX.2 Flex', inputCost: 0.06, outputCost: 0.06 },
@@ -71,14 +65,52 @@ export const DEFAULT_IMAGE_MODEL = 'google/gemini-3.1-flash-image';
 /** Default model for SVG generation */
 export const DEFAULT_SVG_MODEL = 'recraft/recraft-v4.1-pro-vector';
 
+/** Why a saved model id can no longer be used by Pixel Minion. */
+export type RetiredModelReason =
+  /** OpenRouter no longer serves the model ("no provider serves this model anymore"). */
+  | 'delisted'
+  /**
+   * OpenRouter serves the model only through `POST /api/v1/images`; a
+   * `/chat/completions` request is rejected with 404 "is an image generation
+   * model and cannot be used with the chat/completions endpoint". These return
+   * once Pixel adopts the dedicated Image API transport (roadmap phase P3).
+   */
+  | 'images-api-only';
+
+export interface RetiredModel {
+  replacement: string;
+  reason: RetiredModelReason;
+}
+
 /**
- * Model ids OpenRouter has delisted (no live endpoints), mapped to the catalog
- * model a saved selection should move to. SettingsHandler applies this on read
- * and persists the replacement, so a stale `pixelMinion.imageModel` or
- * `pixelMinion.svgModel` never reaches a request. Verified 2026-11-07 against
- * `/api/v1/models`, `/api/v1/images/models` and each id's `/endpoints` record.
+ * Saved model ids that can no longer reach a request, mapped to the catalog
+ * model a selection should move to. SettingsHandler applies this on read and
+ * persists the replacement, so a stale `pixelMinion.imageModel` or
+ * `pixelMinion.svgModel` never reaches a request.
+ *
+ * Verified 2026-11-07: delisted ids against `/api/v1/models`,
+ * `/api/v1/images/models` and each id's `/endpoints` record; images-api-only
+ * ids by a `/chat/completions` probe that OpenRouter rejects before routing
+ * (see docs/model-catalog-audit-2026-11-07.md).
  */
-export const RETIRED_MODEL_REPLACEMENTS: Readonly<Record<string, string>> = {
-  'x-ai/grok-imagine-image-quality': DEFAULT_IMAGE_MODEL,
-  'anthropic/claude-opus-5-fast': 'anthropic/claude-opus-5',
+export const RETIRED_MODELS: Readonly<Record<string, RetiredModel>> = {
+  // Delisted — the first five shipped in v1.3.0.
+  'x-ai/grok-imagine-image-quality': { replacement: DEFAULT_IMAGE_MODEL, reason: 'delisted' },
+  'sourceful/riverflow-v2-max-preview': { replacement: 'sourceful/riverflow-v2.5-pro', reason: 'delisted' },
+  'sourceful/riverflow-v2-standard-preview': { replacement: 'sourceful/riverflow-v2.5-pro', reason: 'delisted' },
+  'sourceful/riverflow-v2-fast-preview': { replacement: 'sourceful/riverflow-v2.5-fast', reason: 'delisted' },
+  'anthropic/claude-opus-4': { replacement: 'anthropic/claude-opus-5', reason: 'delisted' },
+  'anthropic/claude-opus-5-fast': { replacement: 'anthropic/claude-opus-5', reason: 'delisted' },
+  // Image API only — added by the PR #12 catalog refresh, never released.
+  'openai/gpt-image-2': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
+  'openai/gpt-image-1': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
+  'openai/gpt-image-1-mini': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
+  'krea/krea-2-large': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
+  'krea/krea-2-medium': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
+  'krea/krea-2-medium-turbo': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
 };
+
+/** Replacement id per retired id (derived from {@link RETIRED_MODELS}). */
+export const RETIRED_MODEL_REPLACEMENTS: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(RETIRED_MODELS).map(([id, retired]) => [id, retired.replacement])
+);
