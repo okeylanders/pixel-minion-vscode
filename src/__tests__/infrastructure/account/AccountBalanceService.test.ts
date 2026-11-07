@@ -62,6 +62,7 @@ describe('AccountBalanceService', () => {
         keyLimit: KEY_OK.status === 'ok' ? KEY_OK.data : undefined,
         creditsStatus: 'unavailable',
         creditsIssue: { kind: 'forbidden', httpStatus: 403 },
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -75,6 +76,7 @@ describe('AccountBalanceService', () => {
         creditsStatus: 'unavailable',
         keyIssue: { kind: 'invalid_key', httpStatus: 401 },
         creditsIssue: { kind: 'invalid_key', httpStatus: 401 },
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -86,6 +88,7 @@ describe('AccountBalanceService', () => {
       await expect(service.getBalance()).resolves.toEqual({
         status: 'no_key',
         creditsStatus: 'no_key',
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -98,6 +101,7 @@ describe('AccountBalanceService', () => {
         keyLimit: { limit: 5, limitRemaining: 4.5, resetWindow: 'monthly' },
         credits: { totalCredits: 100, totalUsage: 27.5, remaining: 72.5 },
         creditsStatus: 'ok',
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -240,6 +244,25 @@ describe('AccountBalanceService', () => {
       }));
       await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({
         credits: expect.objectContaining({ remaining: 5 }),
+      }));
+    });
+
+    it('stamps every payload with the epoch of the key its fetch started under', async () => {
+      expect(service.accountEpoch()).toBe(0);
+      await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({ accountEpoch: 0 }));
+
+      const oldKeyCredits = deferred<CreditsResult>();
+      client.fetchCredits.mockReturnValueOnce(oldKeyCredits.promise);
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      const startedBeforeChange = service.getBalance(true);
+      service.invalidate();
+      expect(service.accountEpoch()).toBe(1);
+      oldKeyCredits.resolve(creditsOk(999));
+
+      // The old key's answer is swapped for the new key's, stamped with its epoch.
+      await expect(startedBeforeChange).resolves.toEqual(expect.objectContaining({
+        accountEpoch: 1,
+        credits: expect.objectContaining({ remaining: 72.5 }),
       }));
     });
   });

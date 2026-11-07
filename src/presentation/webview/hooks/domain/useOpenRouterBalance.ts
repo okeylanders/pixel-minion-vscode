@@ -10,6 +10,13 @@
  * the key is saved, replaced or cleared; those arrive through
  * `handleBalanceData` too.
  *
+ * Account ownership: every payload carries the `accountEpoch` of the key it
+ * was fetched for. When the key changes the host first sends
+ * `OPENROUTER_BALANCE_RESET` with the new epoch, which clears the previous
+ * account's figures at once (the view shows its loading state until the new
+ * key's figures land). Payloads from an older epoch are then ignored, so a
+ * late answer for the previous key can never bring its figures back.
+ *
  * Not persisted: a balance from a previous session would be stale.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -17,15 +24,19 @@ import {
   MessageEnvelope,
   MessageType,
   OpenRouterBalancePayload,
+  OpenRouterBalanceResetPayload,
   RequestOpenRouterBalancePayload,
   createEnvelope,
 } from '@messages';
 import { useVSCodeApi } from '../useVSCodeApi';
 
 export interface OpenRouterBalanceState {
-  /** Latest payload; `null` until the first one arrives. */
+  /** Latest payload for the current key; `null` until it arrives (and right after a key change). */
   balance: OpenRouterBalancePayload | null;
-  /** A request from this webview is in flight. The previous value stays visible. */
+  /**
+   * A request from this webview is in flight, or a key change is waiting for
+   * the new key's figures. During a refresh the previous value stays visible.
+   */
   isLoading: boolean;
 }
 
@@ -36,6 +47,7 @@ export interface OpenRouterBalanceActions {
 
 export interface OpenRouterBalanceHandlers {
   handleBalanceData: (message: MessageEnvelope) => void;
+  handleBalanceReset: (message: MessageEnvelope) => void;
 }
 
 export type UseOpenRouterBalanceReturn = OpenRouterBalanceState &
@@ -44,18 +56,24 @@ export type UseOpenRouterBalanceReturn = OpenRouterBalanceState &
 
 let requestSequence = 0;
 
+/** Below any epoch the host stamps (it starts at 0), so the first payload is always accepted. */
+const NO_EPOCH = -1;
+
 export function useOpenRouterBalance(apiKeyStatusKnown: boolean): UseOpenRouterBalanceReturn {
   const vscode = useVSCodeApi();
   const [balance, setBalance] = useState<OpenRouterBalancePayload | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [requestPending, setRequestPending] = useState(false);
+  const [awaitingNewAccount, setAwaitingNewAccount] = useState(false);
   const pendingRequestId = useRef<string | undefined>(undefined);
   const requestedOnMount = useRef(false);
+  /** Highest account epoch seen. Messages are handled one at a time, in order, so a ref is enough. */
+  const accountEpoch = useRef(NO_EPOCH);
 
   const request = useCallback((forceRefresh: boolean) => {
     requestSequence += 1;
     const correlationId = `openrouter-balance-${requestSequence}`;
     pendingRequestId.current = correlationId;
-    setIsLoading(true);
+    setRequestPending(true);
     vscode.postMessage(createEnvelope<RequestOpenRouterBalancePayload>(
       MessageType.REQUEST_OPENROUTER_BALANCE,
       'webview.account',
@@ -68,13 +86,32 @@ export function useOpenRouterBalance(apiKeyStatusKnown: boolean): UseOpenRouterB
 
   const handleBalanceData = useCallback((message: MessageEnvelope) => {
     const payload = message.payload as OpenRouterBalancePayload;
-    // Responses can arrive out of order; never replace newer figures with older ones.
-    setBalance((current) => (current && payload.fetchedAt < current.fetchedAt ? current : payload));
-    // Unsolicited pushes (post-request refresh, key change) don't settle our request.
+    // Our request is answered even when the answer turns out to be stale, so
+    // the busy state can't stick. Unsolicited pushes don't settle it.
     if (message.correlationId && message.correlationId === pendingRequestId.current) {
       pendingRequestId.current = undefined;
-      setIsLoading(false);
+      setRequestPending(false);
     }
+
+    // The previous key's figures, arriving late: never show them again.
+    if (payload.accountEpoch < accountEpoch.current) return;
+    const newAccount = payload.accountEpoch > accountEpoch.current;
+    accountEpoch.current = payload.accountEpoch;
+    setAwaitingNewAccount(false);
+    // Within one account responses can arrive out of order, so never replace
+    // newer figures with older ones. A newer account always replaces.
+    setBalance((current) => (
+      !newAccount && current && payload.fetchedAt < current.fetchedAt ? current : payload
+    ));
+  }, []);
+
+  const handleBalanceReset = useCallback((message: MessageEnvelope) => {
+    const { accountEpoch: next } = message.payload as OpenRouterBalanceResetPayload;
+    // Already showing that key (or a newer one): nothing to clear.
+    if (next <= accountEpoch.current) return;
+    accountEpoch.current = next;
+    setBalance(null);
+    setAwaitingNewAccount(true);
   }, []);
 
   useEffect(() => {
@@ -84,5 +121,11 @@ export function useOpenRouterBalance(apiKeyStatusKnown: boolean): UseOpenRouterB
     request(false);
   }, [apiKeyStatusKnown, request]);
 
-  return { balance, isLoading, refresh, handleBalanceData };
+  return {
+    balance,
+    isLoading: requestPending || awaitingNewAccount,
+    refresh,
+    handleBalanceData,
+    handleBalanceReset,
+  };
 }

@@ -104,6 +104,7 @@ export function App(): JSX.Element {
     // Token tracking messages
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.OPENROUTER_BALANCE_DATA]: balances.handleBalanceData,
+    [MessageType.OPENROUTER_BALANCE_RESET]: balances.handleBalanceReset,
 
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),

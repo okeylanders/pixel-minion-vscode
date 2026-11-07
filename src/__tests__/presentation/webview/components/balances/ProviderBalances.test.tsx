@@ -11,7 +11,14 @@ function balances(
   balance: OpenRouterBalancePayload | null,
   overrides: Partial<UseOpenRouterBalanceReturn> = {}
 ): UseOpenRouterBalanceReturn {
-  return { balance, isLoading: false, refresh: jest.fn(), handleBalanceData: jest.fn(), ...overrides };
+  return {
+    balance,
+    isLoading: false,
+    refresh: jest.fn(),
+    handleBalanceData: jest.fn(),
+    handleBalanceReset: jest.fn(),
+    ...overrides,
+  };
 }
 
 function renderHeader(
@@ -29,6 +36,7 @@ function renderHeader(
 const ok = (fields: Partial<OpenRouterBalancePayload>): OpenRouterBalancePayload => ({
   status: 'ok',
   creditsStatus: 'ok',
+  accountEpoch: 0,
   fetchedAt: new Date(2026, 10, 7, 17, 55).getTime(),
   ...fields,
 });
@@ -64,7 +72,7 @@ describe('OpenRouter balance header', () => {
   });
 
   it('mutes "no key" in the pill and asks for a key in the card', () => {
-    const { amount, strip } = renderHeader(balances({ status: 'no_key', creditsStatus: 'no_key', fetchedAt: NOW }));
+    const { amount, strip } = renderHeader(balances({ status: 'no_key', creditsStatus: 'no_key', accountEpoch: 0, fetchedAt: NOW }));
 
     expect(amount.textContent).toBe('no key');
     expect(amount.classList.contains('is-muted')).toBe(true);
@@ -139,6 +147,7 @@ describe('OpenRouter balance header', () => {
       creditsStatus: 'unavailable',
       keyIssue: { kind: 'invalid_key', httpStatus: 401 },
       creditsIssue: { kind: 'invalid_key', httpStatus: 401 },
+      accountEpoch: 0,
       fetchedAt: NOW,
     }));
 
@@ -154,6 +163,7 @@ describe('OpenRouter balance header', () => {
       creditsStatus: 'unavailable',
       keyIssue: { kind: 'network' },
       creditsIssue: { kind: 'network' },
+      accountEpoch: 0,
       fetchedAt: NOW,
     }));
 

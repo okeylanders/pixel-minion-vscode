@@ -12,7 +12,9 @@
  * - Own the trailing post-request refresh. OpenRouter's billing figures lag
  *   spend by roughly 5-10 s, so the refresh waits 10 s after the last
  *   terminal AI response; bursts coalesce to one fetch.
- * - Drop everything from the previous key when the stored key changes.
+ * - Drop everything from the previous key when the stored key changes, and
+ *   stamp every payload with the key epoch its fetch started under so the
+ *   webview can discard a late answer for the previous key.
  */
 import { OpenRouterBalancePayload } from '@messages';
 import { LoggingService } from '@logging';
@@ -81,6 +83,14 @@ export class AccountBalanceService {
     return this.cache;
   }
 
+  /**
+   * The current key's epoch, as stamped on every payload. Read it before a
+   * load to label a fallback payload with the key that load was for.
+   */
+  accountEpoch(): number {
+    return this.keyGeneration;
+  }
+
   /** The stored key was saved, replaced or cleared: forget the old key's figures. */
   invalidate(): void {
     this.keyGeneration += 1;
@@ -146,7 +156,7 @@ export class AccountBalanceService {
 
   private startFetch(forced: boolean): Promise<OpenRouterBalancePayload> {
     const generation = this.keyGeneration;
-    const pending = this.fetchBalance().then((payload) => {
+    const pending = this.fetchBalance(generation).then((payload) => {
       if (generation !== this.keyGeneration) {
         // The key changed mid-flight; these figures belong to the old key.
         return this.getBalance();
@@ -166,7 +176,7 @@ export class AccountBalanceService {
     return pending;
   }
 
-  private async fetchBalance(): Promise<OpenRouterBalancePayload> {
+  private async fetchBalance(accountEpoch: number): Promise<OpenRouterBalancePayload> {
     const [key, credits] = await Promise.all([
       this.client.fetchKeyLimit(),
       this.client.fetchCredits(),
@@ -174,7 +184,7 @@ export class AccountBalanceService {
     const fetchedAt = Date.now();
 
     if (key.status === 'no_key' && credits.status === 'no_key') {
-      return { status: 'no_key', creditsStatus: 'no_key', fetchedAt };
+      return { status: 'no_key', creditsStatus: 'no_key', accountEpoch, fetchedAt };
     }
 
     return {
@@ -184,6 +194,7 @@ export class AccountBalanceService {
       creditsStatus: credits.status,
       ...(key.status === 'unavailable' ? { keyIssue: key.issue } : {}),
       ...(credits.status === 'unavailable' ? { creditsIssue: credits.issue } : {}),
+      accountEpoch,
       fetchedAt,
     };
   }

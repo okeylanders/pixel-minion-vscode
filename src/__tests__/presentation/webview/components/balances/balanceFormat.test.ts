@@ -8,7 +8,7 @@ import {
 } from '../../../../../presentation/webview/components/balances/balanceFormat';
 import type { OpenRouterBalancePayload } from '@messages';
 
-const base = { fetchedAt: 1 } as const;
+const base = { fetchedAt: 1, accountEpoch: 0 } as const;
 
 describe('balanceFormat', () => {
   describe('currency', () => {

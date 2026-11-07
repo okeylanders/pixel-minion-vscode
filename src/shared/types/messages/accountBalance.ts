@@ -65,8 +65,24 @@ export interface OpenRouterBalancePayload {
   keyIssue?: OpenRouterAccountIssue;
   /** Why `/credits` failed, when it did. */
   creditsIssue?: OpenRouterAccountIssue;
+  /**
+   * Which stored key these figures belong to. The host bumps it whenever the
+   * key is saved, replaced or cleared, and stamps each payload with the epoch
+   * its fetch started under; the webview ignores payloads from an older epoch.
+   */
+  accountEpoch: number;
   /** Epoch ms when the host fetched these figures. */
   fetchedAt: number;
+}
+
+/**
+ * Sent the moment the stored key changes, before the new key's figures are
+ * fetched: the webview must stop showing the previous account's figures now,
+ * not when the (possibly slow) fetch settles.
+ */
+export interface OpenRouterBalanceResetPayload {
+  /** The new key's epoch; payloads stamped with an older one are discarded. */
+  accountEpoch: number;
 }
 
 export interface RequestOpenRouterBalancePayload {
