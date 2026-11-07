@@ -221,6 +221,67 @@ An independent adversarial review of `a2d5115` (round 5) found two webview/host 
 
 Lint: 11 → 9 errors (two invalid `react-hooks` disable comments removed with the effects they annotated), 22 → 20 warnings (unused `pendingPrompt`).
 
+### P5a: SVG safety and ownership (`claude/pixel-minion-svg-safety-dhbqpd`, stacked on P2)
+
+Roadmap phase P5a. Fixes the pre-existing SVG defects confirmed in the PR #12 review (ledger S1, S4, S5, and the SVG Refine part of S2). Commit `9128d89`.
+
+#### User-facing
+
+- Generated SVG never enters the app's DOM; a hostile `<style>` or duplicate ids can't affect the panel.
+- Documents that fail the new policy show a message and their code (the code view opens by itself); Save is disabled in the webview and refused by the host.
+- Refine follows the conversation's model; previews use the conversation's aspect ratio.
+- Re-hydrated SVG conversations replay their raster reference.
+- Save refuses file names that aren't plain names.
+
+#### Isolated preview
+
+- `SVGPreview.tsx` renders `<img src="data:image/svg+xml;base64,…">` for all five previews (inline, 32/64/128, full) instead of `dangerouslySetInnerHTML`. Chromium renders an `<img>` SVG as a separate document in secure animated mode: no script, no external fetches, CSS and SMIL animation allowed, and its styles and ids are scoped to that document. The webview CSP already had `img-src … data: blob:`; `webviewHtml.test.ts` now pins `data:` there and that `script-src` stays nonce-only.
+- `svgPreviewSource.ts` caches the last document's verdict and data URL, so the five previews scan and encode once per result. Base64 goes through `encodeURIComponent` → one char per UTF-8 byte → `btoa` (no `TextEncoder`, which jsdom lacks).
+- An `<img>` that fails to decode (malformed in ways the scanner tolerates, e.g. case-mismatched tags) shows "couldn't be rendered" instead of a broken image.
+
+#### `SVGDocumentPolicy` (`src/shared/svg/SVGDocumentPolicy.ts`)
+
+- Shared by webview (preview, Save button, hook) and host (save handler, orchestrator log). The plan named `infrastructure/svg/`; it lives in `shared/` because the webview needs it too and must not import infrastructure.
+- **Rejects, never rewrites**: a single-pass scanner with sticky regexes (linear time) over prolog, elements, attributes, text, comments and CDATA. It decodes XML entities in attribute values and `<style>` text, and CSS comments and escapes, before checking. Unknown or unparseable input is a rejection (fail closed).
+- **Accepts** ordinary SVG: `<style>` with `@keyframes`, SMIL, gradients, filters, `<text>`, `href="#…"` / `url(#…)`, embedded `data:image/{png,jpeg,gif,webp}` and `data:font/*`, the XML declaration and a public DOCTYPE.
+- **Rejects** documents over 2 MiB (UTF-8, counted without allocating), without exactly one `<svg>` root, or with mismatched/unclosed tags, control characters or unpaired surrogates; `<script>`, `<foreignObject>`, `<iframe>`, `<embed>`, `<object>`, `<handler>` (any namespace or case); `on*` attributes; `href` / `src` / `xml:base` that leave the document (including protocol-relative URLs and `data:image/svg+xml`); CSS `url()` that leaves it (in `<style>`, `style=`, or any attribute such as `fill=`); `@import`, `image-set()`, `expression()`, `-moz-binding`, `behavior:`; `javascript:` / `vbscript:` / `data:text/html` anywhere in an attribute; SMIL animating `href`; a DOCTYPE with an internal subset; processing instructions other than `<?xml …?>`.
+- **Tradeoff, intentionally strict**: an SVG that loads a web font with `@import` or `url(https://…)` is rejected. In the `<img>` preview the font wouldn't load anyway, and a saved file would fetch it when opened. The message names the cause, so the user can ask for a version without it.
+
+#### Ownership
+
+- `src/shared/svg/svgRoutes.ts`: `isNativeVectorSvgModel` / `svgModelSupportsRefinement`, the single copy of the `recraft/` rule. `SVGOrchestrator.selectClient` routes with it. P5b (or PR B's SVG catalog `kind`) replaces its body.
+- Refine eligibility: `SVGGenerationView` uses `threadSettings.model` (P2) instead of the draft picker; `useSVGGeneration.continueChat` refuses a native-vector thread; `SVGOrchestrator.continueSVG` throws before re-hydrating or calling a provider when the thread's model (in memory, or the payload's model for re-hydration) is native-vector. Before, switching the picker to a text model enabled Refine on a Recraft thread, and the host sent the text transcript to the vector client.
+- Raster reference on replay: `SVGConversationHistoryTurn.referenceImage` / `SVGRehydrationTurn.referenceImage`. The hook records the image actually sent (none when the attachment was an SVG, which travels as text) in the dispatch snapshot, and sends it in `history`. `SVGConversationManager.userContent()` builds live and re-hydrated user turns, so a restored request equals the live one (tested). Cost: each such turn persists the reference data URL in webview state.
+- Previews use `threadSettings.aspectRatio`.
+
+#### Saving
+
+- `src/application/handlers/saveFileName.ts` `plainSaveFileName()`: both save handlers refuse a suggested name that is empty, over 200 characters, contains `/ \ : * ? " < > |` or control characters, contains `..`, or starts with `.`. Refused, not repaired: the webview only ever sends `pixel-minion-<timestamp>.<ext>`. Before, the SVG handler joined the name onto the output folder unchecked (`..` escaped it); the image handler had the same gap.
+- `SVGGenerationHandler.saveSVG` runs the policy before the dialog or write; `useSVGGeneration.saveSVG` refuses first, so a refused save never shows as in progress.
+
+#### Removed (S5)
+
+- `MarkdownRenderer.tsx` (claimed to sanitize, inserted raw `marked` HTML), the never-mounted `HelloWorldView.tsx`, its `useHelloWorld.ts` hook, `markdown.css`, their barrel exports and `PersistenceState.helloWorld`. Verified unreferenced. Because the components barrel re-exported `HelloWorldView`, `marked` was in the webview bundle: `webview.js` 414 KiB → 384 KiB.
+- **Kept**: the `marked` dependency and the host `HelloWorldHandler` / `HELLO_WORLD_*` messages, which still import it. With the webview hook gone nothing sends `HELLO_WORLD_REQUEST`, so that host route is dead scaffold too; removing it touches `MessageHandler`, message types, two test files and `package.json`, and is left for a cleanup PR.
+
+#### Not done here
+
+- CSS and SMIL animation inside the `<img>` preview can't be checked in jsdom; it needs the manual installed-VSIX check (parity plan §7). Script inside the preview never runs, by design.
+- Duplicate ids within one generated document are the document's own business; they no longer collide with the app's ids.
+
+#### Test coverage
+
+375 → 465 tests (34 → 38 suites).
+
+- `SVGDocumentPolicy.test.ts` with `__tests__/fixtures/svgDocuments.ts`: 9 accepted fixtures (gradients, CSS animation, SMIL, entities, embedded PNG and font, namespaced root, prolog), 31 rejected (script in any case/namespace, handlers quoted/unquoted/SMIL, foreignObject form, external image/use/link/filter/xml:base, protocol-relative, javascript: plain/entity-encoded/NUL-split, SMIL href, remote `fill=url()`, `@import` plain/entity-encoded/comment-split, CSS-escaped `url()`, nested SVG and HTML data URLs, xml-stylesheet, DOCTYPE entities, HTML root, two roots, unclosed element, control characters, unpaired surrogate), the style-leak document accepted (isolation is the preview's job), the size cap in UTF-8 bytes, non-SVG input, and linear time.
+- `SVGGenerationViewIsolation.test.tsx` (renders the view): five `<img>` previews whose data URLs decode to the source; no generated `<style>`, `#pixel-leak-marker`, `#monitor-frame` or `#skull` in the app DOM; the opened code view holds the markup as text; UTF-8 round trip; a rejected document has no preview, shows the message and its source, and Save is disabled and posts nothing; Refine follows the thread's model in both directions.
+- `useSVGGenerationSafety.test.tsx`: native-vector refine refused without posting; rejected document never posted for save; raster reference recorded with the turn and sent in `history`; an SVG attachment's preview isn't recorded as a raster reference.
+- `SVGOrchestrator.test.ts`: native-vector refine refused before any provider call, in memory and for re-hydration; a rejected native-vector document is returned and logged; a re-hydrated request equals the live one, raster reference included. `SVGConversationManager.test.ts`: re-hydrated user turn equals the live one.
+- `GenerationSaveHandlers.test.ts` and `saveFileName.test.ts`: traversal, separators, drive/stream `:`, hidden names, control and reserved characters refused with no write, for both handlers; a policy-rejected SVG never reaches the dialog or disk.
+- `webviewHtml.test.ts`: `img-src` allows `data:`; `script-src` is nonce-only.
+
+Lint unchanged (9 errors, 20 warnings, all pre-existing).
+
 ---
 
 ## [1.3.0] - 2026-05-20
