@@ -3,8 +3,9 @@
  * AccountBalanceService and posts the sanitized payload to the webview.
  *
  * Thin handler: no caching, timers or combining logic (the service owns
- * those). It never throws to the router; an unexpected failure still posts a
- * usable `unavailable` payload so the header never sticks on "…".
+ * those). It never throws to the router: an unexpected failure re-posts the
+ * service's last figures, or, when there are none, a usable `unavailable`
+ * payload, so the header never sticks on "…".
  */
 import {
   MessageEnvelope,
@@ -59,7 +60,11 @@ export class AccountBalanceHandler {
       payload = await load();
     } catch (error) {
       this.logger.error('OpenRouter balance request failed', error);
-      payload = { status: 'unavailable', creditsStatus: 'unavailable', fetchedAt: Date.now() };
+      /* Prefer the last real figures, with their own fetchedAt. An error
+         stamped "now" would hide them, and the webview's newest-wins check
+         would then also reject the next (older) cached copy of them. */
+      payload = this.service.lastKnownBalance()
+        ?? { status: 'unavailable', creditsStatus: 'unavailable', fetchedAt: Date.now() };
     }
     this.postBalance(payload, correlationId);
   }

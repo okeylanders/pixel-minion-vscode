@@ -16,7 +16,7 @@ const BALANCE: OpenRouterBalancePayload = {
 describe('AccountBalanceHandler', () => {
   const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
   let postMessage: jest.Mock;
-  let service: { getBalance: jest.Mock; invalidate: jest.Mock };
+  let service: { getBalance: jest.Mock; invalidate: jest.Mock; lastKnownBalance: jest.Mock };
   let handler: AccountBalanceHandler;
 
   beforeEach(() => {
@@ -25,6 +25,7 @@ describe('AccountBalanceHandler', () => {
     service = {
       getBalance: jest.fn().mockResolvedValue(BALANCE),
       invalidate: jest.fn(),
+      lastKnownBalance: jest.fn().mockReturnValue(undefined),
     };
     handler = new AccountBalanceHandler(postMessage, service as never, logger as never);
   });
@@ -56,7 +57,21 @@ describe('AccountBalanceHandler', () => {
     expect(service.getBalance).toHaveBeenCalledWith(expected);
   });
 
-  it('posts an unavailable payload instead of throwing when the service fails', async () => {
+  it('re-posts the last known figures, with their own fetchedAt, when a refresh fails', async () => {
+    service.getBalance.mockRejectedValue(new Error('keychain locked'));
+    service.lastKnownBalance.mockReturnValue(BALANCE);
+
+    await handler.handleRequest(request({ forceRefresh: true }, 'corr-3'));
+
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: MessageType.OPENROUTER_BALANCE_DATA,
+      correlationId: 'corr-3',
+      payload: BALANCE,
+    }));
+  });
+
+  it('posts an unavailable payload instead of throwing when the service fails with nothing cached', async () => {
     service.getBalance.mockRejectedValue(new Error('keychain locked'));
 
     await expect(handler.handleRequest(request({ forceRefresh: true }, 'corr-2'))).resolves.toBeUndefined();

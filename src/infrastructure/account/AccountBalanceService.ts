@@ -63,6 +63,16 @@ export class AccountBalanceService {
     return this.startFetch(forceRefresh);
   }
 
+  /**
+   * The last payload fetched for the current key, however old (undefined
+   * before the first fetch and after a key change). Lets a caller whose own
+   * fetch failed keep showing the last real figures, with their real
+   * `fetchedAt`, instead of an error stamped "now".
+   */
+  lastKnownBalance(): OpenRouterBalancePayload | undefined {
+    return this.cache;
+  }
+
   /** The stored key was saved, replaced or cleared: forget the old key's figures. */
   invalidate(): void {
     this.keyGeneration += 1;
