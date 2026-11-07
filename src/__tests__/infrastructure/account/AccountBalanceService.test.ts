@@ -62,6 +62,7 @@ describe('AccountBalanceService', () => {
         keyLimit: KEY_OK.status === 'ok' ? KEY_OK.data : undefined,
         creditsStatus: 'unavailable',
         creditsIssue: { kind: 'forbidden', httpStatus: 403 },
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -75,6 +76,7 @@ describe('AccountBalanceService', () => {
         creditsStatus: 'unavailable',
         keyIssue: { kind: 'invalid_key', httpStatus: 401 },
         creditsIssue: { kind: 'invalid_key', httpStatus: 401 },
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -86,6 +88,7 @@ describe('AccountBalanceService', () => {
       await expect(service.getBalance()).resolves.toEqual({
         status: 'no_key',
         creditsStatus: 'no_key',
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -98,6 +101,7 @@ describe('AccountBalanceService', () => {
         keyLimit: { limit: 5, limitRemaining: 4.5, resetWindow: 'monthly' },
         credits: { totalCredits: 100, totalUsage: 27.5, remaining: 72.5 },
         creditsStatus: 'ok',
+        accountEpoch: 0,
         fetchedAt: Date.now(),
       });
     });
@@ -241,6 +245,161 @@ describe('AccountBalanceService', () => {
       await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({
         credits: expect.objectContaining({ remaining: 5 }),
       }));
+    });
+
+    it('stamps every payload with the epoch of the key its fetch started under', async () => {
+      expect(service.accountEpoch()).toBe(0);
+      await expect(service.getBalance()).resolves.toEqual(expect.objectContaining({ accountEpoch: 0 }));
+
+      const oldKeyCredits = deferred<CreditsResult>();
+      client.fetchCredits.mockReturnValueOnce(oldKeyCredits.promise);
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      const startedBeforeChange = service.getBalance(true);
+      service.invalidate();
+      expect(service.accountEpoch()).toBe(1);
+      oldKeyCredits.resolve(creditsOk(999));
+
+      // The old key's answer is swapped for the new key's, stamped with its epoch.
+      await expect(startedBeforeChange).resolves.toEqual(expect.objectContaining({
+        accountEpoch: 1,
+        credits: expect.objectContaining({ remaining: 72.5 }),
+      }));
+    });
+  });
+
+  describe('last known figures when a refresh fails transiently', () => {
+    const offline = { status: 'unavailable', issue: { kind: 'network' } } as const;
+    const badGateway = { status: 'unavailable', issue: { kind: 'server_error', httpStatus: 502 } } as const;
+    const rejected = { status: 'unavailable', issue: { kind: 'invalid_key', httpStatus: 401 } } as const;
+
+    async function readGoodFiguresThenWait(): Promise<number> {
+      const good = await service.getBalance();
+      jest.advanceTimersByTime(60_000);
+      return good.fetchedAt;
+    }
+
+    it.each([
+      ['offline', { kind: 'network' }],
+      ['rate-limited', { kind: 'rate_limited', httpStatus: 429 }],
+      ['an OpenRouter error', { kind: 'server_error', httpStatus: 503 }],
+      ['an unreadable reply', { kind: 'malformed' }],
+    ] as const)('keeps both figures, marked stale, when the refresh is %s', async (_label, issue) => {
+      const readAt = await readGoodFiguresThenWait();
+      client.fetchKeyLimit.mockResolvedValue({ status: 'unavailable', issue });
+      client.fetchCredits.mockResolvedValue({ status: 'unavailable', issue });
+
+      await expect(service.getBalance(true)).resolves.toEqual({
+        status: 'ok',
+        keyLimit: { limit: 5, limitRemaining: 4.5, resetWindow: 'monthly' },
+        credits: { totalCredits: 100, totalUsage: 27.5, remaining: 72.5 },
+        creditsStatus: 'unavailable',
+        keyIssue: issue,
+        creditsIssue: issue,
+        stale: { figuresFetchedAt: readAt, issue },
+        accountEpoch: 0,
+        fetchedAt: Date.now(),
+      });
+    });
+
+    it('carries only the figure that failed, and dates the staleness by that figure', async () => {
+      const readAt = await readGoodFiguresThenWait();
+      client.fetchCredits.mockResolvedValue(badGateway);
+      client.fetchKeyLimit.mockResolvedValue({
+        status: 'ok',
+        data: { limit: 5, limitRemaining: 4, resetWindow: 'monthly' },
+      });
+
+      const shown = await service.getBalance(true);
+
+      expect(shown.keyLimit).toEqual({ limit: 5, limitRemaining: 4, resetWindow: 'monthly' });
+      expect(shown.credits?.remaining).toBe(72.5);
+      expect(shown.stale).toEqual({ figuresFetchedAt: readAt, issue: badGateway.issue });
+    });
+
+    it('keeps the original read time across repeated failures, and clears the marker on success', async () => {
+      const readAt = await readGoodFiguresThenWait();
+      client.fetchKeyLimit.mockResolvedValue(offline);
+      client.fetchCredits.mockResolvedValue(offline);
+      await service.getBalance(true);
+      jest.advanceTimersByTime(60_000);
+
+      await expect(service.getBalance(true)).resolves.toEqual(expect.objectContaining({
+        stale: { figuresFetchedAt: readAt, issue: offline.issue },
+      }));
+
+      jest.advanceTimersByTime(60_000);
+      client.fetchKeyLimit.mockResolvedValue(KEY_OK);
+      client.fetchCredits.mockResolvedValue(creditsOk(70));
+      const fresh = await service.getBalance(true);
+      expect(fresh.stale).toBeUndefined();
+      expect(fresh.credits?.remaining).toBe(70);
+    });
+
+    it('retries a stale result after 15 s, like any failed result', async () => {
+      await readGoodFiguresThenWait();
+      client.fetchKeyLimit.mockResolvedValue(offline);
+      client.fetchCredits.mockResolvedValue(offline);
+      await service.getBalance(true);
+
+      jest.advanceTimersByTime(FAILED_BALANCE_CACHE_TTL_MS);
+      await service.getBalance();
+      expect(fetchCount()).toBe(3);
+    });
+
+    it('drops a figure the key is refused, and never brings it back on a later glitch', async () => {
+      await readGoodFiguresThenWait();
+      client.fetchKeyLimit.mockResolvedValue(rejected);
+      client.fetchCredits.mockResolvedValue(rejected);
+      await expect(service.getBalance(true)).resolves.toEqual(expect.objectContaining({
+        status: 'unavailable',
+        keyIssue: rejected.issue,
+      }));
+      expect((await service.getBalance()).credits).toBeUndefined();
+
+      jest.advanceTimersByTime(FAILED_BALANCE_CACHE_TTL_MS);
+      client.fetchKeyLimit.mockResolvedValue(offline);
+      client.fetchCredits.mockResolvedValue(offline);
+      const later = await service.getBalance(true);
+      expect(later.status).toBe('unavailable');
+      expect(later.credits).toBeUndefined();
+      expect(later.stale).toBeUndefined();
+    });
+
+    it('does not carry a forbidden /credits figure over either', async () => {
+      await readGoodFiguresThenWait();
+      client.fetchCredits.mockResolvedValue({ status: 'unavailable', issue: { kind: 'forbidden', httpStatus: 403 } });
+
+      const shown = await service.getBalance(true);
+      expect(shown.credits).toBeUndefined();
+      expect(shown.stale).toBeUndefined();
+    });
+
+    it('never carries figures across a key change', async () => {
+      await readGoodFiguresThenWait();
+      service.invalidate();
+      client.fetchKeyLimit.mockResolvedValue(offline);
+      client.fetchCredits.mockResolvedValue(offline);
+
+      await expect(service.getBalance(true)).resolves.toEqual({
+        status: 'unavailable',
+        creditsStatus: 'unavailable',
+        keyIssue: offline.issue,
+        creditsIssue: offline.issue,
+        accountEpoch: 1,
+        fetchedAt: Date.now(),
+      });
+    });
+
+    it('forgets the figures once the key is gone', async () => {
+      await readGoodFiguresThenWait();
+      client.fetchKeyLimit.mockResolvedValue({ status: 'no_key' });
+      client.fetchCredits.mockResolvedValue({ status: 'no_key' });
+      await expect(service.getBalance(true)).resolves.toEqual(expect.objectContaining({ status: 'no_key' }));
+
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      client.fetchKeyLimit.mockResolvedValue(offline);
+      client.fetchCredits.mockResolvedValue(offline);
+      await expect(service.getBalance(true)).resolves.toEqual(expect.objectContaining({ status: 'unavailable' }));
     });
   });
 

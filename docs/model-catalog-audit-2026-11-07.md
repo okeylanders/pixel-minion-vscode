@@ -144,7 +144,7 @@ API: `I` = images-only, `C` = chat + images. Measured figures are t2i medians at
 | 2026-10-05 | tencent/hy-image-v3.5-preview | Tencent | $1.6/1M output tok | 0–20 | 13; 1K–4K; seed | I | $0.024 @1536² (implies ~15k tok/img; derived) | 0.755 / 0.935 | Optional/skip. Preview; token count undocumented. |
 | 2026-10-01 | bytedance-seed/seedream-5-0-flash | ByteDance | $0.018 | 0–14 | 18; 1K/2K; seed | I | $0.018 @2048² | 0.792 / 0.935 | **Add** (Frame has) |
 | 2026-10-01 | black-forest-labs/flux-3-image | BFL | per image: 768 $0.041, 1K $0.048, 1.5K $0.07, 2K $0.10, 4K $0.607 | 0–10 | 16 | I | $0.024 (promo) | 0.792 / 0.903 | **Add** (Frame has) |
-| 2026-09-23 | recraft/recraft-v4.1-flash | Recraft | $0.007 | **none** | 6 | I | $0.007 | 0.66 | **Add** (Frame has; no references) |
+| 2026-09-23 | recraft/recraft-v4.1-flash | Recraft | $0.007 | **none** | 6 | I | $0.007 | 0.66 | **Add** (Frame has; no references). ↪ Deferred to P3/P4 after the PR #14 review: Refine always sends a reference |
 | 2026-09-09 | openai/gpt-image-2.5-sunburst | OpenAI | 8/5/30 | 0–16 | 9 | I | $0.0188 | 0.849 / 0.903 | **Add** (Frame has) |
 | 2026-09-09 | openai/gpt-image-2.5-flare | OpenAI | 8/5/30 | 0–16 | 9 | I | $0.0186 | **0.925 / 0.935** | **Add** (Frame has). Top-2 overall at about 1/13 the cost of Riverflow 2.5 Pro. |
 | 2026-09-04 | microsoft/mai-image-2.6 | Microsoft | in-text $5, in-img $8, out $38 | 0–5 | 8 | I | $0.0392 | 0.736 / 0.935 | **Add** (Frame has; supersedes 2.5 at a lower rate) |

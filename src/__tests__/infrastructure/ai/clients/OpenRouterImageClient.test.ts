@@ -133,7 +133,6 @@ describe('OpenRouterImageClient', () => {
       'bytedance-seed/seedream-5-0-flash': ['image'],
       'bytedance-seed/seedream-4.5': ['image'],
       'x-ai/grok-imagine-image-2.0': ['image'],
-      'recraft/recraft-v4.1-flash': ['image'],
       'recraft/recraft-v4.1-pro': ['image'],
       'recraft/recraft-v4.1': ['image'],
       'recraft/recraft-v4.1-utility-pro': ['image'],

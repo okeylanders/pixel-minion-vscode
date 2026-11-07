@@ -63,6 +63,7 @@ const BALANCE: OpenRouterBalancePayload = {
   status: 'ok',
   credits: { totalCredits: 20, totalUsage: 7.66, remaining: 12.34 },
   creditsStatus: 'ok',
+  accountEpoch: 0,
   fetchedAt: 1_700_000_000_000,
 };
 
@@ -73,6 +74,7 @@ describe('MessageHandler', () => {
   let balanceService: {
     getBalance: jest.Mock;
     invalidate: jest.Mock;
+    accountEpoch: jest.Mock;
     scheduleRefresh: jest.Mock;
     addRefreshListener: jest.Mock;
   };
@@ -98,6 +100,7 @@ describe('MessageHandler', () => {
     balanceService = {
       getBalance: jest.fn().mockResolvedValue(BALANCE),
       invalidate: jest.fn(),
+      accountEpoch: jest.fn().mockReturnValue(0),
       scheduleRefresh: jest.fn(),
       addRefreshListener: jest.fn(() => unsubscribe),
     };
@@ -182,12 +185,19 @@ describe('MessageHandler', () => {
       expect(balanceService.scheduleRefresh).not.toHaveBeenCalled();
     });
 
-    it('re-fetches for the new key after the API key is saved, replaced or cleared', async () => {
+    it('clears the old figures, then re-fetches for the new key, after the key is saved, replaced or cleared', async () => {
+      balanceService.accountEpoch.mockReturnValue(1);
       onSecretsChanged()();
       await flushPromises();
 
       expect(balanceService.invalidate).toHaveBeenCalledTimes(1);
       expect(balanceService.getBalance).toHaveBeenCalledWith(true);
+      const posted = postMessage.mock.calls.map(([message]) => message as MessageEnvelope);
+      expect(posted.map((message) => message.type)).toEqual([
+        MessageType.OPENROUTER_BALANCE_RESET,
+        MessageType.OPENROUTER_BALANCE_DATA,
+      ]);
+      expect(posted[0].payload).toEqual({ accountEpoch: 1 });
       expect(balancePosts()).toEqual([expect.objectContaining({ payload: BALANCE })]);
     });
 

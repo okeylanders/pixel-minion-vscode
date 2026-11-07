@@ -36,6 +36,10 @@
  *   - Recraft V4 Styles / Styles Pro are left out although chat-routable:
  *     they require 1–10 style references and Pixel has no gating that keeps
  *     Generate disabled until one is attached (it arrives with P3/P4).
+ *   - Recraft V4.1 Flash is left out for the inverse reason: it accepts no
+ *     reference image, but Pixel's Refine always sends the previous image
+ *     and attachments survive a model switch. It returns with the same
+ *     capability-aware controls (P3/P4); a catalog test enforces this.
  *   - `supportsSeed: false` wherever the Image API endpoint record lists no
  *     `seed` parameter (records are "definitive supported parameters").
  *   - Input rates added where OpenRouter itemizes them (GPT-5.x wrappers,
@@ -106,7 +110,8 @@ export const OPENROUTER_IMAGE_MODELS: ImageModelDefinition[] = [
   // ── Recraft raster (per-image) ──────────────────────────────────────────
   // NOT HERE: recraft/recraft-v4-styles and -styles-pro. They route on chat but require 1–10
   // style references; without Generate gating (P3/P4) a prompt-only request would just fail.
-  { id: 'recraft/recraft-v4.1-flash', supportsSeed: false, referenceImages: { min: 0, max: 0 }, displayName: 'Recraft V4.1 Flash', description: 'Fast text-to-image generation for quick visual drafts. This route does not accept reference images.', imagePricing: { unit: 'image', output: 0.007 }, supportedAspectRatios: ASPECT_RATIOS.recraft }, // $0.007 [endpoints]; input modalities: text only
+  // NOT HERE either: recraft/recraft-v4.1-flash ($0.007, text input only, 0 references). Refine
+  // always sends the previous image, so it needs the same capability gating (PR #14 review F-01).
   { id: 'recraft/recraft-v4.1-pro', supportsSeed: false, referenceImages: { min: 0, max: 1 }, displayName: 'Recraft V4.1 Pro', imagePricing: { unit: 'image', output: 0.21 }, supportedAspectRatios: ASPECT_RATIOS.recraft },
   { id: 'recraft/recraft-v4.1', supportsSeed: false, referenceImages: { min: 0, max: 1 }, displayName: 'Recraft V4.1', imagePricing: { unit: 'image', output: 0.035 }, supportedAspectRatios: ASPECT_RATIOS.recraft },
   { id: 'recraft/recraft-v4.1-utility-pro', supportsSeed: false, referenceImages: { min: 0, max: 1 }, displayName: 'Recraft V4.1 Utility Pro', imagePricing: { unit: 'image', output: 0.21 }, supportedAspectRatios: ASPECT_RATIOS.recraft },

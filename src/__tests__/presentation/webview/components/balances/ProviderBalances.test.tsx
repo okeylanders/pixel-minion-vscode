@@ -11,7 +11,14 @@ function balances(
   balance: OpenRouterBalancePayload | null,
   overrides: Partial<UseOpenRouterBalanceReturn> = {}
 ): UseOpenRouterBalanceReturn {
-  return { balance, isLoading: false, refresh: jest.fn(), handleBalanceData: jest.fn(), ...overrides };
+  return {
+    balance,
+    isLoading: false,
+    refresh: jest.fn(),
+    handleBalanceData: jest.fn(),
+    handleBalanceReset: jest.fn(),
+    ...overrides,
+  };
 }
 
 function renderHeader(
@@ -29,6 +36,7 @@ function renderHeader(
 const ok = (fields: Partial<OpenRouterBalancePayload>): OpenRouterBalancePayload => ({
   status: 'ok',
   creditsStatus: 'ok',
+  accountEpoch: 0,
   fetchedAt: new Date(2026, 10, 7, 17, 55).getTime(),
   ...fields,
 });
@@ -64,7 +72,7 @@ describe('OpenRouter balance header', () => {
   });
 
   it('mutes "no key" in the pill and asks for a key in the card', () => {
-    const { amount, strip } = renderHeader(balances({ status: 'no_key', creditsStatus: 'no_key', fetchedAt: NOW }));
+    const { amount, strip } = renderHeader(balances({ status: 'no_key', creditsStatus: 'no_key', accountEpoch: 0, fetchedAt: NOW }));
 
     expect(amount.textContent).toBe('no key');
     expect(amount.classList.contains('is-muted')).toBe(true);
@@ -139,6 +147,7 @@ describe('OpenRouter balance header', () => {
       creditsStatus: 'unavailable',
       keyIssue: { kind: 'invalid_key', httpStatus: 401 },
       creditsIssue: { kind: 'invalid_key', httpStatus: 401 },
+      accountEpoch: 0,
       fetchedAt: NOW,
     }));
 
@@ -154,11 +163,35 @@ describe('OpenRouter balance header', () => {
       creditsStatus: 'unavailable',
       keyIssue: { kind: 'network' },
       creditsIssue: { kind: 'network' },
+      accountEpoch: 0,
       fetchedAt: NOW,
     }));
 
     expect(amount.textContent).toBe('offline');
     expect(strip.textContent).toContain("Balance unavailable: couldn't reach OpenRouter.");
+  });
+
+  it('shows last known figures as last known, with when they were read and why they could not refresh', () => {
+    const { amount, pill, strip, expand } = renderHeader(balances(ok({
+      creditsStatus: 'unavailable',
+      credits: { totalCredits: 20, totalUsage: 7.66, remaining: 12.34 },
+      creditsIssue: { kind: 'network' },
+      keyIssue: { kind: 'network' },
+      stale: { figuresFetchedAt: new Date(2026, 10, 7, 15, 41).getTime(), issue: { kind: 'network' } },
+      fetchedAt: NOW,
+    })));
+    expand();
+
+    expect(amount.textContent).toBe('$12.34');
+    expect(amount.classList.contains('is-stale')).toBe(true);
+    expect(pill.getAttribute('title')).toMatch(/^Account balance\. Last known figures: couldn't reach OpenRouter\./);
+    expect(strip.querySelector('.px-balance-card')?.classList.contains('is-stale')).toBe(true);
+    expect(strip.querySelector('.px-balance-amount')?.textContent).toBe('$12.34');
+    expect(strip.querySelector('.px-balance-note')?.textContent).toBe(
+      "Showing last known figures: couldn't reach OpenRouter."
+    );
+    const updated = strip.querySelectorAll('.px-balance-meta span')[1] as HTMLElement;
+    expect(updated.textContent).toMatch(/^Updated3:41\sPM · last known · couldn't refresh$/);
   });
 
   it('keeps the current value on screen while a refresh is in flight', () => {

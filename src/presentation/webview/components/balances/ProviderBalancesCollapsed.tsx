@@ -36,7 +36,9 @@ export const ProviderBalancesCollapsed: React.FC<ProviderBalancesCollapsedProps>
     >
       <span className="px-provider-dot" aria-hidden="true" />
       <span className="px-balance-summary-name">OpenRouter</span>
-      <strong className={`px-balance-summary-amount is-${headline.tone}`}>{headline.text}</strong>
+      <strong className={`px-balance-summary-amount is-${headline.tone}${headline.stale ? ' is-stale' : ''}`}>
+        {headline.text}
+      </strong>
       <span className="px-balance-summary-chevron" aria-hidden="true">
         <ChevronIcon up={expanded} />
       </span>
