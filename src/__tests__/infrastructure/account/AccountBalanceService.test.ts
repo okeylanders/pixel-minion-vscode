@@ -155,6 +155,17 @@ describe('AccountBalanceService', () => {
       expect(fetchCount()).toBe(2);
     });
 
+    it('keeps the last good figures when a forced refresh rejects', async () => {
+      const good = await service.getBalance();
+      jest.advanceTimersByTime(MIN_FORCED_REFRESH_INTERVAL_MS);
+      client.fetchKeyLimit.mockRejectedValueOnce(new Error('keychain locked'));
+
+      await expect(service.getBalance(true)).rejects.toThrow('keychain locked');
+
+      await expect(service.getBalance()).resolves.toBe(good);
+      expect(fetchCount()).toBe(2);
+    });
+
     it('lets a rejected fetch propagate and retries on the next call', async () => {
       client.fetchKeyLimit.mockRejectedValueOnce(new Error('keychain locked'));
 

@@ -153,6 +153,18 @@ describe('MessageHandler', () => {
       expect(balanceService.scheduleRefresh).toHaveBeenCalledTimes(1);
     });
 
+    it('treats every *_RESPONSE type as terminal, so a new AI response cannot silently skip the refresh', () => {
+      const responseTypes = Object.values(MessageType).filter((type) => type.endsWith('_RESPONSE'));
+      expect(responseTypes.length).toBeGreaterThan(0);
+
+      for (const type of responseTypes) {
+        balanceService.scheduleRefresh.mockClear();
+        domainPostMessage()(createEnvelope(type, 'extension.imageGeneration', {}));
+        expect({ type, armed: balanceService.scheduleRefresh.mock.calls.length })
+          .toEqual({ type, armed: 1 });
+      }
+    });
+
     it.each([
       MessageType.STATUS,
       MessageType.ERROR,

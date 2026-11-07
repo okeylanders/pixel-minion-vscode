@@ -56,7 +56,8 @@ import { AccountBalanceService } from '../../infrastructure/account';
  * any handler that answers a generation participates without extra wiring.
  * Deliberately excluded: ERROR (failed requests are normally not billed; the
  * cache TTL or a manual refresh covers the exception), STATUS progress
- * updates, and file-save results (no spend).
+ * updates, and file-save results (no spend). MessageHandler.test.ts fails if
+ * a `*_RESPONSE` message type is missing from this set.
  */
 const TERMINAL_AI_RESPONSE_TYPES: ReadonlySet<MessageType> = new Set([
   MessageType.IMAGE_GENERATION_RESPONSE,
