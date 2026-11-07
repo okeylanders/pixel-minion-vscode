@@ -6,6 +6,7 @@
  */
 
 @import './variables.css';
+@import './design-tokens.css';
 @import './components/button.css';
 @import './components/input.css';
 @import './components/tabs.css';
@@ -40,19 +41,21 @@ body {
   flex-direction: column;
 }
 
-/* App container */
+/* App container — also the scope of the px design tokens (design-tokens.css). */
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  color: var(--px-text);
+  background: var(--px-bg);
 }
 
 /* App Header — Frame Minion house-style marquee, adapted for Pixel Minion. */
 .app-header-shell {
   flex-shrink: 0;
-  background: var(--pm-panel);
-  border-bottom: 1px solid var(--pm-border-soft);
+  background: var(--px-panel);
+  border-bottom: 1px solid var(--px-border-soft);
 }
 
 .app-header {
@@ -62,7 +65,7 @@ body {
   gap: 10px;
   min-height: 74px;
   padding: 11px 14px 13px;
-  background: color-mix(in oklab, var(--pm-text) 3%, var(--pm-panel));
+  background: color-mix(in oklab, var(--px-text) 3%, var(--px-panel));
 }
 
 .app-header::after {
@@ -72,7 +75,7 @@ body {
   left: 14px;
   height: 1px;
   content: "";
-  background: linear-gradient(90deg, transparent, var(--pm-accent), transparent);
+  background: linear-gradient(90deg, transparent, var(--px-accent), transparent);
   opacity: 0.75;
 }
 
@@ -82,9 +85,9 @@ body {
   height: 45px;
   flex-shrink: 0;
   place-items: center;
-  color: var(--pm-accent);
-  background: var(--pm-inset);
-  border: 1px solid var(--pm-border);
+  color: var(--px-accent);
+  background: var(--px-inset);
+  border: 1px solid var(--px-border);
   border-radius: 10px;
 }
 
@@ -95,7 +98,7 @@ body {
 
 .app-title {
   margin: 0;
-  color: var(--pm-text);
+  color: var(--px-text);
   font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.02em;
@@ -103,7 +106,7 @@ body {
 
 .app-subtitle {
   margin: 0;
-  color: var(--pm-text-muted);
+  color: var(--px-text-muted);
   font-size: 10.5px;
 }
 
@@ -375,15 +378,15 @@ body {
 /* Divider */
 .divider {
   height: 1px;
-  background-color: var(--pm-border-soft);
+  background-color: var(--px-border-soft);
   margin: var(--spacing-md) 0;
 }
 
 /* Well - card-like container for grouping form elements (Prose Minion design) */
 .well {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-radius);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius);
   padding: var(--spacing-md);
 }
 
@@ -398,7 +401,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--pm-bg);
+  background-color: var(--px-bg);
   z-index: 100;
   overflow-y: auto;
   padding: var(--spacing-sm);
@@ -445,7 +448,7 @@ body {
 .settings-close-button {
   background: var(--vscode-button-background);
   border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--pm-radius);
+  border-radius: var(--px-radius);
   color: var(--vscode-button-foreground);
   font-size: 0.875rem;
   cursor: pointer;
@@ -460,20 +463,20 @@ body {
 /* Settings sections (cards) */
 .settings-section {
   margin-top: var(--spacing-sm);
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-radius);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius);
   padding: var(--spacing-md);
 }
 
 .settings-section-heading {
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--pm-border-soft);
+  border-bottom: 1px solid var(--px-border-soft);
 }
 
 .settings-section-kicker {
-  color: var(--pm-accent);
+  color: var(--px-accent);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.11em;
@@ -482,7 +485,7 @@ body {
 .settings-section-title {
   margin: 1px 0 0;
   padding: 0;
-  color: var(--pm-text);
+  color: var(--px-text);
   font-size: 14px;
   font-weight: 600;
   border: 0;
@@ -532,18 +535,18 @@ body {
 .settings-input {
   width: 100%;
   padding: 6px 8px;
-  background: var(--pm-inset);
-  color: var(--pm-text-input);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
-  font-family: var(--pm-sans);
+  background: var(--px-inset);
+  color: var(--px-text-input);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius);
+  font-family: var(--px-sans);
   font-size: var(--vscode-font-size);
 }
 
 .settings-input:focus {
   outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
+  border-color: var(--px-accent);
+  box-shadow: 0 0 0 2px var(--px-accent-ring);
 }
 
 @media (max-width: 520px) {
@@ -553,10 +556,10 @@ body {
 
 /* OpenRouter Alert - Warning banner when API key not configured */
 .openrouter-alert {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-left: 2px solid var(--pm-warn);
-  border-radius: var(--pm-radius);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-left: 2px solid var(--px-warn);
+  border-radius: var(--px-radius);
   padding: var(--spacing-md);
   margin: var(--spacing-md);
 }
@@ -656,7 +659,7 @@ body {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: var(--pm-radius-sm);
+  border-radius: var(--px-radius-sm);
   font-size: 12px;
 }
 

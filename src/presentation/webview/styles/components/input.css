@@ -10,16 +10,16 @@
   padding: var(--spacing-sm) var(--spacing-md);
   font-family: var(--vscode-font-family);
   font-size: var(--vscode-font-size);
-  color: var(--pm-text-input);
-  background-color: var(--pm-inset);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
+  color: var(--px-text-input);
+  background-color: var(--px-inset);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
+  border-color: var(--px-accent);
+  box-shadow: 0 0 0 2px var(--px-accent-ring);
 }
 
 .input::placeholder {
@@ -40,12 +40,12 @@
 
 .input-label {
   font-size: 11px;
-  color: var(--pm-text-muted);
+  color: var(--px-text-muted);
 }
 
 .input-description {
   font-size: calc(var(--vscode-font-size) - 1px);
-  color: var(--pm-text-muted);
+  color: var(--px-text-muted);
 }
 
 /* Input with inline button */
@@ -65,17 +65,17 @@
   padding: var(--spacing-md);
   font-family: var(--vscode-editor-font-family);
   font-size: var(--vscode-editor-font-size);
-  color: var(--pm-text-input);
-  background-color: var(--pm-inset);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
+  color: var(--px-text-input);
+  background-color: var(--px-inset);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius);
   resize: vertical;
 }
 
 .textarea:focus {
   outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
+  border-color: var(--px-accent);
+  box-shadow: 0 0 0 2px var(--px-accent-ring);
 }
 
 /* Secret input (password masked) */

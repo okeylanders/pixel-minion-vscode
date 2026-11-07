@@ -23,38 +23,38 @@
   justify-content: center;
   gap: 8px;
   padding: 11px 4px 9px;
-  color: var(--pm-text-muted);
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
+  color: var(--px-text-muted);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
   border-radius: 6px;
   cursor: pointer;
-  font-family: var(--pm-sans);
+  font-family: var(--px-sans);
   text-align: center;
   transition: background 100ms, border-color 100ms, box-shadow 100ms, color 100ms;
 }
 
 .tab-button:hover:not(:disabled) {
-  color: var(--pm-text);
-  background: var(--pm-field);
-  border-color: var(--pm-border-strong);
+  color: var(--px-text);
+  background: var(--px-field);
+  border-color: var(--px-border-strong);
 }
 
 .tab-button:focus-visible {
-  outline: 2px solid var(--pm-accent);
+  outline: 2px solid var(--px-accent);
   outline-offset: 2px;
 }
 
 .tab-button.active {
-  color: var(--pm-text);
-  background: color-mix(in oklab, var(--pm-accent) 10%, var(--pm-card));
-  border-color: var(--pm-accent);
+  color: var(--px-text);
+  background: color-mix(in oklab, var(--px-accent) 10%, var(--px-card));
+  border-color: var(--px-accent);
   box-shadow:
-    0 0 0 1px var(--pm-accent-ring),
-    0 6px 16px rgba(0, 0, 0, 0.22);
+    0 0 0 1px var(--px-accent-ring),
+    0 6px 16px color-mix(in srgb, var(--px-shadow) 60%, transparent);
 }
 
 .tab-button.active .tab-icon {
-  color: var(--pm-accent);
+  color: var(--px-accent);
 }
 
 .tab-button:disabled {

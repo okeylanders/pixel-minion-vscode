@@ -2,8 +2,8 @@
   display: flex;
   gap: 8px;
   padding: 8px;
-  background: var(--pm-panel);
-  border-top: 1px solid var(--pm-border-soft);
+  background: var(--px-panel);
+  border-top: 1px solid var(--px-border-soft);
   position: sticky;
   bottom: 0;
 }
@@ -11,17 +11,17 @@
 .continue-chat-input-field {
   flex: 1;
   padding: 10px 14px;
-  background: var(--pm-inset);
-  color: var(--pm-text-input);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
+  background: var(--px-inset);
+  color: var(--px-text-input);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius);
   font-size: 13px;
   outline: none;
 }
 
 .continue-chat-input-field:focus {
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
+  border-color: var(--px-accent);
+  box-shadow: 0 0 0 2px var(--px-accent-ring);
 }
 
 .continue-chat-input-field:disabled {
@@ -37,7 +37,7 @@
   background: var(--vscode-button-background);
   color: var(--vscode-button-foreground);
   border: none;
-  border-radius: var(--pm-radius);
+  border-radius: var(--px-radius);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;

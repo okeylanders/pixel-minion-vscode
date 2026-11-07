@@ -1,6 +1,6 @@
 .image-card {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -9,7 +9,7 @@
   position: relative;
   width: 100%;
   padding-top: 100%; /* Square aspect ratio container */
-  background: var(--pm-inset);
+  background: var(--px-inset);
 }
 
 .image-card-image {
@@ -27,7 +27,7 @@
   align-items: center;
   padding: 8px;
   gap: 8px;
-  border-top: 1px solid var(--pm-border-soft);
+  border-top: 1px solid var(--px-border-soft);
 }
 
 .image-card-info {
@@ -48,7 +48,7 @@
 
 .image-card-seed {
   background: none;
-  border: 1px solid var(--pm-border-soft);
+  border: 1px solid var(--px-border-soft);
   border-radius: 3px;
   padding: 2px 6px;
   font-size: 10px;

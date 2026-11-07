@@ -1,6 +1,6 @@
 .svg-preview {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
   border-radius: var(--radius-md);
   padding: var(--spacing-md);
   min-height: 300px;
@@ -11,7 +11,7 @@
 }
 
 .svg-preview-empty {
-  background: var(--pm-inset);
+  background: var(--px-inset);
   color: var(--vscode-descriptionForeground);
   font-size: 14px;
 }
