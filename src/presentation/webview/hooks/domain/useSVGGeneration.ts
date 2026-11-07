@@ -23,6 +23,8 @@ import {
 } from '@messages';
 import { DEFAULT_SVG_MODEL } from '@shared/models';
 import { newRequestId } from '../../utils/requestId';
+import { inspectSvgDocument } from '../../../../shared/svg/SVGDocumentPolicy';
+import { svgModelSupportsRefinement } from '../../../../shared/svg/svgRoutes';
 
 /** Correlation-id prefix of clear requests; their errors are always ours. */
 const CLEAR_REQUEST_PREFIX = 'svg-clear';
@@ -37,6 +39,7 @@ interface PendingGeneration {
   prompt: string;
   settings: SVGThreadSettings;
   referenceSvgText?: string;
+  referenceImage?: string;
 }
 
 /**
@@ -200,6 +203,7 @@ export function useSVGGeneration(
       svgCode: payload.svgCode,
       turnNumber: payload.turnNumber,
       referenceSvgText: dispatch.referenceSvgText,
+      referenceImage: dispatch.referenceImage,
       usage: payload.usage,
     }]);
     setIsLoading(false);
@@ -266,14 +270,15 @@ export function useSVGGeneration(
     }
 
     const settings: SVGThreadSettings = { model, aspectRatio };
+    // An SVG attachment travels as text; its preview image is not sent.
+    const sentImage = referenceSvgText ? undefined : (referenceImage ?? undefined);
     const message = createEnvelope<SVGGenerationRequestPayload>(
       MessageType.SVG_GENERATION_REQUEST,
       'webview.svgGeneration',
       {
         prompt,
         ...settings,
-        // An SVG attachment travels as text; its preview image is not sent.
-        referenceImage: referenceSvgText ? undefined : (referenceImage ?? undefined),
+        referenceImage: sentImage,
         referenceSvgText: referenceSvgText ?? undefined,
       },
       newRequestId('svg-generate')
@@ -283,6 +288,8 @@ export function useSVGGeneration(
       prompt,
       settings,
       referenceSvgText: referenceSvgText ?? undefined,
+      // Kept with the turn so a re-hydrated conversation replays it.
+      referenceImage: sentImage,
     };
 
     // Generate takes the prompt on screen. An enhance still running is
@@ -309,12 +316,19 @@ export function useSVGGeneration(
         setError('No active conversation to continue');
         return;
       }
+      // The thread's model decides, not the picker: a native-vector
+      // conversation can't be refined even if a text model is selected now.
+      if (!svgModelSupportsRefinement(threadSettings.model)) {
+        setError("Refine isn't available for this conversation's model. Start a new generation instead.");
+        return;
+      }
 
       const history: SVGConversationHistoryTurn[] = conversationHistory.map((turn) => ({
         prompt: turn.prompt,
         svgCode: turn.svgCode,
         turnNumber: turn.turnNumber,
         referenceSvgText: turn.referenceSvgText,
+        referenceImage: turn.referenceImage,
       }));
 
       // The thread's settings, not the draft controls, own a refinement, and
@@ -365,6 +379,13 @@ export function useSVGGeneration(
   const saveSVG = useCallback(() => {
     if (!svgCode) {
       setError('No SVG code to save');
+      return;
+    }
+    // The host enforces this too; checking here keeps a refused save from
+    // looking like it is in progress.
+    const verdict = inspectSvgDocument(svgCode);
+    if (!verdict.accepted) {
+      setError(`Not saved: this SVG ${verdict.reason}.`);
       return;
     }
 

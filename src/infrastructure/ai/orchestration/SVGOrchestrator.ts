@@ -15,6 +15,8 @@ import { TextClient } from '../clients/TextClient';
 import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
 import { AspectRatio, TokenUsage } from '@messages';
+import { isNativeVectorSvgModel, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
+import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
 
 /**
  * Output-token ceiling for one SVG turn.
@@ -94,7 +96,7 @@ export class SVGOrchestrator {
    * (e.g. Recraft) need a different API shape and produce SVG via image output.
    */
   private selectClient(model: string): TextClient {
-    if (model.startsWith('recraft/')) {
+    if (isNativeVectorSvgModel(model)) {
       if (!this.vectorImageClient) {
         throw new Error('Vector image client not configured for Recraft models.');
       }
@@ -150,6 +152,12 @@ export class SVGOrchestrator {
 
       // Extract SVG from the response (throws if no valid SVG found)
       const svgCode = this.extractSVG(result.content);
+      // Text and native-vector output alike: a rejected document is still
+      // returned (the webview shows its code) but is never previewed or saved.
+      const verdict = inspectSvgDocument(svgCode);
+      if (!verdict.accepted) {
+        this.logger.warn(`SVG from ${options.model} will not be previewed or saved: it ${verdict.reason}`);
+      }
 
       // Add assistant response
       this.conversationManager.addAssistantResponse(conversation.id, svgCode);
@@ -197,6 +205,14 @@ export class SVGOrchestrator {
     referenceSvgText?: string
   ): Promise<SVGTurnResult> {
     let conversation = this.conversationManager.get(conversationId);
+
+    // Native-vector models regenerate from the prompt; sending them this
+    // conversation's text transcript would be a paid request for an
+    // unrelated image. The thread's model decides, before any provider call.
+    const threadModel = conversation?.model ?? model;
+    if (threadModel && !svgModelSupportsRefinement(threadModel)) {
+      throw new Error("Refine isn't available for native vector models. Start a new generation instead.");
+    }
 
     if (!conversation && history?.length && model && aspectRatio) {
       this.logger.info(`Re-hydrating SVG conversation ${conversationId} from history (${history.length} turns)`);

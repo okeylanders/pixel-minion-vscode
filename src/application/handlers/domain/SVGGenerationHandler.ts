@@ -22,6 +22,8 @@ import {
 } from '@messages';
 import { LoggingService } from '@logging';
 import { SVGOrchestrator } from '@ai';
+import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
+import { plainSaveFileName } from '../saveFileName';
 
 export class SVGGenerationHandler {
   private readonly configSection = 'pixelMinion';
@@ -246,13 +248,20 @@ export class SVGGenerationHandler {
 
   /**
    * Save SVG to workspace or user-selected location. Returns undefined when
-   * the user cancels the save dialog.
+   * the user cancels the save dialog. A document the SVGDocumentPolicy
+   * rejects is never written: a saved .svg opened in a browser runs with full
+   * privileges, unlike the webview's isolated preview.
    */
   private async saveSVG(svgCode: string, suggestedFilename: string): Promise<vscode.Uri | undefined> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
-    // Generate filename if not provided
-    let filename = suggestedFilename;
+    const verdict = inspectSvgDocument(svgCode);
+    if (!verdict.accepted) {
+      throw new Error(`Not saved: this SVG ${verdict.reason}.`);
+    }
+
+    // A plain name, never a path
+    let filename = suggestedFilename ? plainSaveFileName(suggestedFilename) : '';
     if (!filename) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
       filename = `svg-${timestamp}.svg`;

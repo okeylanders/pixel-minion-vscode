@@ -12,10 +12,6 @@ import type { TokenTrackingPersistence } from './domain/useTokenTracking';
 import type { AspectRatio } from '@messages';
 
 export interface PersistenceState {
-  helloWorld?: {
-    text: string;
-    renderedMarkdown: string;
-  };
   settings?: {
     maxConversationTurns: number;
     openRouterModel: string;
