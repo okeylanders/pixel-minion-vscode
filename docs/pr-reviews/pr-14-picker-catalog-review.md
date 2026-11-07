@@ -1,5 +1,33 @@
 # PR #14 review: picker parity and catalog refresh
 
+## Independent re-review: F-01 resolved; scoped approval
+
+**Re-reviewed:** 2026-11-07 at `46c1322a5b681870f9d72cf0650129a0dc0a9d07`.
+
+**Current verdict: approved within #14's scope.** F-01 is resolved by the allowed deferral option in `8e53acd`. Recraft V4.1 Flash is no longer a curated choice, its browser metadata and modality snapshot are removed, and the remaining catalog contains 35 image models. No new blocker was established in the follow-up delta. The feature itself stays deferred to P3/P4; no runtime capability gating is claimed here.
+
+The new catalog regression requires a numeric `referenceImages.max` of at least one for every curated image model. Independently changing one actual row to `max: 0` made that regression fail. After restoring the exact original file bytes, all 86 catalog tests passed. This guards the selected deferral strategy rather than pretending to test input gating that this PR does not implement. The deleted defect witness remains available in the [initial review commit](https://github.com/okeylanders/pixel-minion-vscode/blob/3978da9a9d8c763a418e50d3f37a9302ebe1e707/docs/pr-reviews/witnesses/pr-14-text-only-image-repro.cjs).
+
+### Independent verification at `46c1322`
+
+| Check | Result |
+| --- | --- |
+| `npm test -- --runInBand` | **35 suites / 575 tests passed** |
+| `tsc --noEmit` for host, webview, and test projects | All three passed |
+| `npm run build` | Passed; three webpack size/performance warnings |
+| `npm run lint` | **11 errors / 22 warnings**, diagnostic messages identical to an independently rerun `3978da9` baseline apart from line numbers |
+| Zero-reference mutation | New guard rejected the mutation; exact file bytes restored |
+| Clean catalog suite after restoration | **86 tests passed** |
+| `git diff --check` | Passed |
+| Remote CI for `46c1322` | No commit statuses or PR-triggered workflow runs returned; CI is **not claimed green** |
+| Live provider generation / fresh browser / installed VSIX | Not rerun |
+
+**Stack boundary:** this head incorporates #13 through `9b19065` via merge `b5cea17`. At this publication, #13's separate independent re-review is still in progress and has not cleared its balance changes. Consult #13's report for its current verdict; this scoped #14 approval does not substitute for that review or authorize merging. Existing later-phase risks, manual acceptance work, and the GPT estimate-basis decision remain as recorded below.
+
+Only this report is changed by re-review publication. No production changes, provider charges, merge, or deployment were performed by the reviewer.
+
+## Initial review and author follow-up history
+
 **Reviewed:** 2026-11-07
 
 **PR:** https://github.com/okeylanders/pixel-minion-vscode/pull/14
@@ -8,11 +36,11 @@
 
 **Reviewed stack ancestor:** `e946faae8e4a074e7a62ab1166afeca8e024fbf3` (#13)
 
-**Current #13 head at publication:** `481bd5f3602d96267e91695317e416de07c9581a` (report-only follow-up; its F-01 remains open)
+**#13 head at initial publication:** `481bd5f3602d96267e91695317e416de07c9581a` (report-only follow-up; its F-01 remains open)
 
 **Status (2026-11-07):** F-01 resolved by deferral (the review's allowed option) in `8e53acd`: Recraft V4.1 Flash is out of the catalog until capability-aware controls land, and a catalog guard keeps any zero-reference model out meanwhile. The witness is deleted and replaced by that guard. #13's F-01/N-01 fixes are merged in (`b5cea17`). 35 suites / 575 tests pass; see [Resolution status](#resolution-status).
 
-**Verdict: changes requested for F-01.** The new Recraft V4.1 Flash catalog entry is usable for text-only generation, but Pixel exposes image-input/refinement flows it cannot support. No other new blocking defect was established in the scoped delta. This is not approval to merge the stack.
+**Original verdict (superseded): changes requested for F-01.** The new Recraft V4.1 Flash catalog entry is usable for text-only generation, but Pixel exposes image-input/refinement flows it cannot support. No other new blocking defect was established in the scoped delta. This is not approval to merge the stack.
 
 ## Status by item
 
@@ -37,13 +65,11 @@ The result is a request with unsupported image input: it cannot provide the prom
 
 **Requested correction:** either defer this row until capability-aware controls land, or gate both initial references and continuation now. Block unsupported input in the host as well as the UI; handle references already attached before a model switch and restored conversations. Do not silently drop reference images while presenting the action as refinement. Add regressions for prompt-only generation, initial attached references, a model switch with references attached, and first-turn-to-refinement behavior.
 
-### Independent executable witness
+### Historical executable witness
 
-`pr-14-text-only-image-repro.cjs` (deleted in `8e53acd`; replaced by the catalog guard below) loaded the real catalog, Image tab, orchestrator, conversation manager, and image client. It mocks secret storage and fetch, using no real credentials, provider calls, or charges.
+`pr-14-text-only-image-repro.cjs` (deleted in `8e53acd`; replaced by the catalog guard below) loaded the real catalog, Image tab, orchestrator, conversation manager, and image client. It mocked secret storage and fetch, using no real credentials, provider calls, or charges.
 
-```sh
-node docs/pr-reviews/witnesses/pr-14-text-only-image-repro.cjs
-```
+Run the archived script only from the initial `3978da9` tree; it is intentionally absent from the fixed tree.
 
 It verifies that:
 
@@ -52,7 +78,7 @@ It verifies that:
 3. An initial attached image is also serialized despite the catalog's zero-reference capability.
 4. The actual Image tab leaves Generate enabled with that attachment and exposes an enabled Refine input after a turn.
 
-The witness asserts the observed defect, not desired behavior. Replace it with expected-behavior regressions when fixed. Provider failure itself was not tested with a paid call; the mismatch is established by actual serialized requests and the provider's documented input contract.
+The historical witness asserted the observed defect, not desired behavior; the new catalog invariant replaces it for the deferral fix. Provider failure itself was not tested with a paid call; the mismatch is established by actual serialized requests and the provider's documented input contract.
 
 ## Review coverage
 
