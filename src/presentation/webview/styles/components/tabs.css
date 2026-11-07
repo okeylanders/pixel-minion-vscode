@@ -48,7 +48,6 @@
   color: var(--pm-text);
   background: color-mix(in oklab, var(--pm-accent) 10%, var(--pm-card));
   border-color: var(--pm-accent);
-  font-weight: 600;
   box-shadow:
     0 0 0 1px var(--pm-accent-ring),
     0 6px 16px rgba(0, 0, 0, 0.22);
@@ -61,7 +60,6 @@
 .tab-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .tab-icon {
@@ -82,34 +80,6 @@
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Legacy .tab class (kept for backwards compatibility) */
-.tab {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  color: var(--vscode-tab-inactiveForeground);
-  background-color: var(--vscode-tab-inactiveBackground, transparent);
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.tab:hover {
-  color: var(--vscode-tab-activeForeground);
-  background-color: var(--vscode-list-hoverBackground);
-}
-
-.tab:focus {
-  outline: none;
-}
-
-.tab.active {
-  color: var(--vscode-tab-activeForeground);
-  background-color: var(--vscode-tab-activeBackground, transparent);
-  border-bottom-color: var(--vscode-focusBorder);
 }
 
 /* Tab content container */
