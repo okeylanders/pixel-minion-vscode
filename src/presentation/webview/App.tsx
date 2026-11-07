@@ -13,7 +13,7 @@
  * Reference: docs/example-repo/src/presentation/webview/App.tsx
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageType, TabId } from '@messages';
+import { MessageType, TabId, normalizeTabId } from '@messages';
 import {
   AppHeader,
   TabBar,
@@ -51,9 +51,10 @@ export function App(): JSX.Element {
   // Load persisted state
   const persistedState = loadState();
 
-  // Active tab state
+  // Active tab state. A saved id no tab renders (e.g. the old 'settings'
+  // tab, now an overlay) falls back to Image instead of an empty panel.
   const [activeTab, setActiveTab] = useState<TabId>(
-    (persistedState.activeTab as TabId) || 'image'
+    () => normalizeTabId(persistedState.activeTab)
   );
 
   // Reduced motion (OS or VS Code setting): stamped on the root for CSS.
