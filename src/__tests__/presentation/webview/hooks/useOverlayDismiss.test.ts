@@ -9,6 +9,7 @@
 import * as React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import {
+  OVERLAY_Z_BASE,
   __resetOverlayStateForTests,
   isAnyOverlayOpen,
   useOverlayDismiss,
@@ -169,5 +170,93 @@ describe('useOverlayDismiss', () => {
     expect(document.activeElement).toBe(document.body);
     pressKey('Tab');
     expect(document.activeElement).toBe(first);
+  });
+
+  describe('paint order follows the overlay stack', () => {
+    /**
+     * App's layout: the model browser renders inside .tab-content, and the
+     * Settings overlay is a sibling of it. Settings can be opened by the host
+     * (the view-title gear) while the picker is open, or open the picker
+     * itself from one of its model fields.
+     */
+    function App({ hostOpensSettings }: { hostOpensSettings: boolean }): React.ReactElement {
+      const [picker, setPicker] = React.useState(false);
+      const [settingsPicker, setSettingsPicker] = React.useState(false);
+      const [settings, setSettings] = React.useState(false);
+      React.useEffect(() => {
+        if (hostOpensSettings) {
+          setSettings(true);
+        }
+      }, [hostOpensSettings]);
+      return h(
+        'div',
+        { className: 'app-container' },
+        h(
+          'div',
+          { className: 'tab-content' },
+          h('button', { onClick: () => setPicker(true) }, 'Open picker'),
+          h(Overlay, { name: 'picker', open: picker, onClose: () => setPicker(false) })
+        ),
+        h(
+          Overlay,
+          { name: 'settings', open: settings, onClose: () => setSettings(false) },
+          h('button', { onClick: () => setSettingsPicker(true) }, 'Choose model'),
+          h(Overlay, {
+            name: 'settings picker',
+            open: settingsPicker,
+            onClose: () => setSettingsPicker(false),
+          })
+        )
+      );
+    }
+
+    const dialog = (name: string) => screen.getByRole('dialog', { name });
+    const zIndex = (element: HTMLElement) => Number(element.style.zIndex);
+
+    it('puts Settings opened by the host above an open picker, then hands back to the picker', async () => {
+      const { rerender } = render(h(App, { hostOpensSettings: false }));
+      fireEvent.click(button('Open picker'));
+      const pickerFocus = button('Close picker');
+      expect(document.activeElement).toBe(pickerFocus);
+      expect(zIndex(dialog('picker'))).toBe(OVERLAY_Z_BASE);
+
+      rerender(h(App, { hostOpensSettings: true }));
+      await flushMicrotasks();
+
+      // Top in the hook's stack, and top on screen.
+      expect(document.activeElement).toBe(button('Close settings'));
+      expect(dialog('picker').closest('[inert]')).not.toBeNull();
+      expect(dialog('settings').closest('[inert]')).toBeNull();
+      expect(zIndex(dialog('settings'))).toBeGreaterThan(zIndex(dialog('picker')));
+
+      pressKey('Escape');
+      await flushMicrotasks();
+      expect(screen.queryByRole('dialog', { name: 'settings' })).toBeNull();
+      expect(dialog('picker').closest('[inert]')).toBeNull();
+      expect(document.activeElement).toBe(pickerFocus);
+      expect(zIndex(dialog('picker'))).toBe(OVERLAY_Z_BASE);
+
+      pressKey('Escape');
+      expect(screen.queryByRole('dialog', { name: 'picker' })).toBeNull();
+    });
+
+    it('puts a picker opened from Settings above Settings', async () => {
+      const { rerender } = render(h(App, { hostOpensSettings: false }));
+      rerender(h(App, { hostOpensSettings: true }));
+      const opener = button('Choose model');
+      opener.focus();
+      fireEvent.click(opener);
+
+      expect(document.activeElement).toBe(button('Close settings picker'));
+      expect(zIndex(dialog('settings picker'))).toBeGreaterThan(zIndex(dialog('settings')));
+      expect(button('Close settings').hasAttribute('inert')).toBe(true);
+
+      pressKey('Escape');
+      await flushMicrotasks();
+      expect(screen.queryByRole('dialog', { name: 'settings picker' })).toBeNull();
+      expect(dialog('settings')).toBeTruthy();
+      expect(document.activeElement).toBe(opener);
+      expect(zIndex(dialog('settings'))).toBe(OVERLAY_Z_BASE);
+    });
   });
 });

@@ -273,7 +273,9 @@ body {
 /* Settings overlay — Frame's settings view: a full-surface dialog with the
    brand tile + title centred, a quiet secondary Close, and r8 section cards
    with a 17px title over a soft rule. Fixed (not absolute) so it covers the
-   webview however the content below has scrolled. */
+   webview however the content below has scrolled. Paint order against other
+   overlays comes from useOverlayDismiss (base + stack depth); 100 is that
+   base (OVERLAY_Z_BASE), used only until the hook stamps it. */
 .settings-overlay {
   position: fixed;
   z-index: 100;

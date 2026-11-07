@@ -15,6 +15,12 @@
  *   tech reaches the frame behind it.
  * - Focus trap (added here): Tab / Shift+Tab wrap inside the top overlay
  *   instead of walking out of the webview.
+ * - Paint order (added here): each open overlay's root gets an inline
+ *   `z-index` of OVERLAY_Z_BASE + its stack depth, so the overlay this hook
+ *   treats as top (Escape, focus, inert) is also the one on top on screen.
+ *   Without it, Settings opened by the host over an open model browser was
+ *   "top" here but painted underneath the picker. Overlay CSS declares only
+ *   the base, as the value before the first stamp; never a competing layer.
  *
  * Why module-level state: React flushes every passive-effect cleanup for a
  * commit before any setup. When one overlay closes as another opens, a
@@ -23,6 +29,13 @@
  * live here.
  */
 import * as React from 'react';
+
+/**
+ * z-index of the bottom overlay; each overlay above it gets one more. The
+ * overlay stylesheets (.settings-overlay, .model-browser-backdrop) use the
+ * same number as their default, which only applies until the hook stamps.
+ */
+export const OVERLAY_Z_BASE = 100;
 
 /** One open overlay; both callbacks read the hook's latest values. */
 interface OpenOverlay {
@@ -93,6 +106,16 @@ function syncInertBackground(): void {
   }
 }
 
+/** Stack the open overlays on screen in the order they are stacked here. */
+function syncPaintOrder(): void {
+  openOverlays.forEach((overlay, depth) => {
+    const root = overlay.container();
+    if (root) {
+      root.style.zIndex = String(OVERLAY_Z_BASE + depth);
+    }
+  });
+}
+
 /** Escape closes the top overlay; Tab wraps within it. */
 function handleOverlayKeydown(event: KeyboardEvent): void {
   const top = topOverlay();
@@ -134,6 +157,7 @@ function pushOverlay(overlay: OpenOverlay): void {
     window.addEventListener('keydown', handleOverlayKeydown);
   }
   openOverlays.push(overlay);
+  syncPaintOrder();
   syncInertBackground();
 }
 
@@ -142,6 +166,9 @@ function removeOverlay(overlay: OpenOverlay): void {
   if (index >= 0) {
     openOverlays.splice(index, 1);
   }
+  // A root that outlives its overlay (still mounted while closed) drops its layer.
+  overlay.container()?.style.removeProperty('z-index');
+  syncPaintOrder();
   if (openOverlays.length === 0) {
     window.removeEventListener('keydown', handleOverlayKeydown);
   }
