@@ -10,15 +10,7 @@
  * - Optional cancel button
  */
 import React from 'react';
-
-// Global window object with Pixel Minion assets
-declare global {
-  interface Window {
-    __PIXEL_MINION__?: {
-      loadingAnimationUri?: string;
-    };
-  }
-}
+import { getWebviewGlobals } from '../../webviewGlobals';
 
 export interface LoadingProgress {
   current: number;
@@ -55,7 +47,7 @@ export function LoadingIndicator({
     : undefined;
 
   // Get loading animation URI from global config
-  const loadingAnimationUri = window.__PIXEL_MINION__?.loadingAnimationUri;
+  const { loadingAnimationUri } = getWebviewGlobals();
 
   return (
     <div className={`loading-indicator ${className}`}>
