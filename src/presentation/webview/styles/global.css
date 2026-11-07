@@ -336,6 +336,12 @@ body {
   font-weight: 600;
 }
 
+/* The heading takes focus when the dialog opens (tabIndex -1, not in the Tab
+   order); it is not a control, so it shows no ring. */
+.settings-header h2:focus {
+  outline: none;
+}
+
 /* Dismissing is the quiet action: secondary, not the heaviest thing on screen. */
 .settings-close-button {
   position: absolute;

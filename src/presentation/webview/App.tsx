@@ -157,9 +157,10 @@ export function App(): JSX.Element {
     setShowSettingsOverlay(true);
   };
 
-  // Escape (top overlay only), focus capture/return, inert frame, focus trap.
+  // Escape (top overlay only), focus capture/return, inert frame, focus trap,
+  // paint order. Opening focuses the heading, not the quiet Close button.
   const settingsOverlayRef = useRef<HTMLDivElement>(null);
-  const settingsCloseRef = useOverlayDismiss({
+  const settingsHeadingRef = useOverlayDismiss<HTMLHeadingElement>({
     open: showSettingsOverlay,
     onClose: handleCloseSettings,
     containerRef: settingsOverlayRef,
@@ -209,10 +210,11 @@ export function App(): JSX.Element {
             <header className="settings-header">
               <div className="settings-header-content">
                 <BrandMark className="settings-header-logo" />
-                <h2 id="settings-overlay-title">Settings</h2>
+                <h2 id="settings-overlay-title" ref={settingsHeadingRef} tabIndex={-1}>
+                  Settings
+                </h2>
               </div>
               <button
-                ref={settingsCloseRef}
                 type="button"
                 className="settings-close-button"
                 onClick={handleCloseSettings}

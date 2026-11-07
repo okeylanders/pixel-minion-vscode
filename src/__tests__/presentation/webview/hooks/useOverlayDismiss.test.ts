@@ -172,6 +172,42 @@ describe('useOverlayDismiss', () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it('can focus a static heading on open, and still wraps Tab around it', () => {
+    function HeadingFirst(): React.ReactElement | null {
+      const [open, setOpen] = React.useState(false);
+      const containerRef = React.useRef<HTMLDivElement>(null);
+      const headingRef = useOverlayDismiss<HTMLHeadingElement>({
+        open,
+        onClose: () => setOpen(false),
+        containerRef,
+      });
+      return h(
+        'div',
+        { className: 'app-container' },
+        h('button', { onClick: () => setOpen(true) }, 'Open settings'),
+        open && h(
+          'div',
+          { ref: containerRef, role: 'dialog', 'aria-label': 'settings' },
+          h('h2', { ref: headingRef, tabIndex: -1 }, 'Settings'),
+          h('button', { onClick: () => setOpen(false) }, 'Close'),
+          h('button', null, 'Save')
+        )
+      );
+    }
+    render(h(HeadingFirst));
+    fireEvent.click(button('Open settings'));
+    const heading = screen.getByRole('heading', { name: 'Settings' });
+    expect(document.activeElement).toBe(heading);
+
+    // Forward from the heading is the browser's job (next is Close)...
+    expect(pressKey('Tab')).toBe(true);
+    expect(document.activeElement).toBe(heading);
+
+    // ...but backward from it would leave the webview, so it wraps.
+    expect(pressKey('Tab', { shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(button('Save'));
+  });
+
   describe('paint order follows the overlay stack', () => {
     /**
      * App's layout: the model browser renders inside .tab-content, and the

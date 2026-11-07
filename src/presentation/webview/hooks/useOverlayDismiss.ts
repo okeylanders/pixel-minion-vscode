@@ -70,6 +70,11 @@ function topOverlay(): OpenOverlay | undefined {
   return openOverlays[openOverlays.length - 1];
 }
 
+/** Whether `a` comes before `b` in document order (true if `a` contains `b`). */
+function precedes(a: Node, b: Node): boolean {
+  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
 function isVisible(element: HTMLElement): boolean {
   // checkVisibility (Chromium 105+) skips display:none / content-visibility
   // subtrees; environments without it (jsdom) treat everything as visible.
@@ -146,7 +151,13 @@ function handleOverlayKeydown(event: KeyboardEvent): void {
   const last = items[items.length - 1];
   const active = document.activeElement;
   const inside = active instanceof Node && container.contains(active);
-  if (event.shiftKey ? !inside || active === first : !inside || active === last) {
+  /* Focus can also rest on something outside the Tab order, such as a
+     heading the overlay focuses on open (tabIndex -1). Wrap from anywhere
+     before the first item or after the last one, not only from them. */
+  const wraps = !inside || (event.shiftKey
+    ? active === first || precedes(active, first)
+    : active === last || precedes(last, active));
+  if (wraps) {
     event.preventDefault();
     (event.shiftKey ? last : first).focus();
   }
@@ -202,9 +213,11 @@ export interface UseOverlayDismissOptions {
 
 /**
  * Returns the ref for the element that should take focus when the overlay
- * opens (a Close button, or a search field). Don't also give that element
- * `autoFocus`: it would move focus during the commit, before this hook has
- * recorded the opener to return to.
+ * opens: a search field, or, when the first control is a quiet action like
+ * Close, the dialog's heading with `tabIndex={-1}` (focusing Close would
+ * paint its focus ring and make it look like the primary action). Don't also
+ * give that element `autoFocus`: it would move focus during the commit,
+ * before this hook has recorded the opener to return to.
  */
 export function useOverlayDismiss<T extends HTMLElement = HTMLButtonElement>({
   open,
