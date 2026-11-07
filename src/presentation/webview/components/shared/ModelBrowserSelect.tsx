@@ -23,20 +23,27 @@ export function ModelBrowserSelect({
 }: ModelBrowserSelectProps): JSX.Element {
   const [open, setOpen] = React.useState(false);
   const selected = options.find(option => option.id === value);
+  const triggerId = React.useId();
+  const labelId = React.useId();
+  const valueId = React.useId();
 
   return (
     <div className={`model-browser-select${compact ? ' compact' : ''}`}>
-      <label>{label}</label>
+      <label id={labelId} htmlFor={triggerId}>{label}</label>
       <button
         type="button"
+        id={triggerId}
         className="model-browser-trigger"
         onClick={() => setOpen(true)}
         disabled={disabled || options.length === 0}
         aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-labelledby={`${labelId} ${valueId}`}
       >
-        <span>
+        <span id={valueId}>
           <strong>{selected?.label ?? `Custom: ${value}`}</strong>
-          {!compact && <small>{selected?.estimateLabel ?? selected?.costLabel ?? value}</small>}
+          {/* Space keeps name and price apart in the accessible name; flex layout ignores it. */}
+          {!compact && <>{' '}<small>{selected?.estimateLabel ?? selected?.costLabel ?? value}</small></>}
         </span>
         <span aria-hidden="true">⌄</span>
       </button>

@@ -12,7 +12,7 @@
  *
  * Reference: docs/example-repo/src/presentation/webview/App.tsx
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MessageType, TabId } from '@messages';
 import {
   AppHeader,
@@ -36,6 +36,7 @@ import {
   useTokenTracking,
   useOpenRouterBalance,
 } from './hooks';
+import { useOverlayDismiss } from './hooks/useOverlayDismiss';
 
 const TABS: Tab[] = [
   { id: 'image', label: 'Image', icon: <TabImageIcon /> },
@@ -178,6 +179,14 @@ export function App(): JSX.Element {
     setShowSettingsOverlay(true);
   };
 
+  // Escape (top overlay only), focus capture/return, inert frame, focus trap.
+  const settingsOverlayRef = useRef<HTMLDivElement>(null);
+  const settingsCloseRef = useOverlayDismiss({
+    open: showSettingsOverlay,
+    onClose: handleCloseSettings,
+    containerRef: settingsOverlayRef,
+  });
+
   return (
     <div className="app-container">
       <AppHeader
@@ -210,15 +219,22 @@ export function App(): JSX.Element {
 
       {/* Settings Panel - Prose Minion style overlay */}
       {showSettingsOverlay && (
-        <div className="settings-overlay">
+        <div
+          ref={settingsOverlayRef}
+          className="settings-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-overlay-title"
+        >
           <div className="settings-overlay-content">
             {/* Header with centered icon and title */}
             <header className="settings-header">
               <div className="settings-header-content">
                 <SettingsIcon className="settings-header-icon" />
-                <h2>Settings</h2>
+                <h2 id="settings-overlay-title">Settings</h2>
               </div>
               <button
+                ref={settingsCloseRef}
                 type="button"
                 className="settings-close-button"
                 onClick={handleCloseSettings}

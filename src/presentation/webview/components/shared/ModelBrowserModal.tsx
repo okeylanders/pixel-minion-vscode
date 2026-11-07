@@ -1,5 +1,6 @@
 import React from 'react';
 import { ModelBrowserOption } from './modelBrowserTypes';
+import { useOverlayDismiss } from '../../hooks/useOverlayDismiss';
 import '../../styles/components/model-browser.css';
 
 export type { ModelBrowserBadge, ModelBrowserOption } from './modelBrowserTypes';
@@ -89,14 +90,9 @@ export function ModelBrowserModal({
   const [pivot, setPivot] = React.useState<ModelBrowserPivot>('provider');
   const [activeGroup, setActiveGroup] = React.useState('All');
 
-  React.useEffect(() => {
-    if (!open) return undefined;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  // Escape (top overlay only), focus capture/return, inert frame, focus trap.
+  const backdropRef = React.useRef<HTMLDivElement>(null);
+  const searchRef = useOverlayDismiss<HTMLInputElement>({ open, onClose, containerRef: backdropRef });
 
   React.useEffect(() => {
     setActiveGroup('All');
@@ -122,7 +118,7 @@ export function ModelBrowserModal({
     effectiveGroup === 'All' ? groups : groups.filter(group => group === effectiveGroup);
 
   return (
-    <div className="model-browser-backdrop" role="presentation" onMouseDown={onClose}>
+    <div ref={backdropRef} className="model-browser-backdrop" role="presentation" onMouseDown={onClose}>
       <section
         className="model-browser"
         role="dialog"
@@ -144,7 +140,7 @@ export function ModelBrowserModal({
         <label className="model-browser-search">
           <SearchIcon />
           <input
-            autoFocus
+            ref={searchRef}
             type="search"
             value={query}
             onChange={event => setQuery(event.target.value)}
