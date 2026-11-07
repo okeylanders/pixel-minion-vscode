@@ -4,6 +4,11 @@
  * Moved out of global.css with the `px-` prefix. Uses only `--px-*` design
  * tokens; the provider dot stays a literal oklch brand color on purpose
  * (matches Frame Minion's OpenRouter dot).
+ *
+ * Text that carries meaning (states, labels, failure notes) is
+ * `--px-text-muted`; `--px-text-dim` (~2.1:1 on Light Modern) is kept for
+ * decoration only: the chevron and the "…" placeholder. Nothing is set
+ * below the 10.5 px text floor.
  */
 
 /* Collapsed pill: disclosure button in the header. */
@@ -21,7 +26,7 @@
   border-radius: var(--px-radius);
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 10.5px;
 }
 
 .px-balance-summary:hover,
@@ -41,7 +46,7 @@
 
 /* Not an amount ("no key", "offline", "—"): quiet, not bold mono money. */
 .px-balance-summary-amount.is-muted {
-  color: var(--px-text-dim);
+  color: var(--px-text-muted);
   font-family: inherit;
   font-weight: 500;
 }
@@ -96,7 +101,7 @@
   align-items: center;
   gap: 6px;
   padding: 0;
-  color: var(--px-text-dim);
+  color: var(--px-text-muted);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -107,7 +112,7 @@
 }
 
 .px-balances-strip-title:hover {
-  color: var(--px-text-muted);
+  color: var(--px-text);
 }
 
 .px-balances-refresh {
@@ -196,7 +201,7 @@
 }
 
 .px-balance-label {
-  color: var(--px-text-dim);
+  color: var(--px-text-muted);
   font-size: 10.5px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -233,30 +238,31 @@
 /* No-key / unavailable / partial-data notes. */
 .px-balance-note {
   margin: 4px 0;
-  color: var(--px-text-dim);
+  color: var(--px-text-muted);
   font-size: 11px;
 }
 
+/* Label / value rows. The rows dissolve into one two-column grid so the
+   values line up whatever width the labels take at 10.5 px. */
 .px-balance-meta {
   display: grid;
-  gap: 3px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 8px;
+  align-items: baseline;
   margin-top: 7px;
   padding-top: 7px;
   color: var(--px-text-muted);
   border-top: 1px solid var(--px-border-soft);
-  font-size: 9.5px;
+  font-size: 10.5px;
 }
 
 .px-balance-meta span {
-  display: flex;
-  min-width: 0;
-  gap: 7px;
+  display: contents;
 }
 
 .px-balance-meta b {
-  min-width: 66px;
-  color: var(--px-text-dim);
-  font-size: 9px;
+  color: var(--px-text-muted);
+  font-size: 10.5px;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
