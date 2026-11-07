@@ -94,6 +94,20 @@ describe('SettingsHandler', () => {
       createEnvelope(MessageType.REQUEST_SETTINGS, 'webview.settings', {})
     );
 
+    /** package.json defaults, as `inspect()` reports them in `defaultValue`. */
+    const CONTRIBUTED_DEFAULTS: Record<string, string> = {
+      imageModel: 'google/gemini-3.1-flash-image',
+      svgModel: 'recraft/recraft-v4.1-pro-vector',
+    };
+    type Scopes = { globalValue?: string; workspaceValue?: string };
+    const savedScopes = (scopes: Record<string, Scopes>) => {
+      mockConfig.inspect.mockImplementation((key: string) => ({
+        key,
+        defaultValue: CONTRIBUTED_DEFAULTS[key],
+        ...scopes[key],
+      }));
+    };
+
     const savedSettings = (overrides: Record<string, string>) => {
       mockConfig.get.mockImplementation((key: string, defaultValue: unknown) => {
         const settings: Record<string, unknown> = {
@@ -126,23 +140,23 @@ describe('SettingsHandler', () => {
       }));
     });
 
-    it('persists the replacement in the scope that held the delisted id, once', async () => {
+    it('fixes each scope that held a retired id, once: clears it when the replacement is the default', async () => {
       mockConfig.update.mockResolvedValue(undefined);
-      mockConfig.inspect.mockImplementation((key: string) => (
-        key === 'imageModel'
-          ? { key, globalValue: 'x-ai/grok-imagine-image-quality' }
-          : { key, workspaceValue: 'anthropic/claude-opus-5-fast' }
-      ));
+      savedScopes({
+        imageModel: { globalValue: 'x-ai/grok-imagine-image-quality' },
+        svgModel: { workspaceValue: 'anthropic/claude-opus-5-fast' },
+      });
 
       await requestSettings();
       await requestSettings();
 
       expect(mockConfig.update.mock.calls).toEqual([
-        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Global],
+        // The replacement is the contributed default: clear, don't pin today's default.
+        ['imageModel', undefined, vscode.ConfigurationTarget.Global],
         ['svgModel', 'anthropic/claude-opus-5', vscode.ConfigurationTarget.Workspace],
       ]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; switching imageModel to google/gemini-3.1-flash-image'
+        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; clearing the user imageModel setting so it falls back to google/gemini-3.1-flash-image'
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Model anthropic/claude-opus-5-fast is no longer available on OpenRouter; switching svgModel to anthropic/claude-opus-5'
@@ -151,25 +165,65 @@ describe('SettingsHandler', () => {
 
     it('moves Image-API-only selections and says why', async () => {
       savedSettings({ imageModel: 'krea/krea-2-large' });
-      mockConfig.inspect.mockImplementation((key: string) => (
-        key === 'imageModel' ? { key, globalValue: 'krea/krea-2-large' } : { key }
-      ));
+      savedScopes({ imageModel: { globalValue: 'openai/gpt-image-1' } });
 
       await requestSettings();
 
       expect(mockConfig.update.mock.calls).toEqual([
-        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Global],
+        ['imageModel', 'openai/gpt-5.4-image-2', vscode.ConfigurationTarget.Global],
       ]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        "Model krea/krea-2-large is only served by OpenRouter's Image API, which Pixel Minion does not use yet; switching imageModel to google/gemini-3.1-flash-image"
+        "Model openai/gpt-image-1 is only served by OpenRouter's Image API, which Pixel Minion does not use yet; switching imageModel to openai/gpt-5.4-image-2"
       );
     });
 
+    it('clears a workspace value that would fall back to the replacement anyway', async () => {
+      mockConfig.update.mockResolvedValue(undefined);
+      // Nothing in user settings: the workspace falls back to the default.
+      savedScopes({ imageModel: { workspaceValue: 'krea/krea-2-large' } });
+
+      await requestSettings();
+
+      expect(mockConfig.update.mock.calls).toEqual([
+        ['imageModel', undefined, vscode.ConfigurationTarget.Workspace],
+      ]);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        "Model krea/krea-2-large is only served by OpenRouter's Image API, which Pixel Minion does not use yet; clearing the workspace imageModel setting so it falls back to google/gemini-3.1-flash-image"
+      );
+    });
+
+    it('writes the default into a workspace value when clearing would pick up another user choice', async () => {
+      mockConfig.update.mockResolvedValue(undefined);
+      savedScopes({
+        imageModel: { globalValue: 'openai/gpt-5.4-image-2', workspaceValue: 'krea/krea-2-large' },
+      });
+
+      await requestSettings();
+
+      expect(mockConfig.update.mock.calls).toEqual([
+        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Workspace],
+      ]);
+    });
+
+    it('clears a workspace value that falls back to a user value migrated in the same pass', async () => {
+      mockConfig.update.mockResolvedValue(undefined);
+      savedScopes({
+        svgModel: { globalValue: 'anthropic/claude-opus-4', workspaceValue: 'anthropic/claude-opus-5-fast' },
+      });
+
+      await requestSettings();
+
+      expect(mockConfig.update.mock.calls).toEqual([
+        ['svgModel', 'anthropic/claude-opus-5', vscode.ConfigurationTarget.Global],
+        ['svgModel', undefined, vscode.ConfigurationTarget.Workspace],
+      ]);
+    });
+
     it('leaves live model selections alone', async () => {
-      mockConfig.inspect.mockImplementation((key: string) => ({
-        key,
-        globalValue: key === 'imageModel' ? 'openai/gpt-5.4-image-2' : 'anthropic/claude-opus-5',
-      }));
+      savedScopes({
+        imageModel: { globalValue: 'openai/gpt-5.4-image-2' },
+        svgModel: { globalValue: 'anthropic/claude-opus-5' },
+      });
 
       await requestSettings();
 
@@ -178,9 +232,7 @@ describe('SettingsHandler', () => {
 
     it('still answers the settings request when persisting the replacement fails', async () => {
       savedSettings({ imageModel: 'x-ai/grok-imagine-image-quality' });
-      mockConfig.inspect.mockImplementation((key: string) => (
-        key === 'imageModel' ? { key, globalValue: 'x-ai/grok-imagine-image-quality' } : { key }
-      ));
+      savedScopes({ imageModel: { globalValue: 'x-ai/grok-imagine-image-quality' } });
       mockConfig.update.mockRejectedValue(new Error('read-only settings'));
 
       await requestSettings();

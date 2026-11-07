@@ -186,13 +186,15 @@ export class SettingsHandler {
       const config = vscode.workspace.getConfiguration(this.configSection);
       for (const key of MODEL_SETTING_KEYS) {
         const inspected = config.inspect<string>(key);
-        const scopes: Array<[string | undefined, vscode.ConfigurationTarget]> = [
-          [inspected?.globalValue, vscode.ConfigurationTarget.Global],
-          [inspected?.workspaceValue, vscode.ConfigurationTarget.Workspace],
-        ];
-        for (const [saved, target] of scopes) {
-          await this.migrateRetiredModel(config, key, saved, target);
-        }
+        // User settings fall back to the contributed (package.json) default;
+        // workspace settings fall back to the user value, once migrated.
+        const userValue = await this.migrateRetiredModel(
+          config, key, inspected?.globalValue, vscode.ConfigurationTarget.Global, inspected?.defaultValue
+        );
+        await this.migrateRetiredModel(
+          config, key, inspected?.workspaceValue, vscode.ConfigurationTarget.Workspace,
+          userValue ?? inspected?.defaultValue
+        );
       }
     } catch (error) {
       // Never block the settings response on housekeeping.
@@ -200,25 +202,42 @@ export class SettingsHandler {
     }
   }
 
+  /**
+   * Move one scope off a retired id. When the replacement is what the scope
+   * would fall back to anyway (for user settings, the contributed default),
+   * the saved value is cleared instead of rewritten: writing today's default
+   * explicitly would pin the user to it after the default moves on.
+   *
+   * Returns the value this scope now contributes (undefined when unset), for
+   * the next scope's fallback.
+   */
   private async migrateRetiredModel(
     config: vscode.WorkspaceConfiguration,
     key: ModelSettingKey,
     saved: string | undefined,
-    target: vscode.ConfigurationTarget
-  ): Promise<void> {
+    target: vscode.ConfigurationTarget,
+    fallback: string | undefined
+  ): Promise<string | undefined> {
     const retired = saved ? RETIRED_MODELS[saved] : undefined;
-    if (!saved || !retired) return;
+    if (!saved || !retired) return saved;
     const { replacement } = retired;
+    const clear = replacement === fallback;
 
     const why = retired.reason === 'delisted'
       ? 'is no longer available on OpenRouter'
       : "is only served by OpenRouter's Image API, which Pixel Minion does not use yet";
-    this.logger.info(`Model ${saved} ${why}; switching ${key} to ${replacement}`);
+    const scope = target === vscode.ConfigurationTarget.Global ? 'user' : 'workspace';
+    this.logger.info(clear
+      ? `Model ${saved} ${why}; clearing the ${scope} ${key} setting so it falls back to ${replacement}`
+      : `Model ${saved} ${why}; switching ${key} to ${replacement}`);
     try {
-      await config.update(key, replacement, target);
+      await config.update(key, clear ? undefined : replacement, target);
     } catch (error) {
       this.logger.error(`Failed to migrate retired ${key} selection`, error);
+      // Still saved, so still read (and substituted) as the replacement.
+      return replacement;
     }
+    return clear ? undefined : replacement;
   }
 }
 
