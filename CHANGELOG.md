@@ -65,8 +65,9 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 ### Security
 
 - **Generated SVGs are previewed in isolation.** The SVG tab no longer inserts generated markup into the panel, so an SVG's styles can't restyle or hide the panel (including Settings and the API key field), and nothing in it can run. Animated SVGs still animate.
-- **Unsafe SVGs are neither previewed nor saved.** An SVG that would run code or load something from the internet when opened, or that isn't a well-formed SVG under 2 MB, shows a short explanation and its code instead, and Save is turned off for it. A saved `.svg` can't run script when you open it in a browser.
-- **Saving stays in your output folder.** A file name that points anywhere else is refused.
+- **Unsafe SVGs are neither previewed nor saved.** An SVG that would run code or load something from the internet when opened, or that isn't a well-formed SVG under 2 MB, shows a short explanation and its code instead, and Save is turned off for it. SVGs that use unexpected XML namespaces or declare a character encoding other than UTF-8 are refused too. A saved `.svg` can't run script when you open it in a browser. Recraft's vector SVGs, including their content-credentials metadata, are unaffected.
+- **Checking an SVG is quick whatever it contains.** A very large or deliberately malformed SVG no longer stalls the extension while it is checked.
+- **Saving stays in your workspace.** If the Output Directory setting (which a project's `.vscode/settings.json` can set) points outside the workspace folder, saving is refused with an explanation instead of writing there. A file name that points anywhere else, that Windows treats as a device (such as `CON` or `NUL.svg`), that ends in a dot or that hides its real extension with right-to-left characters is refused.
 
 ## [1.3.0] - 2026-05-20
 

@@ -100,7 +100,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | U6 | 🟡 | GPT-5.6 Sol / Sol Pro stored at $5/$30; live $4/$20 | U, C — **consensus** | B | ✅ Fixed in 7038e87 (superseded by GPT-6.1 Sol) |
 | M1 | 🟡 **pre** | SVG text client sends `max_tokens: 16384` (CLAUDE.md says 48 000). Reasoning models can truncate long SVGs | U | B | ✅ Fixed in a679286 (32,000) |
 | S3 | 🟡 **pre** | "Saved" shown by a 1 s timer even on cancel/error (Image and SVG); WebP/GIF saved as `.jpg` | S | P2 | ✅ Fixed in `a2d5115` |
-| S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ✅ Fixed in `9128d89` (Image save too) |
+| S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ✅ Fixed in `9128d89` (Image save too) + `d14c5d5` (device names; output folder contained in the workspace) |
 | C11 | ⚪ | Post-generation balance refresh depends on `usage` being present | C | A | ✅ Fixed in `25a6f55` |
 | C12 | ⚪ | Session token totals now a dead pipeline; "Last request" persists across reloads and shows only a time of day | C | A | ✅ Fixed in `47f364e` |
 | C13 | ⚪ | Duplicate unavailable reason; headline blanks to "…" on refresh; stale `svgModel` description in `package.json` | C | A | ✅ Fixed in `609da39`, `76fddce` |
@@ -219,17 +219,17 @@ Branch `claude/pixel-minion-svg-safety-dhbqpd`, stacked on P2.
 
 ### P2/P5a adversarial review follow-up
 
-An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the stacked P5a branch ran scratch regression tests against both. Ids are prefixed **R5-** so they don't collide with this ledger's S1–S6. R5-S8/S9 concern P2 and are fixed on this branch; R5-S1–S7 concern P5a (`claude/pixel-minion-svg-safety-dhbqpd`) and are tracked there.
+An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the stacked P5a branch ran scratch regression tests against both. Ids are prefixed **R5-** so they don't collide with this ledger's S1–S6. R5-S8/S9 concern P2 and are fixed on its branch; R5-S1–S7 concern P5a (`claude/pixel-minion-svg-safety-dhbqpd`) and are fixed there in `d14c5d5`.
 
 | ID | Sev | Finding | Branch | Status |
 | --- | --- | --- | --- | --- |
-| R5-S1 | 🟠 | Policy tokenizer: ASCII-only element names, so a name with a non-ASCII letter is cut short and the rest is scanned as attributes | P5a | ⏳ Open (P5a) |
-| R5-S2 | 🟠 | Quadratic `url(` regex in the policy (128 KB → 5.9 s; ~25 min at the 2 MB cap), on the host after every generation and in the webview render | P5a | ⏳ Open (P5a) |
-| R5-S3 | 🟡 | CSS checks run on attribute values only when a literal `url(` appears | P5a | ⏳ Open (P5a) |
-| R5-S4 | 🟡 | CSS comment stripping is not string-aware | P5a | ⏳ Open (P5a) |
-| R5-S5 | 🟡 | Any namespace declaration accepted | P5a | ⏳ Open (P5a) |
-| R5-S6 | ⚪ | SMIL rule covers `href` only (not `src` / `xml:base`); a non-UTF-8 XML `encoding` accepted | P5a | ⏳ Open (P5a) |
-| R5-S7 | ⚪ | Save file names: Windows device names, trailing dots/spaces and bidi controls accepted; a workspace `pixelMinion.outputDirectory` with `..` escapes the workspace | P5a | ⏳ Open (P5a) |
+| R5-S1 | 🟠 | Policy tokenizer: ASCII-only element names, so a name with a non-ASCII letter is cut short and the rest is scanned as attributes | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S2 | 🟠 | Quadratic `url(` regex in the policy (128 KB → 5.9 s; ~25 min at the 2 MB cap), on the host after every generation and in the webview render | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S3 | 🟡 | CSS checks run on attribute values only when a literal `url(` appears | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S4 | 🟡 | CSS comment stripping is not string-aware | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S5 | 🟡 | Any namespace declaration accepted | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S6 | ⚪ | SMIL rule covers `href` only (not `src` / `xml:base`); a non-UTF-8 XML `encoding` accepted | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S7 | ⚪ | Save file names: Windows device names, trailing dots/spaces and bidi controls accepted; a workspace `pixelMinion.outputDirectory` with `..` escapes the workspace | P5a | ✅ Fixed in `d14c5d5` |
 | R5-S8 | 🟡 | A prompt-enhance answer that lands after Generate rewrites the prompt under the running request; after Clear it refills the cleared box (both tabs) | P2 | ✅ Fixed in `adcdb92` |
 | R5-S9 | 🟡 | (a) a throw before a handler's `try` (e.g. `prompt.substring` on a malformed payload) leaves the spinner running; (b) image rollback doesn't restore `turnNumber` / `lastImages`; (c) uncorrelated errors from request sources are dropped. Also: reload mid-request, host memory from unreleased conversations, first-turn raster refs on re-hydration | P2 | ◐ (a)–(c) fixed in `adcdb92`; rest ↪ Deferred (below) |
 
@@ -238,3 +238,11 @@ An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the
 - **R5-S9 (b)** ✅ `adcdb92`. `ImageOrchestrator` restores message count, turn number, seed and last images; `SVGOrchestrator` restores the turn number too. A turn that fails after its reply was recorded no longer leaves a phantom turn, and a failed first turn is still released.
 - **R5-S9 (c)** ✅ `adcdb92`. App drops an unclaimed error only when it carries an Image/SVG tab request id; any other error is shown in the visible tab.
 - **R5-S9, deferred:** ↪ *Reload mid-request* (Frame F-10): pending refs are deliberately not persisted, and a reloaded webview can't tell a still-running host request from a lost one; needs host-side request state. ↪ *Host memory from unreleased conversations*: Generate starts a new host conversation without releasing the previous one; P4's thread archive gives conversations an owner and a lifetime, so the release belongs there. ↪ *First-turn raster references on image re-hydration*: the webview doesn't persist per-request base64 references, so a re-hydrated thread loses them; P3's host transcript store replays them.
+- **R5-S2** ✅ `d14c5d5` (fixed first). The CSS `url()` and comment regexes, quadratic on unterminated openers (128 KB → 5.9 s, ~25 min at the 2 MB cap), are replaced by one linear CSS tokenizer; an unterminated `url(` or CSS comment is a rejection. Every other policy pattern was audited (single-position sticky or anchored, or a single character class). Twelve 2 MB worst cases run in well under a second each (`SVGDocumentPolicy.test.ts`); the reviewer's `perf.review.test.ts` now reports 0–3 ms at 128 KB. The host's log-only check after generation stays, now cheap. `extractSVG`'s regexes in `SVGOrchestrator` (outside the policy) are quadratic on pathological provider output: ↪ deferred, bounded by the 32,000-token ceiling and only reachable from the user's own prompt.
+- **R5-S1** ✅ `d14c5d5`. Element and attribute names are ASCII XML names that must end at XML whitespace, `/`, `>` (or `=`); `<gé/>`, `<pé:rect/>`, `é=` and a name followed by U+FEFF are rejections. The reviewer's two tokenizer cases (which asserted the old acceptance) now fail closed.
+- **R5-S3** ✅ `d14c5d5`. The CSS checks run on every attribute value with escape decoding (`fill="\75 rl(…)"`, `&#92;55RL(`, SMIL `values=`).
+- **R5-S4** ✅ `d14c5d5`. Comments are recognized only outside strings and unquoted url tokens (CSS Syntax), so neither `"/*" … "*/"` nor `url(#a/*), url(https://…), url(#b*/)` hides a remote url. Also fixed: CDATA text was entity-decoded, which could invent a comment; only text outside CDATA is decoded now.
+- **R5-S5** ✅ `d14c5d5`. Namespace declarations must be SVG, XLink, XML or C2PA. The real Recraft V4.1 Vector response (2026-11-07 smoke test) declares `xmlns:c2pa`, and is now a fixture that must pass; no other metadata namespace was needed by generated output, so none is allowed.
+- **R5-S6** ✅ `d14c5d5`. SMIL can't target `href`, `src` or `xml:base`; the XML declaration must come first and name only UTF-8 (quoted).
+- **R5-S7** ✅ `d14c5d5`. File names refuse Windows device names (with or without an extension), trailing dots, C1 and bidi/format controls. `pixelMinion.outputDirectory` must be a relative path of safe folder names, and the joined folder is proven to be inside the workspace folder (`workspaceOutputDirectory`); an escaping value is refused with an error naming the setting. The setting keeps its default scope (per-workspace folders are legitimate; the extension doesn't run in Restricted Mode; containment makes a workspace value harmless). ↪ Deferred: the check is lexical, so a symlink the repository ships inside the workspace is still followed (no realpath in `workspace.fs`; names are timestamped, so nothing is overwritten).
+- **Routes**: `isNativeVectorSvgModel` now keys on the catalog `kind` for curated ids (fallback `recraft/` for ids the catalog doesn't list), so routing has one source of truth.
