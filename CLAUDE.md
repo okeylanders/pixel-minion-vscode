@@ -89,7 +89,7 @@ Each suite consists of three layers:
 - **Messages**: `TextMessage[]` with role-based structure
 - **State**: `TextConversation` with turn counting and max turns limit
 - **Rehydration**: Supported in infrastructure (handler/orchestrator) but currently not wired from the webview
-- **Default**: `max_tokens: 48000`
+- **Default**: `max_tokens: 16384` (client default)
 
 #### Image Suite
 
@@ -106,6 +106,7 @@ Each suite consists of three layers:
 - **Messages**: `TextMessage[]` with multimodal content (images optional)
 - **State**: Tracks prompts, SVG code, aspect ratio
 - **Special**: Extracts SVG code from markdown responses; re-hydration supported and uses stored model/aspect per conversation
+- **Output budget**: every SVG turn sends `max_tokens: SVG_MAX_OUTPUT_TOKENS` (32,000, `SVGOrchestrator.ts`). Reasoning tokens count against `max_tokens` on OpenRouter and the recommended code models reason by default, so the 16,384 client default could truncate an SVG. Keep the value under the smallest output cap of any endpoint serving a curated code model (65,536 on 2026-11-07)
 
 ### Dependency Injection Pattern
 
@@ -1618,7 +1619,7 @@ export class OpenRouterTextClient implements TextClient {
     options?: TextCompletionOptions
   ): Promise<TextCompletionResult> {
     // ... OpenRouter API call with this.model
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1663,7 +1664,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
     // Use model from options if provided, otherwise fall back to currentModel
     const model = options?.model ?? this.currentModel;
     // ... OpenRouter API call with model variable
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1892,6 +1893,6 @@ interface ImageGenerationClient {
 
 ### Default Parameters
 
-- **Text clients**: `max_tokens: 48000`, `temperature: 0.7`
+- **Text clients**: `max_tokens: 16384`, `temperature: 0.7`
 - **Image clients**: Uses OpenRouter defaults per model
-- **SVG clients**: `max_tokens: 48000`, `temperature: 0.7`
+- **SVG turns**: `max_tokens: 32000` (`SVG_MAX_OUTPUT_TOKENS`), `temperature: 0.7`

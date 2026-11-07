@@ -97,7 +97,7 @@ Each suite consists of three layers:
 - **Client**: `OpenRouterTextClient` (static model set at construction)
 - **Messages**: `TextMessage[]` with role-based structure
 - **State**: `TextConversation` with turn counting and max turns limit
-- **Default**: `max_tokens: 48000`
+- **Default**: `max_tokens: 16384` (client default)
 
 #### Image Suite
 
@@ -114,6 +114,7 @@ Each suite consists of three layers:
 - **Messages**: `TextMessage[]` with multimodal content (images optional)
 - **State**: Tracks prompts, SVG code, aspect ratio
 - **Special**: Extracts SVG code from markdown responses
+- **Output budget**: every SVG turn sends `max_tokens: SVG_MAX_OUTPUT_TOKENS` (32,000, `SVGOrchestrator.ts`); reasoning tokens count against it, so don't drop it back to the 16,384 client default
 
 ### Dependency Injection Pattern
 
@@ -1615,7 +1616,7 @@ export class OpenRouterTextClient implements TextClient {
     options?: TextCompletionOptions
   ): Promise<TextCompletionResult> {
     // ... OpenRouter API call with this.model
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1656,7 +1657,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
   async createCompletion(messages, options?): Promise<TextCompletionResult> {
     const apiKey = await this.secretStorage.getApiKey();
     // ... OpenRouter API call with this.currentModel
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1868,5 +1869,5 @@ interface ImageGenerationClient {
 ### Default Parameters
 
 - Text clients: `max_tokens: 16384`, `temperature: 0.7`
-- SVG clients: `max_tokens: 16384`, `temperature: 0.7`
+- SVG turns: `max_tokens: 32000` (`SVG_MAX_OUTPUT_TOKENS`), `temperature: 0.7`
 - Image clients: Uses OpenRouter defaults per model

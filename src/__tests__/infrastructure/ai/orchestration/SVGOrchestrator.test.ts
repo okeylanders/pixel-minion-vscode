@@ -1,4 +1,5 @@
 import { SVGOrchestrator } from '@ai';
+import { SVG_MAX_OUTPUT_TOKENS } from '../../../../infrastructure/ai/orchestration/SVGOrchestrator';
 import { LoggingService } from '@logging';
 import { OpenRouterDynamicTextClient } from '../../../../infrastructure/ai/clients/OpenRouterDynamicTextClient';
 import { TextClient, TextCompletionResult } from '../../../../infrastructure/ai/clients/TextClient';
@@ -218,6 +219,20 @@ describe('SVGOrchestrator', () => {
 
       expect(textClient.createCompletion).toHaveBeenCalledTimes(1);
       expect(vectorClient.createCompletion).not.toHaveBeenCalled();
+    });
+
+    it('gives code models room to reason and still finish the SVG', async () => {
+      const textClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+
+      await orchestrator.generateSVG('a red star', {
+        model: 'anthropic/claude-opus-5.5',
+        aspectRatio: '1:1',
+      });
+
+      const [, options] = textClient.createCompletion.mock.calls[0];
+      expect(options).toEqual({ model: 'anthropic/claude-opus-5.5', maxTokens: SVG_MAX_OUTPUT_TOKENS });
+      expect(SVG_MAX_OUTPUT_TOKENS).toBe(32_000);
     });
 
     it('throws a clear error when a recraft model is selected without a vector client', async () => {

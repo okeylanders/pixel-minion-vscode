@@ -16,6 +16,24 @@ import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from
 import { LoggingService } from '@logging';
 import { AspectRatio, TokenUsage } from '@messages';
 
+/**
+ * Output-token ceiling for one SVG turn.
+ *
+ * On OpenRouter, `max_tokens` covers reasoning tokens AND the visible answer
+ * on most providers, and every recommended code model reasons by default
+ * (Opus 5.5, Fable 5.1, Sonnet 5.5 and Grok 4.7 at high effort). At the text
+ * client's 16,384 default a long SVG could stop with `finish_reason:
+ * "length"` before the markup closed, which surfaces as "no valid SVG".
+ *
+ * 32,000 doubles that headroom and stays well under the smallest output cap
+ * of any endpoint serving a curated code model (65,536: Gemini 3.8 Flash,
+ * and Gemini 4 Argon on vertex/us, as of 2026-11-07), so no endpoint is asked
+ * for more than it allows. It is a ceiling, not a charge, but it also bounds a
+ * runaway turn: at most $1.60 at Fable 5.1's $50/1M output rate, where 48,000
+ * would allow $2.40. The vector client ignores it.
+ */
+export const SVG_MAX_OUTPUT_TOKENS = 32_000;
+
 export interface SVGGenerationOptions {
   model: string;
   aspectRatio: AspectRatio;
@@ -114,7 +132,8 @@ export class SVGOrchestrator {
 
     // Call the text client with conversation messages, passing model directly to avoid race conditions
     const result = await client.createCompletion(conversation.messages, {
-      model: options.model
+      model: options.model,
+      maxTokens: SVG_MAX_OUTPUT_TOKENS,
     });
 
     // Extract SVG from the response (throws if no valid SVG found)
