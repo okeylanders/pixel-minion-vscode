@@ -50,6 +50,15 @@ interface ModelMetadata {
 
 const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
   // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
+  'google/gemini-nano-banana-2.1': { releaseDate: '2026-10-06', narrative: 'Flash-tier successor to Nano Banana 2 and Nano Banana Pro: stronger product recontextualization and editing at half Nano Banana 2’s output-token rate.' },
+  'sourceful/riverflow-v2.6-pro': { releaseDate: '2026-10-29', narrative: 'Flagship Riverflow 2.6 for text-to-image and edits, planning each image before it renders.' },
+  'bytedance-seed/seedream-5-0-flash': { releaseDate: '2026-10-01', narrative: 'Fast Seedream editing with up to 14 references.' },
+  'recraft/recraft-v4.1-flash': { releaseDate: '2026-09-23', narrative: 'Fast Recraft generation from text prompts.' },
+  'microsoft/mai-image-2.6': { releaseDate: '2026-09-04', narrative: 'MAI image generation and reference-guided editing, with up to five reference images.' },
+  'microsoft/mai-image-2.6-flash': { releaseDate: '2026-09-04', narrative: 'Lower-latency MAI image generation and editing with lower image-token rates than the standard tier.' },
+  'bytedance-seed/seedream-5-0-lite': { releaseDate: '2026-08-13', narrative: 'Seedream 5.0’s broad-knowledge tier for polished concepts and complex prompts, rendered at 2K or 4K.' },
+  'bytedance-seed/seedream-5-0-pro': { releaseDate: '2026-08-12', narrative: 'Precise, natural-looking ByteDance generation and editing for commercial visual work, with up to 14 references.' },
+  'x-ai/grok-imagine-image-2.0': { releaseDate: '2026-08-11', narrative: 'xAI’s current image model for prompt-driven generation and reference-based edits; it replaces Grok Imagine Image Quality.' },
   'google/gemini-3.1-flash-image': { releaseDate: '2026-06-18', narrative: 'Default-quality Nano Banana 2: strong prompt following and editing for polished images without jumping to the Pro price tier.' },
   'google/gemini-3.1-flash-image-preview': { releaseDate: '2026-02-26', narrative: 'Preview build of Nano Banana 2, retained for compatibility with projects tuned against the earlier model.' },
   'google/gemini-3-pro-image': { releaseDate: '2026-06-18', narrative: "Google's premium image model for high-fidelity edits, difficult prompt adherence, and final-quality work." },
@@ -58,7 +67,7 @@ const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
   'google/gemini-2.5-flash-image': { releaseDate: '2025-10-07', narrative: 'The earlier Nano Banana workhorse, retained for its familiar Flash-image behavior and modest price.' },
   'openai/gpt-5.4-image-2': { releaseDate: '2026-04-21', narrative: "OpenAI's higher-end image path for complex instruction following and text-aware visual edits." },
   'openai/gpt-5-image': { releaseDate: '2025-10-14', narrative: 'General OpenAI image generation with stronger language grounding than the mini tier.' },
-  'openai/gpt-5-image-mini': { releaseDate: '2025-10-16', narrative: 'Lower-cost OpenAI image model for drafts, alternates, and quick visual passes.' },
+  'openai/gpt-5-image-mini': { releaseDate: '2025-10-16', retiresOn: '2026-12-01', narrative: 'Lower-cost OpenAI image model for drafts, alternates, and quick visual passes. OpenRouter retires it on December 1, 2026.' },
   'microsoft/mai-image-2.5': { releaseDate: '2026-06-02', narrative: "Microsoft's MAI-Image via Azure for photorealistic and artistic generation with aspect-ratio control." },
   'microsoft/mai-image-2.5-pro': { releaseDate: '2026-07-23', narrative: 'Higher-fidelity MAI-Image tier for more demanding prompts and cleaner detail.' },
   'black-forest-labs/flux.2-klein-4b': { releaseDate: '2026-01-14', narrative: 'Small FLUX.2 model for very cheap drafts and broad visual exploration.' },
@@ -83,12 +92,16 @@ const SVG_MODEL_METADATA: Record<string, ModelMetadata> = {
   // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
   'recraft/recraft-v4.1-pro-vector': { releaseDate: '2026-05-13', narrative: "Recraft's premium native-vector lane for polished, scalable SVG artwork without code generation." },
   'recraft/recraft-v4.1-vector': { releaseDate: '2026-05-13', narrative: 'Budget native-vector generation for scalable SVG drafts and graphic exploration.' },
-  'anthropic/claude-fable-5': { releaseDate: '2026-06-09', narrative: "Anthropic's long-horizon creative model, well suited to intricate SVG composition and iterative visual refinement." },
-  'anthropic/claude-opus-5': { releaseDate: '2026-07-24', narrative: 'Premium Claude model for complex, carefully structured SVG markup and difficult visual instructions.' },
-  'openai/gpt-5.6-sol': { releaseDate: '2026-07-09', narrative: 'OpenAI flagship model for complex SVG geometry, detailed creative direction, and reliable code structure.' },
-  'openai/gpt-5.6-sol-pro': { releaseDate: '2026-07-09', narrative: 'Higher-compute Sol routing for the most demanding SVG composition and refinement work.' },
-  'openai/gpt-5.4': { releaseDate: '2026-03-05', narrative: 'Strong general coding model for editable SVG markup at a lower price than newer flagship lanes.' },
-  'google/gemini-3.1-pro-preview': { releaseDate: '2026-02-19', narrative: 'Preview Pro model for visual interpretation and complex SVG prompt following.' },
+  'openai/gpt-6.1-terra': { releaseDate: '2026-10-26', narrative: 'Mid-tier OpenAI model that OpenRouter describes as particularly strong at reading screenshots, for affordable SVG from a visual reference.' },
+  'google/gemini-4-argon': { releaseDate: '2026-10-13', narrative: "Google's flagship reasoning model for complex SVG geometry and close prompt following, at a lower output rate than Gemini 3.1 Pro." },
+  'anthropic/claude-haiku-5.5': { releaseDate: '2026-10-07', narrative: 'Small, fast Claude for very cheap SVG drafts and quick iterations.' },
+  'openai/gpt-6.1-sol': { releaseDate: '2026-09-29', narrative: "OpenAI's Sol tier, below Astra, for complex SVG geometry, detailed creative direction, and reliable code structure." },
+  'anthropic/claude-sonnet-5.5': { releaseDate: '2026-09-28', narrative: 'Mid-price Claude for well-structured SVG markup and steady multi-turn refinement.' },
+  'anthropic/claude-opus-5.5': { releaseDate: '2026-09-22', narrative: 'Premium Claude model for complex, carefully structured SVG markup and difficult visual instructions.' },
+  'x-ai/grok-4.7': { releaseDate: '2026-09-21', narrative: "xAI's flagship reasoning model, with the lowest output rate among the flagship SVG coders." },
+  'openai/gpt-6-astra': { releaseDate: '2026-09-04', narrative: "OpenAI's top tier for the most demanding SVG composition, when quality matters more than cost." },
+  'google/gemini-3.8-flash': { releaseDate: '2026-09-02', narrative: 'Fast, low-cost Gemini for SVG drafts and quick variations.' },
+  'anthropic/claude-fable-5.1': { releaseDate: '2026-09-01', narrative: "Anthropic's long-horizon creative model, well suited to intricate SVG composition and iterative visual refinement." },
 };
 
 function providerFromId(id: string): string {

@@ -114,6 +114,97 @@ describe('modelBrowserOptions', () => {
     });
   });
 
+  describe('2026-11-07 catalog refresh', () => {
+    it.each([
+      ['google/gemini-nano-banana-2.1', '2026-10-06'],
+      ['sourceful/riverflow-v2.6-pro', '2026-10-29'],
+      ['bytedance-seed/seedream-5-0-flash', '2026-10-01'],
+      ['recraft/recraft-v4.1-flash', '2026-09-23'],
+      ['microsoft/mai-image-2.6', '2026-09-04'],
+      ['microsoft/mai-image-2.6-flash', '2026-09-04'],
+      ['bytedance-seed/seedream-5-0-lite', '2026-08-13'],
+      ['bytedance-seed/seedream-5-0-pro', '2026-08-12'],
+      ['x-ai/grok-imagine-image-2.0', '2026-08-11'],
+    ])('dates the new image model %s by its OpenRouter creation date', (id, date) => {
+      expect(modelDefinitionToBrowserOption(imageModel(id)).releaseDate).toBe(date);
+    });
+
+    it.each([
+      ['openai/gpt-6.1-terra', '2026-10-26'],
+      ['google/gemini-4-argon', '2026-10-13'],
+      ['anthropic/claude-haiku-5.5', '2026-10-07'],
+      ['openai/gpt-6.1-sol', '2026-09-29'],
+      ['anthropic/claude-sonnet-5.5', '2026-09-28'],
+      ['anthropic/claude-opus-5.5', '2026-09-22'],
+      ['x-ai/grok-4.7', '2026-09-21'],
+      ['openai/gpt-6-astra', '2026-09-04'],
+      ['google/gemini-3.8-flash', '2026-09-02'],
+      ['anthropic/claude-fable-5.1', '2026-09-01'],
+    ])('dates the new SVG code model %s by its OpenRouter creation date', (id, date) => {
+      expect(svgModelToBrowserOption(svgModel(id)).releaseDate).toBe(date);
+    });
+
+    it('recommends Nano Banana 2.1 with a measured, labelled per-image estimate', () => {
+      const option = modelDefinitionToBrowserOption(imageModel('google/gemini-nano-banana-2.1'));
+      expect(option.costLabel).toBe('≈ $0.036 | image @ 1K');
+      expect(option.costDescription).toContain('$1.5/$30 per 1M image tokens (input/output)');
+      expect(option.costDescription).toContain('OpenRouter benchmark median');
+      expect(option.badges).toContainEqual({ label: 'recommended', tone: 'accent' });
+    });
+
+    it('labels GPT-5 Image Mini as retiring with a warn badge', () => {
+      const option = modelDefinitionToBrowserOption(imageModel('openai/gpt-5-image-mini'));
+      const retiring = option.badges?.find(badge => badge.label.startsWith('retiring '));
+      expect(retiring?.tone).toBe('warn');
+      expect(retiring?.label).toMatch(/2026/);
+      expect(option.narrative).toContain('December 1, 2026');
+      // Only models with an announced expiration get the badge.
+      expect(modelDefinitionToBrowserOption(imageModel('openai/gpt-5-image')).badges)
+        .not.toContainEqual(expect.objectContaining({ tone: 'warn' }));
+    });
+
+    it.each([
+      ['openai/gpt-5.4-image-2', '$8/$30 per 1M image tokens (input/output)'],
+      ['openai/gpt-5-image', '$10/$40 per 1M image tokens (input/output)'],
+      ['openai/gpt-5-image-mini', '$2.5/$8 per 1M image tokens (input/output)'],
+    ])('shows the input-image rate OpenRouter itemizes for %s', (id, rates) => {
+      expect(modelDefinitionToBrowserOption(imageModel(id)).costDescription).toContain(rates);
+    });
+
+    it.each([
+      ['microsoft/mai-image-2.6', '≈ $0.039 | image'],
+      ['microsoft/mai-image-2.6-flash', '≈ $0.0195 | image'],
+    ])('makes the %s token-budget assumption visible', (id, label) => {
+      const option = modelDefinitionToBrowserOption(imageModel(id));
+      expect(option.costLabel).toBe(label);
+      expect(option.costDescription).toContain('Assumes 1,024 image output tokens');
+    });
+
+    it.each([
+      ['sourceful/riverflow-v2.6-pro', '≈ $0.13 | image @ 1K', '$0.157'],
+      ['sourceful/riverflow-v2.5-pro', '≈ $0.13 | image @ 1K', '$0.248'],
+      ['sourceful/riverflow-v2-pro', '≈ $0.15 | image @ 1K', '$0.20'],
+      ['bytedance-seed/seedream-5-0-pro', '≈ $0.045 | image @ 1K', '$0.003'],
+      ['x-ai/grok-imagine-image-2.0', '≈ $0.04 | image @ 1K', '$0.01 each'],
+      ['recraft/recraft-v4.1-flash', '≈ $0.007 | image', undefined],
+    ])('labels %s at its lowest list tier and explains what can cost more', (id, label, detail) => {
+      const option = modelDefinitionToBrowserOption(imageModel(id));
+      expect(option.costLabel).toBe(label);
+      if (detail) expect(option.costDescription).toContain(detail);
+    });
+
+    it('prices the refreshed SVG code models per 1M tokens with the house estimate', () => {
+      expect(svgModelToBrowserOption(svgModel('openai/gpt-6.1-sol')).costLabel).toBe('$2/$10 per 1M');
+      expect(svgModelToBrowserOption(svgModel('anthropic/claude-opus-5.5')).costDescription)
+        .toContain('≈ $0.084 per SVG');
+      expect(svgModelToBrowserOption(svgModel('google/gemini-3.8-flash')).costDescription)
+        .toContain('≈ $0.01575 per SVG');
+      // Haiku 5.5 reasons only on request (the feed omits default_enabled).
+      expect(svgModelToBrowserOption(svgModel('anthropic/claude-haiku-5.5')).costDescription)
+        .toBe('≈ $0.0021 per SVG at about 1k input and 4k output tokens. Longer or more detailed SVGs cost more.');
+    });
+  });
+
   describe('labels and groups', () => {
     it('normalizes recommended labels before displaying or deriving model families', () => {
       const option = modelDefinitionToBrowserOption(imageModel('google/gemini-3.1-flash-image'));
@@ -159,7 +250,7 @@ describe('modelBrowserOptions', () => {
     });
 
     it('prices code models per 1M tokens and moves the 1k/4k estimate into the cost description', () => {
-      const option = svgModelToBrowserOption(svgModel('anthropic/claude-fable-5'));
+      const option = svgModelToBrowserOption(svgModel('anthropic/claude-fable-5.1'));
       expect(option.costLabel).toBe('$10/$50 per 1M');
       expect(option.costDescription).toBe(
         '≈ $0.21 per SVG at about 1k input and 4k output tokens. '

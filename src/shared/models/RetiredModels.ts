@@ -36,13 +36,14 @@ export interface RetiredModel {
 }
 
 export const RETIRED_MODELS: Readonly<Record<string, RetiredModel>> = {
-  // Delisted — the first five shipped in v1.3.0.
-  'x-ai/grok-imagine-image-quality': { replacement: DEFAULT_IMAGE_MODEL, reason: 'delisted' },
+  // Delisted — the first five shipped in v1.3.0. Each points at the catalog's successor
+  // (a test pins that every replacement is a catalog id).
+  'x-ai/grok-imagine-image-quality': { replacement: 'x-ai/grok-imagine-image-2.0', reason: 'delisted' },
   'sourceful/riverflow-v2-max-preview': { replacement: 'sourceful/riverflow-v2.5-pro', reason: 'delisted' },
   'sourceful/riverflow-v2-standard-preview': { replacement: 'sourceful/riverflow-v2.5-pro', reason: 'delisted' },
   'sourceful/riverflow-v2-fast-preview': { replacement: 'sourceful/riverflow-v2.5-fast', reason: 'delisted' },
-  'anthropic/claude-opus-4': { replacement: 'anthropic/claude-opus-5', reason: 'delisted' },
-  'anthropic/claude-opus-5-fast': { replacement: 'anthropic/claude-opus-5', reason: 'delisted' },
+  'anthropic/claude-opus-4': { replacement: 'anthropic/claude-opus-5.5', reason: 'delisted' },
+  'anthropic/claude-opus-5-fast': { replacement: 'anthropic/claude-opus-5.5', reason: 'delisted' },
   // Image API only — added by the PR #12 catalog refresh, never released.
   'openai/gpt-image-2': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
   'openai/gpt-image-1': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
