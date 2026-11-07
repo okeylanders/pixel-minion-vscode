@@ -1,41 +1,47 @@
 /**
  * Aspect Ratio Selector Styles
  *
- * VSCode-themed dropdown for selecting aspect ratios.
+ * A native <select> on the family field (input.css): same surface, height,
+ * radius, label and focus ring as the text fields beside it.
  */
 
 .aspect-ratio-selector {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 6px;
 }
 
 .aspect-ratio-selector label {
-  font-size: 11px;
-  color: var(--pm-text-muted);
+  color: var(--px-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 .aspect-ratio-select {
-  height: 44px;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--pm-sans);
-  font-size: var(--vscode-font-size);
-  color: var(--pm-text);
-  background-color: var(--pm-field);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
+  width: 100%;
+  min-width: 0;
+  height: var(--px-control-h);
+  padding: 0 11px;
+  color: var(--px-text-input);
+  background: var(--px-field);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-field);
   cursor: pointer;
+  font-family: var(--px-sans);
+  font-size: 13px;
+  transition: background 100ms, border-color 100ms, box-shadow 100ms;
 }
 
 .aspect-ratio-select:hover:not(:disabled) {
-  background-color: var(--pm-field-hover);
-  border-color: var(--pm-border-strong);
+  background: var(--px-field-hover);
+  border-color: var(--px-border-strong);
 }
 
 .aspect-ratio-select:focus {
   outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
 .aspect-ratio-select:disabled {

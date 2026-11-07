@@ -1,64 +1,88 @@
+/**
+ * ImageCard — Frame's fm-result card.
+ *
+ * Left-aligned, up to 320px wide: the image on a square stage, then a meta
+ * block with the prompt and the approve/save tile on the first row and the
+ * mono seed chip on its own row.
+ */
+
 .image-card {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: 4px;
+  display: flex;
+  width: min(100%, 320px);
+  max-width: 100%;
+  flex-direction: column;
+  align-self: flex-start;
   overflow: hidden;
+  background: var(--px-field);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-card);
 }
 
 .image-card-image-container {
   position: relative;
   width: 100%;
-  padding-top: 100%; /* Square aspect ratio container */
-  background: var(--pm-inset);
+  aspect-ratio: 1 / 1;
+  background: color-mix(in oklab, var(--px-bg) 50%, var(--px-field));
 }
 
 .image-card-image {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
+/* Meta block: .image-card-info is display:contents so the prompt and seed
+   chip become grid items beside the SaveButton without extra markup. */
 .image-card-footer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 8px;
   gap: 8px;
-  border-top: 1px solid var(--pm-border-soft);
+  padding: 10px 12px;
 }
 
 .image-card-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  display: contents;
 }
 
 .image-card-prompt {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
+  min-width: 0;
+  grid-row: 1;
+  grid-column: 1;
   overflow: hidden;
+  color: var(--px-text);
+  font-size: 12.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .image-card-seed {
-  background: none;
-  border: 1px solid var(--pm-border-soft);
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 10px;
-  color: var(--vscode-descriptionForeground);
-  cursor: pointer;
+  display: inline-flex;
   width: fit-content;
-  transition: background-color 0.15s;
+  grid-row: 2;
+  grid-column: 1 / -1;
+  justify-self: start;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  color: var(--px-text-muted);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-sm);
+  cursor: pointer;
+  font-family: var(--px-mono);
+  font-size: 11px;
+  transition: background 100ms, color 100ms;
 }
 
 .image-card-seed:hover {
-  background: var(--vscode-toolbar-hoverBackground);
-  color: var(--vscode-foreground);
+  color: var(--px-text);
+  background: var(--px-field-hover);
+}
+
+.image-card-footer > .save-button {
+  grid-row: 1;
+  grid-column: 2;
 }

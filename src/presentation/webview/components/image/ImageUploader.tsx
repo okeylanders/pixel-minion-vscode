@@ -68,7 +68,7 @@ export function ImageUploader({
           type="button"
           onClick={handleClick}
           disabled={disabled || images.length >= maxImages}
-          className="add-image-button"
+          className="btn btn-secondary add-image-button"
         >
           + Add Reference Image{images.length > 0 ? ` (${images.length}/${maxImages})` : ''}
         </button>
@@ -77,7 +77,7 @@ export function ImageUploader({
             type="button"
             onClick={onClear}
             disabled={disabled}
-            className="clear-images-button"
+            className="btn btn-secondary clear-images-button"
           >
             Clear All
           </button>

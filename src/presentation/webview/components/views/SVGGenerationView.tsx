@@ -6,6 +6,8 @@
  * - Compose ModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
  * - Receive hook instance as prop (prose-minion pattern)
  * - Handle SVG save state tracking
+ *
+ * Layout: generation-view.css (shared with the Image tab).
  */
 import React from 'react';
 import { UseSVGGenerationReturn } from '../../hooks/domain/useSVGGeneration';
@@ -20,6 +22,8 @@ import { OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/O
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { SaveButton } from '../shared/SaveButton';
+import { TabSvgIcon } from '../layout/tabIcons';
+import '../../styles/components/generation-view.css';
 import '../../styles/components/svg-generation-view.css';
 
 export interface SVGGenerationViewProps {
@@ -86,11 +90,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
   ), [svgCode, aspectRatio]);
 
   return (
-    <div className="svg-generation-view">
+    <div className="generation-view svg-generation-view">
       {/* Input well: Model, Aspect Ratio, Prompt, Reference Image, Generate button */}
       <div className="well">
-        {/* Header: Model + Aspect Ratio selectors */}
-        <div className="svg-generation-header">
+        {/* Header: Model and Aspect Ratio, stacked full width */}
+        <div className="generation-header">
           <ModelSelector
             models={OPENROUTER_SVG_MODELS}
             selectedModel={model}
@@ -106,7 +110,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         </div>
 
         {/* Prompt input */}
-        <div className="svg-generation-prompt-section">
+        <div className="generation-prompt-section">
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -132,15 +136,27 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
 
         {/* Error display */}
         {error && (
-          <div className="svg-generation-error">
+          <div className="generation-error" role="alert">
             {error}
           </div>
         )}
       </div>
 
-      {/* Output well: Scrollable result area */}
-      <div className="well svg-generation-output-well">
-        <div className="svg-generation-scroll-area">
+      {/* Output well: result area (the tab content is the scroller) */}
+      <div className="well generation-output-well">
+        {!svgCode && !isLoading && (
+          <div className="generation-empty">
+            <span className="generation-empty-icon" aria-hidden="true">
+              <TabSvgIcon size={22} />
+            </span>
+            <p className="generation-empty-title">Your SVG appears here</p>
+            <p className="generation-empty-hint">
+              Describe an icon or illustration above. You get a live preview, 32–128 px sizes,
+              and code to copy or refine.
+            </p>
+          </div>
+        )}
+        <div className="generation-output">
           {/* Generated SVG preview and code */}
           {svgCode && (
             <div className="svg-generation-result">
@@ -161,7 +177,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
               <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
               <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
               {latestUsage && (
-                <div className="svg-usage-display">
+                <div className="generation-usage">
                   {latestUsage.totalTokens.toLocaleString()} tokens
                   {latestUsage.costUsd !== undefined && (
                     <> · {latestUsage.costUsd < 0.01

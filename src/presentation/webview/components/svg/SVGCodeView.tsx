@@ -6,8 +6,15 @@ interface SVGCodeViewProps {
   onCopy: () => void;
 }
 
+const ChevronIcon: React.FC = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const SVGCodeView: React.FC<SVGCodeViewProps> = ({ svgCode, onCopy }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const codeId = React.useId();
 
   if (!svgCode) return null;
 
@@ -18,8 +25,10 @@ export const SVGCodeView: React.FC<SVGCodeViewProps> = ({ svgCode, onCopy }) => 
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
           className="svg-code-toggle"
+          aria-expanded={isExpanded}
+          aria-controls={isExpanded ? codeId : undefined}
         >
-          {isExpanded ? '▼' : '▶'} SVG Code
+          <ChevronIcon /> SVG code
         </button>
         <button
           type="button"
@@ -31,7 +40,7 @@ export const SVGCodeView: React.FC<SVGCodeViewProps> = ({ svgCode, onCopy }) => 
         </button>
       </div>
       {isExpanded && (
-        <pre className="svg-code-content">
+        <pre className="svg-code-content" id={codeId}>
           <code>{svgCode}</code>
         </pre>
       )}

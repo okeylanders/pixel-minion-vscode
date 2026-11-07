@@ -1,19 +1,24 @@
+/**
+ * SVGPreview container — a preview well (--px-inset, the surface reserved
+ * for code and previews). Styles the container only; how the SVG itself is
+ * rendered is SVGPreview.tsx's concern.
+ */
+
 .svg-preview {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  min-height: 300px;
   display: flex;
+  min-height: 300px;
   align-items: center;
   justify-content: center;
   overflow: auto;
+  padding: var(--spacing-md);
+  background: var(--px-inset);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-card);
 }
 
 .svg-preview-empty {
-  background: var(--pm-inset);
-  color: var(--vscode-descriptionForeground);
-  font-size: 14px;
+  color: var(--px-text-muted);
+  font-size: 13px;
 }
 
 .svg-preview[data-aspect="1:1"] .svg-preview-content {
@@ -37,9 +42,9 @@
 }
 
 .svg-preview-content {
+  display: flex;
   width: 100%;
   max-width: 100%;
-  display: flex;
   align-items: center;
   justify-content: center;
 }

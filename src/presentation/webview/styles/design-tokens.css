@@ -1,0 +1,143 @@
+/**
+ * Pixel Minion design tokens — the Minion family vocabulary under the `px` prefix.
+ *
+ * Token names mirror Frame Minion's sidebar set (Frame's
+ * sidebar-design-tokens.css is canonical): one warm surface ramp anchored on
+ * the user's editor background, text mapped to VS Code foregrounds, and a
+ * fixed, product-owned brand accent. Each family member keeps its own prefix
+ * (Frame `--fm-*`, Prose `--pm-*`, Pixel `--px-*`) so the same name always
+ * means the same thing inside one product.
+ *
+ * Scoped to `.app-container`: every Pixel surface — header, tabs, views and
+ * the overlays/modals (Settings, model browser) — renders inside it.
+ *
+ * Accent budget: the accent is a tint, border or ring — never a dominant fill.
+ * Use it for the header hairline, the active tab, focus rings, the balance
+ * card stripe, the model-browser eyebrow / active chip / selected card, and
+ * the primary action's tint. Blue is semantic (`--px-info`), not brand.
+ */
+
+.app-container {
+  /* Brand pair, taken from the logo: the ember glitch pixel and the oxblood
+     monitor frame. Fixed across themes. Owner confirmation is pending — a
+     different accent is a change to these two lines. */
+  --px-a: #ff6b2d;
+  --px-b: #8c2a13;
+  /* The dark "CRT" tile behind the colour logo. Fixed (not themed): the
+     logo's white skull disappears on the family's white tile. */
+  --px-tile: #140c09;
+
+  /* Surface ramp: anchor on the user's theme, then add warm separation so
+     cards and fields don't collapse into one washed surface. */
+  --px-anchor: var(--vscode-editor-background);
+  --px-warm: #cf9a57;
+
+  /* Surfaces */
+  --px-bg: var(--px-anchor);
+  --px-panel: color-mix(in oklab, var(--px-anchor) 94%, var(--px-warm));
+  --px-card: color-mix(in oklab, var(--px-anchor) 90%, var(--px-warm));
+  --px-field: color-mix(in oklab, var(--px-anchor) 84%, var(--px-warm));
+  --px-field-hover: color-mix(in oklab, var(--px-anchor) 78%, var(--px-warm));
+  /* Reserved for code and preview wells — never for form fields. */
+  --px-inset: color-mix(in oklab, var(--px-anchor) 93%, #000);
+  --px-selection: color-mix(in oklab, var(--px-a) 14%, var(--px-field));
+
+  /* Borders */
+  --px-border: color-mix(in srgb, var(--px-warm) 20%, transparent);
+  --px-border-soft: color-mix(in srgb, var(--px-warm) 12%, transparent);
+  --px-border-strong: color-mix(in srgb, var(--px-warm) 30%, transparent);
+
+  /* Text */
+  --px-text: var(--vscode-foreground);
+  --px-text-muted: var(--vscode-descriptionForeground);
+  /* Placeholders and decoration only: disabledForeground is ~50% alpha in
+     Dark Modern and fails AA for small text. Eyebrows and labels use muted. */
+  --px-text-dim: var(--vscode-disabledForeground, var(--px-text-muted));
+  --px-text-input: var(--vscode-input-foreground, var(--px-text));
+
+  /* Buttons */
+  --px-btn: var(--px-field);
+  --px-btn-text: var(--px-text);
+  --px-btn-hover: var(--px-field-hover);
+
+  --px-primary: var(--px-a);
+  --px-primary-text: var(--px-on-accent);
+  --px-primary-hover: color-mix(in oklab, var(--px-a) 90%, white);
+
+  --px-danger: var(--vscode-inputValidation-errorBackground, var(--vscode-errorForeground));
+  --px-danger-border: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+  --px-danger-text: var(--vscode-inputValidation-errorForeground, var(--px-text));
+
+  /* Accent */
+  --px-accent: var(--px-a);
+  --px-accent-strong: var(--px-b);
+  --px-accent-soft: color-mix(in srgb, var(--px-a) 14%, transparent);
+  --px-accent-ring: color-mix(in srgb, var(--px-a) 30%, transparent);
+  /* Accent-coloured TEXT: raw ember on white is ~2.8:1, so text and focus
+     rings lean toward the foreground (≈4:1 on Light Modern, ≈7:1 on Dark). */
+  --px-accent-text: color-mix(in oklab, var(--px-a) 72%, var(--px-text));
+  --px-on-accent: #fff;
+  --px-focus-ring: var(--px-accent-text);
+
+  /* Status */
+  --px-ok: var(--vscode-charts-green, var(--vscode-testing-iconPassed, var(--vscode-terminal-ansiGreen, currentColor)));
+  --px-warn: var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground, var(--vscode-terminal-ansiYellow, currentColor)));
+  --px-err: var(--vscode-charts-red, var(--vscode-errorForeground, var(--vscode-terminal-ansiRed, currentColor)));
+  --px-info: var(--vscode-charts-blue, var(--vscode-textLink-foreground, var(--vscode-terminal-ansiBlue, currentColor)));
+
+  /* Type */
+  --px-mono: var(--vscode-editor-font-family, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  --px-sans: var(--vscode-font-family);
+
+  /* Geometry: 4 chips · 5 fields/buttons · 6 tabs · 8 cards · 12 sheets · 999 pills */
+  --px-radius-sm: 4px;
+  --px-radius-field: 5px;
+  --px-radius: 6px;
+  --px-radius-card: 8px;
+  --px-radius-sheet: 12px;
+  --px-control-h: 34px;
+  /* One left edge for the header, the tab bar and the view cards. */
+  --px-gutter: 16px;
+
+  /* Elevation: follow the theme's widget shadow so light themes stay clean. */
+  --px-shadow: var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+
+  /* TEMP(balance-merge): aliases for the balance rules in global.css, which
+     still read --pm-* names. Removed when provider-balances.css lands. */
+  --pm-text: var(--px-text);
+  --pm-text-muted: var(--px-text-muted);
+  --pm-text-dim: var(--px-text-dim);
+  --pm-card: var(--px-card);
+  --pm-field: var(--px-field);
+  --pm-field-hover: var(--px-field-hover);
+  --pm-border-soft: var(--px-border-soft);
+  --pm-accent: var(--px-accent);
+  --pm-mono: var(--px-mono);
+  --pm-radius: var(--px-radius);
+  --pm-radius-sm: var(--px-radius-sm);
+}
+
+/* High contrast: the warm hairlines (~1.3:1) fail the 3:1 boundary contrast
+   HC users rely on, so borders, rings and selection fall back to the theme's
+   contrast colours and surfaces lose their warm tint. Every border tier maps
+   to contrastBorder: contrastActiveBorder means "active/selected" in HC, so
+   it is reserved for the selected states below (buttons use border-strong
+   and would otherwise all read as selected). */
+body.vscode-high-contrast .app-container,
+body.vscode-high-contrast-light .app-container {
+  --px-warm: transparent;
+  --px-border: var(--vscode-contrastBorder, CanvasText);
+  --px-border-soft: var(--vscode-contrastBorder, CanvasText);
+  --px-border-strong: var(--vscode-contrastBorder, CanvasText);
+  --px-accent-ring: var(--vscode-focusBorder, Highlight);
+  --px-focus-ring: var(--vscode-focusBorder, Highlight);
+  --px-shadow: transparent;
+}
+
+/* Selected states that otherwise lean on a soft accent tint get the theme's
+   active-contrast border. Kept here (not in the component sheets) so a
+   wholesale component port can't drop it. */
+body.vscode-high-contrast .app-container :is(.tab-button.active, .model-browser-card.selected, .model-browser-chips button.active),
+body.vscode-high-contrast-light .app-container :is(.tab-button.active, .model-browser-card.selected, .model-browser-chips button.active) {
+  border-color: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
+}

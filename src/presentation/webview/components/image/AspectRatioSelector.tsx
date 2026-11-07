@@ -23,22 +23,24 @@ export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
   return (
     <div className="aspect-ratio-selector">
       <label htmlFor="aspect-ratio-select">Aspect Ratio</label>
-      <select
-        id="aspect-ratio-select"
-        value={selectedRatio}
-        onChange={(e) => onRatioChange(e.target.value as AspectRatio)}
-        disabled={disabled}
-        className="aspect-ratio-select"
-      >
-        {ASPECT_RATIOS.map((ratio) => {
-          const dims = ASPECT_RATIO_DIMENSIONS[ratio];
-          return (
-            <option key={ratio} value={ratio}>
-              {ratio} ({dims.width}x{dims.height})
-            </option>
-          );
-        })}
-      </select>
+      <span className="select-control">
+        <select
+          id="aspect-ratio-select"
+          value={selectedRatio}
+          onChange={(e) => onRatioChange(e.target.value as AspectRatio)}
+          disabled={disabled}
+          className="aspect-ratio-select"
+        >
+          {ASPECT_RATIOS.map((ratio) => {
+            const dims = ASPECT_RATIO_DIMENSIONS[ratio];
+            return (
+              <option key={ratio} value={ratio}>
+                {ratio} ({dims.width}x{dims.height})
+              </option>
+            );
+          })}
+        </select>
+      </span>
     </div>
   );
 };
