@@ -22,6 +22,8 @@ export interface SettingsState {
   imageModel: string;
   svgModel: string;
   apiKeyConfigured: boolean;
+  /** False until the first API_KEY_STATUS arrives (apiKeyConfigured is a placeholder until then). */
+  apiKeyStatusKnown: boolean;
   isLoading: boolean;
 }
 
@@ -74,6 +76,7 @@ export function useSettings(
     initialState?.svgModel ?? 'recraft/recraft-v4.1-pro-vector'
   );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [apiKeyStatusKnown, setApiKeyStatusKnown] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Message handlers (exposed for App-level routing)
@@ -89,6 +92,7 @@ export function useSettings(
   const handleApiKeyStatus = useCallback((message: MessageEnvelope) => {
     const payload = message.payload as ApiKeyStatusPayload;
     setApiKeyConfigured(payload.isConfigured);
+    setApiKeyStatusKnown(true);
   }, []);
 
   // Actions
@@ -165,6 +169,7 @@ export function useSettings(
     imageModel,
     svgModel,
     apiKeyConfigured,
+    apiKeyStatusKnown,
     isLoading,
     // Actions
     updateSetting,

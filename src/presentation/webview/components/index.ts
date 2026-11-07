@@ -15,3 +15,6 @@ export * from './image';
 
 // SVG components
 export * from './svg';
+
+// Account balance components
+export * from './balances';

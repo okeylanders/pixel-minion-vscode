@@ -99,7 +99,7 @@ export function App(): JSX.Element {
   // Initialize domain hooks with persisted state
   const settings = useSettings(persistedState.settings);
   const tokenTracking = useTokenTracking(persistedState.tokenTracking);
-  const balances = useOpenRouterBalance(settings.apiKeyConfigured);
+  const balances = useOpenRouterBalance(settings.apiKeyStatusKnown);
   const imageGeneration = useImageGeneration(persistedState.imageGeneration, {
     selectedModel: settings.imageModel,
     onModelChange: (model) => settings.updateSetting('imageModel', model),
