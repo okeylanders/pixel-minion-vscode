@@ -6,6 +6,32 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **A new look that matches Frame Minion and Prose Minion**
+  - Pixel's own brand colours (ember and oxblood, from the logo), and the full-colour logo in the header.
+  - Cleaner Image and SVG tabs: controls stack neatly, and generated images and SVGs have room to breathe even in a narrow sidebar.
+  - One consistent style for fields and buttons, a refreshed Settings panel, and friendlier empty states.
+- **Model browser.** Browse every image and SVG model by provider or family, with search, prices and short descriptions.
+- **OpenRouter balance in the header.**
+  - See your remaining credit at a glance and expand it for details.
+  - It refreshes automatically after each generation and whenever you change your API key.
+  - It tells you clearly when the balance can't be read, the key is invalid, or you're offline.
+- **Accessibility**
+  - Full keyboard support for tabs and dialogs: arrow keys move between tabs, focus stays inside an open dialog and returns when it closes, and Escape closes only the top dialog.
+  - High-contrast theme support.
+  - Respects "reduce motion".
+
+### Changed
+
+- **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log. This covers models OpenRouter has retired: the Riverflow V2 preview tiers, Grok Imagine (Image Quality), Claude Opus 4 and Claude Opus 5 Fast.
+
+### Fixed
+
+- Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
+
 ## [1.3.0] - 2026-05-20
 
 ### Added

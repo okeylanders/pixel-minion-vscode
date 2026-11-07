@@ -377,6 +377,22 @@ interface ProviderConfig {
 // Usage: OPENROUTER_CONFIG.models.svg for SVG tab dropdown
 ```
 
+## Design Family and Frame Parity Invariants
+
+Pixel Minion shares a design family with Frame Minion and Prose Minion and is converging on Frame's image generator (OpenRouter only, never fal.ai). Plan: [docs/plans/frame-parity-roadmap.md](docs/plans/frame-parity-roadmap.md) · review ledger: [docs/pr-reviews/pr-12-design-system-alignment-review.md](docs/pr-reviews/pr-12-design-system-alignment-review.md).
+
+- **Tokens are `--px-*`, defined once in `src/presentation/webview/styles/design-tokens.css`, scoped to `.app-container`.** Frame owns `--fm-*`, Prose owns `--pm-*`; reusing a sibling's prefix silently mis-styles ported components. The vocabulary mirrors Frame's (`bg, panel, card, field, inset, border(-soft/-strong), text(-muted/-dim), accent(-strong/-soft/-ring/-text), ok/warn/err/info, mono, radius…`). Every surface, including overlays, must render inside `.app-container` or the tokens don't resolve.
+- **The brand accent is a fixed product pair — ember `--px-a: #ff6b2d` / oxblood `--px-b: #8c2a13` — never `--vscode-textLink-foreground`.** Accent is a tint, border, or ring, not a dominant fill. Blue means *info* (`--px-info`), e.g. the user-prompt stripe.
+- **High contrast:** the `body.vscode-high-contrast*` block maps borders to `contrastBorder`. `contrastActiveBorder` is reserved for selected states. New border tokens must join that block.
+- **Header logo** comes from the host: `webviewHtml.ts` injects `headerLogoUri` / `loadingStillUri` as JSON-escaped globals. The colour logo sits on the dark "CRT" tile. Don't hard-code a monochrome glyph.
+- **Overlays** (Settings, model browser, any future modal) use `hooks/useOverlayDismiss` for focus trap, focus return, inert background, and Escape scoped to the top overlay. Don't add `autoFocus`.
+- **Controls** share the 34 px control height (`--px-control-h`) and the radius scale (5 fields/buttons, 6 tabs, 8 cards, 12 modal). Text floor is 10.5 px; eyebrows are mono and uppercased via CSS.
+- **Balances:** one shared `AccountBalanceService` (`src/infrastructure/account/`) owns the cache, in-flight dedupe, forced-refresh floor, and post-generation debounce. `MessageHandler` arms a refresh only on `TERMINAL_AI_RESPONSE_TYPES`. A guard test fails if a new `*_RESPONSE` AI type is left out, so add new generation response types there.
+- **Models must be reachable through `/chat/completions` until the Image API transport lands (roadmap P3).** OpenRouter rejects some image models on chat with 404 "is an image generation model and cannot be used with the chat/completions endpoint". The probed list is pinned in `OpenRouterImageClient.test.ts`; never add one of those ids to a catalog before P3. Every catalog image id needs an entry in the modality snapshot map in that test, from the live `/api/v1/images/models` feed.
+- **Retired model ids** go in `RETIRED_MODELS` with a reason (`'delisted' | 'images-api-only'`) and a catalog replacement. `SettingsHandler` migrates saved `imageModel` / `svgModel` values on read and logs why.
+- **Type checking and tests:** `tsc -p tsconfig.webview.json` now really checks the webview (it previously inherited an exclude and checked nothing). `.tsx` tests opt into jsdom with a per-file `@jest-environment jsdom` docblock.
+- **Review ledgers:** reviews are committed as `docs/pr-reviews/pr-NN-<slug>-review.md` with a status-by-item table (`⏳ Open` / `✅ Fixed in <sha>` / `↪ Deferred (why)`). Deferred rows are the tech-debt backlog for that area; flip them when a later PR clears them.
+
 ## Architecture Decision Records
 
 See `docs/adr/` for architectural decisions. Key ADRs:

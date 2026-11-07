@@ -20,26 +20,30 @@
 | PR | Scope | Depends on | Size | Status |
 | --- | --- | --- | --- | --- |
 | **#12** | Design system skeleton, first model-browser port, balance strip, catalog refresh | — | — | Draft; under review |
-| **A — Design pass 02** | Family tokens + brand accent (`--px-*`), header lockup with the colour logo, Image/SVG tab layout (fixes the crushed conversation), field and control system, settings dialog, overlay a11y (`useOverlayDismiss`), tabs a11y, reduced motion, high contrast. Balance correctness (key change, spend-cap labelling, cache/dedupe, formatting). Hotfixes: modality routing (C1), delisted ids + settings migration (U1/U2). `.tsx` test infrastructure | #12 | M–L | 🔄 In progress (`claude/pixel-minion-design-review-dhbqpd`) |
-| **B — Picker parity + catalog refresh** | Catalogs move to `src/shared/models`; Frame's unit-aware `ImageModelDefinition` / `ImagePricing`; explicit `SvgModelDefinition` (`kind: 'native-vector' \| 'code'`); port Frame sprint-06 `ModelBrowserModal` / `ModelBrowserSelect` / `modelBrowserOptions` + tests, keeping Pixel's a11y improvements. Price and drift fixes, expiry labels, new chat-route image models (Nano Banana 2.1), refreshed SVG code models, `max_tokens` fix | A | M | ⏳ Pending |
-| **P5a — SVG safety and ownership** | Isolated `<img>` preview (no DOM injection), `SVGDocumentPolicy` before preview and save, refine eligibility from the thread's model, basename-only save filenames, remove or sanitize `MarkdownRenderer` | A (ideally before P3) | M | ⏳ Pending |
-| **P2 — Request ownership** | Correlation ids in both hooks, correlated errors, SVG text sent once, rollback and in-flight guard, truthful "Saved" state, WebP/GIF extensions, memoized persistence | #12 | S–M | ⏳ Pending |
-| **P3 — `/images` transport + capability-driven controls** | Frame's `ImageGenerationModes` + `OpenRouterImageTransport`; mode-aware client/orchestrator; host transcript store (Pixel-sized FileSystem/Workspace ports); resolution, `auto` ratio, seed and reference controls; bounded history; the `/images`-only models (Seedream 5, Qwen Image 3, GPT Image 2.5/2.6, MAI 2.6, FLUX.3, Riverflow 2.6, Grok Imagine 2.0, …) | B, P2 | L | ⏳ Pending: urgency depends on the U3 smoke test |
+| **A — Design pass 02** | Family tokens + brand accent (`--px-*`), header lockup with the colour logo, Image/SVG tab layout (fixes the crushed conversation), field and control system, settings dialog, overlay a11y (`useOverlayDismiss`), tabs a11y, reduced motion, high contrast. Balance correctness (key change, spend-cap labelling, cache/dedupe, formatting). Hotfixes: modality routing (C1), delisted ids + settings migration (U1/U2). `.tsx` test infrastructure | #12 | M–L | 🔄 In review — `claude/pixel-minion-design-review-dhbqpd` (stacked on #12) |
+| **B — Picker parity + catalog refresh** | Catalogs move to `src/shared/models`; Frame's unit-aware `ImageModelDefinition` / `ImagePricing`; explicit `SvgModelDefinition` (`kind: 'native-vector' \| 'code'`); port Frame sprint-06 `ModelBrowserModal` / `ModelBrowserSelect` / `modelBrowserOptions` + tests, keeping Pixel's a11y improvements. Price and drift fixes, expiry labels, new chat-route image models (Nano Banana 2.1), refreshed SVG code models, `max_tokens` fix | A | M | 🔄 In progress — `claude/pixel-minion-picker-catalog-dhbqpd` |
+| **P5a — SVG safety and ownership** | Isolated `<img>` preview (no DOM injection), `SVGDocumentPolicy` before preview and save, refine eligibility from the thread's model, basename-only save filenames, remove or sanitize `MarkdownRenderer` | A (ideally before P3) | M | 🔄 In progress — `claude/pixel-minion-svg-safety-dhbqpd` (stacked on P2) |
+| **P2 — Request ownership** | Correlation ids in both hooks, correlated errors, SVG text sent once, rollback and in-flight guard, truthful "Saved" state, WebP/GIF extensions, memoized persistence | #12 | S–M | 🔄 In progress — `claude/pixel-minion-request-ownership-dhbqpd` |
+| **P3 — `/images` transport + capability-driven controls** | Frame's `ImageGenerationModes` + `OpenRouterImageTransport`; mode-aware client/orchestrator; host transcript store (Pixel-sized FileSystem/Workspace ports); resolution, `auto` ratio, seed and reference controls; bounded history; the `/images`-only models (Seedream 5, Qwen Image 3, GPT Image 2.5/2.6, MAI 2.6, FLUX.3, Riverflow 2.6, Grok Imagine 2.0, …) | B, P2 | L | ⏳ Pending — not a hotfix (smoke test: v1.3.0's catalog still routes over chat), but required for every Image-API-only model |
 | **P4 — Modes UI and threads** | Conversation \| Single Shot pill, Earlier threads + delete, start-from-image, custom model ids, migration of untagged history to Single Shot | P3 | M | ⏳ Pending |
 | **P5b — Native vector over `/images`** | `OpenRouterVectorSVGClient` (SVG-only decoder), vector aspect ratios and references, `supportsRefinement` | P3, P5a | M | ⏳ Pending: needs paid qualification |
 
 Effort: P1–P5b were estimated at roughly 18–26 engineering days plus review and paid validation (parity plan §5). PR A was not in that estimate.
 
+## Pace
+
+Owner decision (2026-11-07): build A, B, P2 and P5a now, then pause before P3 for Astra's first reviews.
+
 ## Decisions
 
 | Decision | Recommendation | Status |
 | --- | --- | --- |
-| Brand accent | Fixed pair from the logo: ember `#ff6b2d` / oxblood `#8c2a13`, on a dark "CRT" logo tile. The white skull disappears on the family's white tile. Never the theme link colour | ⏳ Proposed; PR A implements it behind two tokens |
+| Brand accent | Fixed pair from the logo: ember `#ff6b2d` / oxblood `#8c2a13`, on a dark "CRT" logo tile. The white skull disappears on the family's white tile. Never the theme link colour | ✅ Confirmed by owner 2026-11-07; implemented in PR A |
 | Token prefix | `--px-*` / `.px-*` over Frame's vocabulary (Prose owns `pm`) | ✅ Adopted in PR A |
 | Picker trigger | Frame's single-line trigger (geometry; keep Pixel's native-dropdown colours where Frame's renders white in Light Modern) | ✅ Adopted for B |
 | Save path | Keep Pixel's `vscode.workspace.fs` save (works in virtual workspaces); don't port Frame's port-based save | ✅ Adopted |
-| One branch per phase | Stacked PRs per phase for reviewable diffs | ⏳ Needs owner permission (session is scoped to one branch) |
-| Keyed smoke test | ~$0.12 of generations with the owner's key to settle U3 | ⏳ Needs owner approval |
+| One branch per phase | Stacked PRs per phase for reviewable diffs | ✅ Approved 2026-11-07 |
+| Keyed smoke test | ~$0.12 of generations with the owner's key to settle U3 | ✅ Done 2026-11-07 ($0.111): six PR #12 additions are Image-API-only and were removed; see the audit addendum |
 | Estimate basis for GPT image models | Frame shows "high quality" references; measured benchmark medians are 4–10× lower (audit O5) | ⏳ Open; decide family-wide with Frame |
 
 ## Conventions for every phase

@@ -9,6 +9,68 @@ All notable changes to the Pixel Minion VS Code extension will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Overview
+
+Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (warm surface ramp, card-grid tabs, balance strip, first model-browser port, catalog refresh). The stacked **design pass 02** (PR A) addresses its round-1 review. Review ledger: [docs/pr-reviews/pr-12-design-system-alignment-review.md](pr-reviews/pr-12-design-system-alignment-review.md). Roadmap: [docs/plans/frame-parity-roadmap.md](plans/frame-parity-roadmap.md).
+
+### Design system (PR A)
+
+- **Tokens.**
+  - `styles/design-tokens.css` defines the `--px-*` vocabulary (Frame's names, Pixel's prefix) scoped to `.app-container`. This replaces the `--pm-*` tokens, which collided with Prose Minion's.
+  - The fixed brand pair `--px-a #ff6b2d` / `--px-b #8c2a13` replaces `--vscode-textLink-foreground` as the accent. `--px-info` carries semantic blue.
+  - A `body.vscode-high-contrast*` block maps borders to `contrastBorder` and reserves `contrastActiveBorder` for selected states.
+- **Header.**
+  - `webviewHtml.ts` builds the CSP'd HTML and injects `headerLogoUri` / `loadingStillUri` as JSON-escaped globals (`webviewGlobals.ts`). A test pins it.
+  - `BrandMark` renders the colour logo on a dark "CRT" tile, with the inline glyph as fallback.
+  - 20 / 12.5 px title and subtitle and one 2 px brand hairline, in line with the family.
+  - A container query compacts the header at ≤ 340 px.
+- **Image / SVG tabs.**
+  - `.tab-content` is the single scroller, so the conversation is no longer crushed (it was 42 px tall at 320×900).
+  - Frame sprint-06 card layout and full-width stacked controls.
+  - One field family on a 34 px control height (`--px-control-h`).
+  - Frame-style user bubble, image card and seed chip; green check save tile; accent-tinted primary buttons.
+  - Empty-state copy; refine bar `min-width: 0`; neutral trash at rest; readable SVG code view.
+  - 10.5 px type floor with mono eyebrows.
+- **Overlays and a11y.**
+  - `hooks/useOverlayDismiss` adds focus capture and return, top-overlay-only Escape, `inert` background and a focus trap. It is used by the Settings dialog (now `role=dialog`) and the model browser. Ported from Prose Minion.
+  - Accessible tab bar: ids, `aria-controls`, roving tabindex with arrow keys, and glyphs on a ported `LineGlyph`.
+  - One `:focus-visible` ring.
+  - `useReducedMotion` honours both `prefers-reduced-motion` and VS Code's `vscode-reduce-motion`, swapping the loading GIF for a still.
+- **Cleanup.** Dead CSS (`model-selector.css`, unused settings rules, undefined `--border-radius`) and stale doc comments removed.
+
+### Balances (PR A)
+
+- **One shared host service.** `infrastructure/account/AccountBalanceService.ts` provides a 120 s cache, a shared in-flight fetch, `forceRefresh` with a 1 s floor, and per-webview subscription. Its trailing debounce is cancelled on unsubscribe or `dispose()`, so a pending refresh can't fetch into a closed webview.
+- **Refresh triggers.**
+  - `MessageHandler` wraps the domain post and arms a refresh on `TERMINAL_AI_RESPONSE_TYPES` (image, SVG, enhance, text), rather than whenever `usage` is present. A guard test fails if a new `*_RESPONSE` AI type is missing from that set.
+  - `resetClients()` clears the cache and force-refreshes on API key save, replace or clear, so another account's balance is never shown.
+- **Payload.**
+  - Adds `creditsStatus` plus structured `keyIssue` / `creditsIssue` (`{ kind, httpStatus? }`). An invalid key (401) and being offline are now distinguished.
+  - 5xx logs at warn, 4xx at debug.
+  - `limit_reset: "daily"` now maps correctly; it previously mapped to `unknown`, and Frame Minion has the same bug.
+- **UI.**
+  - Extracted to `components/balances/` (`ProviderBalancesCollapsed`, `ProviderBalancesStrip`, `balanceFormat.ts`), with CSS in `styles/components/provider-balances.css`.
+  - A cap-only key headlines "Monthly/Weekly/Daily/Spend cap remaining" with one "Account balance unavailable" note. A $0 cap has its own state.
+  - Currency uses `Intl` everywhere, values ≤ 0 are styled, and "no key" / "offline" are muted.
+  - A refresh dims the value instead of blanking it.
+  - The pill carries `aria-expanded` and `aria-controls`.
+- **Token tracking.** The unused session token-total pipeline is removed. `TOKEN_USAGE_UPDATE` now carries `{ lastRequest, requestedAt }` only, and "Last request" / "Updated" show a date when it isn't today.
+
+### Models (PR A)
+
+- **Modalities.** `OpenRouterImageClient` no longer requests `['image','text']` from image-only endpoints: the Recraft V4.1 branch is removed and `krea/` and `microsoft/mai-image-` are added. A catalog-wide test checks requested ⊆ declared output modalities, using the 2026-11-07 `/images/models` snapshot.
+- **Image-API-only models removed.** A keyed probe found OpenRouter rejects `/chat/completions` for GPT Image 2 / 1 / 1 Mini and Krea 2 Large / Medium / Medium Turbo, all added by the PR #12 refresh. They were removed until the Image API transport (roadmap P3). A test pins the probed chat-blocked set. Details are in the audit addendum.
+- **`RETIRED_MODELS`.** Each entry carries a reason (`'delisted' | 'images-api-only'`). `SettingsHandler` migrates saved `imageModel` / `svgModel` on read (whichever scope holds the value), persists the replacement and logs why. It covers the five v1.3.0 ids OpenRouter has since delisted.
+- The `pixelMinion.svgModel` description no longer recommends a removed model.
+
+### Test infrastructure (PR A)
+
+- `.tsx` tests run under jsdom via a per-file docblock; `tsconfig.test.json` adds JSX and DOM settings; `.css` imports are stubbed. No new dependencies.
+- `tsc -p tsconfig.webview.json` now actually type-checks the webview. It previously inherited `exclude: ["src/presentation/webview"]` and checked 0 of 52 files.
+- Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A.
+
 ## [1.3.0] - 2026-05-20
 
 ### Overview

@@ -362,3 +362,35 @@ Pixel-specific additions:
 3. `GET /api/v1/models` → SVG text candidates (vision input, `reasoning`, `expiration_date`). Then `…/models/<id>/endpoints` for standard-endpoint prices and delisting (0 endpoints).
 4. `https://openrouter.ai/benchmarks/media/images/*` → `scripts/bench_costs.py` for measured cost and pass-rate sanity checks.
 5. Merge, never clobber. Delisted ids get a settings migration, not a silent removal.
+
+---
+
+## Addendum — keyed smoke test and chat-route probe (2026-11-07, same day)
+
+The owner approved a keyed test (≤ $0.50). **Total spend: $0.111.** This settles O1/O2 and refines U3/U4.
+
+**Paid calls** (Pixel's exact request shapes):
+
+| Model | Route | Result | Cost |
+| --- | --- | --- | --- |
+| `recraft/recraft-v4.1-vector` (default SVG) | `/chat/completions`, `modalities: ['image']` | ✅ 200, `data:image/svg+xml` | $0.08 |
+| `black-forest-labs/flux.2-klein-4b` | `/chat/completions`, `['image']` + `image_config` | ✅ 200, PNG | $0.017 |
+| `openai/gpt-image-1-mini` | `/chat/completions`, `['image']` | ❌ 404 "is an image generation model and cannot be used with the chat/completions endpoint. Use the /api/v1/images endpoint instead." | $0 |
+| `krea/krea-2-medium-turbo` | `/chat/completions`, `['image','text']` | ❌ same 404 | $0 |
+| `krea/krea-2-medium-turbo` | `/chat/completions`, `['image']` | ❌ same 404 (the modality fix alone does not help) | $0 |
+| `black-forest-labs/flux.2-klein-4b` | `POST /api/v1/images` | ✅ 200, `data[].b64_json` JPEG | $0.014 |
+
+**Free route probe.** OpenRouter checks chat routability *before* output modalities. A chat request asking for `modalities: ['audio']` therefore returns one of two errors without generating anything:
+- "…cannot be used with the chat/completions endpoint" means the model is Image-API-only;
+- "No endpoints found that support the requested output modalities: audio" means it is chat-routable.
+
+Results for every current and proposed id:
+
+- **Chat-blocked (Image API only):** `openai/gpt-image-2`, `gpt-image-1`, `gpt-image-1-mini`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.6-flare`, `gpt-image-2.6-sunburst`; `krea/krea-2-large`, `krea-2-medium`, `krea-2-medium-turbo`, `k3-edit`; `black-forest-labs/flux-3-image`, `flux-3-image-klein`; `qwen/qwen-image-3`, `qwen-image-3-pro`, `qwen-image-2.1-turbo`; `meta/muse-image`. Frame routes Muse over chat; flagged upstream.
+- **Chat-routable:** every other current catalog id. That covers Gemini, the GPT-5 image wrappers, FLUX.2, Riverflow, Seedream 4.5, MAI 2.5, Recraft (raster and vector) and all SVG code models. It also covers these proposed adds: Nano Banana 2.1, Seedream 5.0 Pro/Lite/Flash, MAI-Image 2.6/Flash, Recraft V4.1 Flash, Recraft V4 Styles (+ Pro, Pro Vector), Riverflow V2.6 Pro, Grok Imagine Image 2.0, and every proposed code model.
+- **Delisted since v1.3.0** ("no provider serves this model anymore"): `sourceful/riverflow-v2-{max,standard,fast}-preview`, `x-ai/grok-imagine-image-quality`, `anthropic/claude-opus-4`.
+
+**Consequences:**
+- The released v1.3.0 catalog is not broken by the transport change. Its five delisted ids are now migrated on read.
+- The six chat-blocked models that the PR #12 refresh added were removed in PR A (`RETIRED_MODELS`, reason `images-api-only`). They return with the P3 transport.
+- PR B may add only chat-routable models.
