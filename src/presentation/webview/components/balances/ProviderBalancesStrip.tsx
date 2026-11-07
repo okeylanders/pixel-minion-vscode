@@ -134,7 +134,6 @@ const OpenRouterBody: React.FC<{ balance: OpenRouterBalancePayload | null }> = (
 };
 
 const OpenRouterFigures: React.FC<{ balance: OpenRouterBalancePayload }> = ({ balance }) => {
-
   const { credits, keyLimit } = balance;
   if (credits) {
     return (
