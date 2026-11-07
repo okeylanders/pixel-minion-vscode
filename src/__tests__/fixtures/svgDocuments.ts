@@ -37,6 +37,43 @@ export const ACCEPTED_SVGS: Record<string, string> = {
   'an embedded PNG image': `<svg ${NS} viewBox="0 0 1 1"><image href="data:image/png;base64,iVBORw0KGgo=" width="1" height="1"/></svg>`,
   'an embedded data: font': `<svg ${NS} viewBox="0 0 10 10"><style>@font-face { font-family: X; src: url(data:font/woff2;base64,d09GMgAB) format('woff2'); }</style><text>Hi</text></svg>`,
   'a namespaced root': `<svg:svg xmlns:svg="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><svg:rect width="1" height="1"/></svg:svg>`,
+  'a lower-case utf-8 XML declaration': `<?xml version="1.0" encoding="utf-8" standalone="no"?><svg ${NS}/>`,
+  'an XML declaration without an encoding': `<?xml version='1.0'?>\n<svg ${NS}/>`,
+  'element and attribute names that are also Object members': `<svg ${NS}><constructor toString="1"/><g><animate attributeName="constructor" dur="1s"/></g></svg>`,
+  'a typical code-model SVG': `<svg ${NS} ${XLINK} viewBox="0 0 64 64" role="img" aria-label="Pixel's (beta) badge" data-name="badge">
+  <title>Badge</title>
+  <desc>A rounded badge: gradient fill, a soft shadow and a pulsing dot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#ff6b2d"/><stop offset="100%" stop-color="#8c2a13"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%" xlink:href="#bg"/>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/><feOffset dy="1" result="o"/>
+      <feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="clip"><circle cx="32" cy="32" r="30"/></clipPath>
+    <mask id="fade"><rect width="64" height="64" fill="url(#glow)"/></mask>
+    <path id="spark" d="M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z"/>
+  </defs>
+  <style>
+    /* Palette (warm) — don't use pure black; it's too harsh */
+    .ring { fill: none; stroke: url(#bg); stroke-width: 2; }
+    .label { font: 600 10px/1.2 'Segoe UI', "Helvetica Neue", sans-serif; fill: #fff; }
+    .dot { animation: pulse 1.2s ease-in-out infinite alternate; transform-origin: 48px 16px; }
+    @keyframes pulse { from { transform: scale(0.8); opacity: .6 } to { transform: scale(1.1); opacity: 1 } }
+    @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+  </style>
+  <g clip-path="url(#clip)" filter="url( #shadow )" mask="url('#fade')">
+    <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+  </g>
+  <circle class="ring" cx="32" cy="32" r="28"/>
+  <use href="#spark" x="16" y="16" fill="#fff"/><use xlink:href="#spark" x="48" y="48" fill="#fff"/>
+  <circle class="dot" cx="48" cy="16" r="3" fill="#7fd7ff">
+    <animate attributeName="r" values="3;4;3" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <text class="label" x="32" y="36" text-anchor="middle" xml:space="preserve">Hi &amp; bye</text>
+</svg>`,
 };
 
 /** Rejected by the policy, with the phrase the rejection reason must contain. */
@@ -46,7 +83,7 @@ export const REJECTED_SVGS: Record<string, { svg: string; reason: string }> = {
     reason: '<script>',
   },
   'an upper-case, namespaced <script>': {
-    svg: `<svg ${NS} xmlns:h="http://www.w3.org/1999/xhtml"><h:SCRIPT>alert(1)</h:SCRIPT></svg>`,
+    svg: `<svg ${NS} xmlns:s="http://www.w3.org/2000/svg"><s:SCRIPT>alert(1)</s:SCRIPT></svg>`,
     reason: '<script>',
   },
   'an onload handler': {
@@ -164,6 +201,93 @@ export const REJECTED_SVGS: Record<string, { svg: string; reason: string }> = {
   'an unpaired surrogate': {
     svg: `<svg ${NS}><text>\ud800</text></svg>`,
     reason: 'control characters',
+  },
+
+  // Round-5 adversarial review (ledger R5-*). Benign structure only.
+  'a self-closing element whose name has a non-ASCII letter (R5-S1)': {
+    svg: `<svg ${NS}><gé/></svg>`,
+    reason: "isn't well-formed",
+  },
+  'an element whose prefix has a non-ASCII letter (R5-S1)': {
+    svg: `<svg ${NS}><pé:rect width="1" height="1"/></svg>`,
+    reason: "isn't well-formed",
+  },
+  'an attribute name with a non-ASCII letter (R5-S1)': {
+    svg: `<svg ${NS}><rect é="1"/></svg>`,
+    reason: "isn't well-formed",
+  },
+  'an unterminated url( in <style> (R5-S2)': {
+    svg: `<svg ${NS}><style>rect { fill: url(#g</style></svg>`,
+    reason: 'url( is never closed',
+  },
+  'an unterminated url( in an attribute (R5-S2)': {
+    svg: `<svg ${NS}><rect fill="url(#g"/></svg>`,
+    reason: 'url( is never closed',
+  },
+  'a CSS-escaped url() in a presentation attribute (R5-S3)': {
+    svg: `<svg ${NS}><rect fill="\\75 rl(https://evil.example/p.svg#p)"/></svg>`,
+    reason: 'external resource (https://evil.example/p.svg#p)',
+  },
+  'an entity-encoded CSS escape in a presentation attribute (R5-S3)': {
+    svg: `<svg ${NS}><rect stroke="&#92;55RL(https://evil.example/p.svg#p)"/></svg>`,
+    reason: 'external resource',
+  },
+  'a remote url() inside SMIL values (R5-S3)': {
+    svg: `<svg ${NS}><rect><animate attributeName="fill" values="red;u\\rl(https://evil.example/p)" dur="1s"/></rect></svg>`,
+    reason: 'external resource',
+  },
+  'comment markers inside CSS strings (R5-S4)': {
+    svg: `<svg ${NS}><style>a { content: "/*" } b { background: url(https://evil.example/x.png) } c { content: "*/" }</style></svg>`,
+    reason: 'external resource (https://evil.example/x.png)',
+  },
+  'comment markers inside unquoted url() tokens (R5-S4)': {
+    svg: `<svg ${NS}><style>a { background-image: url(#a/*), url(https://evil.example/x.png), url(#b*/) }</style></svg>`,
+    reason: 'external resource (https://evil.example/x.png)',
+  },
+  'an unterminated CSS comment (R5-S4)': {
+    svg: `<svg ${NS}><style>rect { fill: red } /* never closed</style></svg>`,
+    reason: 'CSS comment is never closed',
+  },
+  'an XHTML namespace declaration (R5-S5)': {
+    svg: `<svg ${NS} xmlns:h="http://www.w3.org/1999/xhtml"><h:SCRIPT>alert(1)</h:SCRIPT></svg>`,
+    reason: 'namespace',
+  },
+  'a default XHTML namespace on a child (R5-S5)': {
+    svg: `<svg ${NS}><g xmlns="http://www.w3.org/1999/xhtml"><rect/></g></svg>`,
+    reason: "namespace Pixel Minion doesn't allow (http://www.w3.org/1999/xhtml)",
+  },
+  'an unknown namespace (R5-S5)': {
+    svg: `<svg ${NS} xmlns:x="urn:example:unknown"><rect x:y="1"/></svg>`,
+    reason: 'namespace',
+  },
+  'SMIL rewriting xml:base (R5-S6)': {
+    svg: `<svg ${NS}><g xml:base="#"><animate attributeName="xml:base" values="#;#" dur="1s"/><rect/></g></svg>`,
+    reason: 'SMIL on xml:base',
+  },
+  'SMIL rewriting src (R5-S6)': {
+    svg: `<svg ${NS}><g><set attributeName="src" to="#x"/><rect/></g></svg>`,
+    reason: 'SMIL on src',
+  },
+  'a non-UTF-8 XML encoding (R5-S6)': {
+    svg: `<?xml version="1.0" encoding="ISO-2022-JP"?><svg ${NS}/>`,
+    reason: 'encoding other than UTF-8 (ISO-2022-JP)',
+  },
+  'an entity in CDATA that would read as a comment if decoded (R5-S4)': {
+    // CDATA is not entity-decoded, so CSS sees "&#47;*", not a comment.
+    svg: `<svg ${NS}><style><![CDATA[&#47;*{} ]]>b { background: url(https://evil.example/x.png) } /* */</style></svg>`,
+    reason: 'external resource (https://evil.example/x.png)',
+  },
+  'an unquoted XML encoding (R5-S6)': {
+    svg: `<?xml version="1.0" encoding=UTF-16?><svg ${NS}/>`,
+    reason: 'encoding other than UTF-8',
+  },
+  'an element name followed by U+FEFF, a name character in XML (R5-S1)': {
+    svg: `<svg ${NS}><rect\ufeff width="1"/></svg>`,
+    reason: "isn't well-formed",
+  },
+  'an XML declaration after other markup (R5-S6)': {
+    svg: `<!-- first --><?xml version="1.0"?><svg ${NS}/>`,
+    reason: 'XML declaration',
   },
 };
 

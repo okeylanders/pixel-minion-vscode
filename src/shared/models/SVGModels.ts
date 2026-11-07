@@ -15,8 +15,9 @@
  *     tokens on the standard first-party endpoint; `reasoning` comes from the
  *     chat feed because reasoning tokens bill as output.
  *
- * Request routing is unchanged by this field: SVGOrchestrator still selects
- * the vector client by id prefix until P5b moves routing onto `kind`.
+ * `kind` is the route: `src/shared/svg/svgRoutes.ts` sends a native-vector
+ * id to the vector client and refuses to refine it, and falls back to the
+ * `recraft/` prefix only for ids this catalog doesn't list.
  */
 
 import type { ImageApiAspectRatio, SvgModelDefinition } from '../types/providers';

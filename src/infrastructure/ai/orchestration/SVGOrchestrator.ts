@@ -154,6 +154,9 @@ export class SVGOrchestrator {
       const svgCode = this.extractSVG(result.content);
       // Text and native-vector output alike: a rejected document is still
       // returned (the webview shows its code) but is never previewed or saved.
+      // Diagnostic only (the webview and the save handler decide), and kept
+      // because the policy is linear: ~1 ms for a typical result, well under
+      // a second for a pathological 2 MB one.
       const verdict = inspectSvgDocument(svgCode);
       if (!verdict.accepted) {
         this.logger.warn(`SVG from ${options.model} will not be previewed or saved: it ${verdict.reason}`);

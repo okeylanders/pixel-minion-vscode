@@ -10,10 +10,21 @@
  *
  * The thread's model decides, never the draft picker. This is the single
  * place the rule lives: the host routes and guards with it and the webview
- * gates Refine with it. It keys on the id prefix until the SVG catalog
- * carries an explicit route per model (roadmap P5b).
+ * gates Refine with it. A curated model's route is its catalog `kind`; an
+ * id the catalog doesn't list (a custom id, or a model superseded since it
+ * was picked) falls back to the provider prefix, because Recraft is the only
+ * provider whose SVG models are native vector.
  */
+import { OPENROUTER_SVG_MODELS } from '../models/SVGModels';
+import type { SvgModelDefinition } from '../types/providers';
+
+const CATALOG_KIND = new Map<string, SvgModelDefinition['kind']>(
+  OPENROUTER_SVG_MODELS.map((model) => [model.id, model.kind])
+);
+
 export function isNativeVectorSvgModel(modelId: string): boolean {
+  const kind = CATALOG_KIND.get(modelId);
+  if (kind !== undefined) return kind === 'native-vector';
   return modelId.startsWith('recraft/');
 }
 

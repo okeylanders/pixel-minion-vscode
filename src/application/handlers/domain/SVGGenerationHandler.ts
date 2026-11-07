@@ -24,6 +24,7 @@ import { LoggingService } from '@logging';
 import { SVGOrchestrator } from '@ai';
 import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
 import { plainSaveFileName } from '../saveFileName';
+import { workspaceOutputDirectory } from '../outputDirectory';
 
 export class SVGGenerationHandler {
   private readonly configSection = 'pixelMinion';
@@ -293,8 +294,9 @@ export class SVGGenerationHandler {
       // Workspace available - save to output directory
       const workspaceRoot = workspaceFolders[0].uri;
       const config = vscode.workspace.getConfiguration(this.configSection);
-      const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
-      const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
+      // Contained in the workspace folder, whatever the (possibly
+      // repository-supplied) setting says.
+      const outputDirUri = workspaceOutputDirectory(workspaceRoot, config.get<string>('outputDirectory', 'pixel-minion'));
 
       // Ensure directory exists
       try {

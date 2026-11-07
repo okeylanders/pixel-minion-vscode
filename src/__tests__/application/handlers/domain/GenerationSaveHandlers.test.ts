@@ -134,6 +134,45 @@ describe('save file names', () => {
   );
 });
 
+describe('output folder containment', () => {
+  const configured = (outputDirectory: string) =>
+    jest.fn(() => ({ get: (key: string, fallback: unknown) => (key === 'outputDirectory' ? outputDirectory : fallback), update: jest.fn() }));
+  const imageSave = () => new ImageGenerationHandler(postMessage, {} as ImageOrchestrator, logger).handleSaveRequest(
+    createEnvelope(MessageType.IMAGE_SAVE_REQUEST, 'webview.imageGeneration',
+      { imageId: 'img-1', data: `data:image/png;base64,${PNG}`, mimeType: 'image/png', suggestedFilename: 'pixel-minion-a.png' }, 'image-save-1'));
+  const svgSave = () => new SVGGenerationHandler(postMessage, {} as SVGOrchestrator, logger).handleSaveRequest(
+    createEnvelope(MessageType.SVG_SAVE_REQUEST, 'webview.svgGeneration',
+      { svgCode: '<svg xmlns="http://www.w3.org/2000/svg"/>', suggestedFilename: 'pixel-minion-a.svg' }, 'svg-save-1'));
+
+  it.each(['../outside', 'a/../../outside', '/etc', 'C:\\Users\\me', '\\\\server\\share'])(
+    'refuses a workspace output folder of %p without creating or writing anything', async (outputDirectory) => {
+      host.workspace.getConfiguration = configured(outputDirectory);
+
+      await imageSave();
+      await svgSave();
+
+      expect(host.workspace.fs.createDirectory).not.toHaveBeenCalled();
+      expect(host.workspace.fs.writeFile).not.toHaveBeenCalled();
+      for (const [result] of [results(MessageType.IMAGE_SAVE_RESULT), results(MessageType.SVG_SAVE_RESULT)]) {
+        expect(result.payload).toMatchObject({ success: false });
+        expect((result.payload as { error: string }).error).toContain('must be a folder inside the workspace');
+      }
+    }
+  );
+
+  it('saves into a nested folder inside the workspace', async () => {
+    host.workspace.getConfiguration = configured('assets/generated');
+
+    await imageSave();
+    await svgSave();
+
+    expect(host.workspace.fs.writeFile.mock.calls.map(([uri]) => uri.fsPath)).toEqual([
+      '/w/assets/generated/pixel-minion-a.png',
+      '/w/assets/generated/pixel-minion-a.svg',
+    ]);
+  });
+});
+
 describe('SVGGenerationHandler save', () => {
   const handler = () => new SVGGenerationHandler(postMessage, {} as SVGOrchestrator, logger);
   const save = () => createEnvelope(MessageType.SVG_SAVE_REQUEST, 'webview.svgGeneration',

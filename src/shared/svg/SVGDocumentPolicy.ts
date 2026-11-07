@@ -20,16 +20,28 @@
  *
  * Rejected:
  * - documents over MAX_SVG_DOCUMENT_BYTES, or without a single <svg> root;
- * - markup that isn't well-formed enough to inspect;
+ * - markup that isn't well-formed enough to inspect, including element and
+ *   attribute names outside ASCII (read exactly or not at all);
  * - <script>, <foreignObject>, <iframe>, <embed>, <object>, <handler>;
  * - event-handler attributes (`on…`);
+ * - namespace declarations other than SVG, XLink, XML and C2PA metadata;
  * - `href` / `xlink:href` / `src` / `xml:base` that leave the document;
- * - CSS `url(…)` that leaves the document, `@import`, `image-set()`,
- *   `expression()`, `-moz-binding`, `behavior:`;
+ * - CSS `url(…)` / `src(…)` / `image(…)` that leave the document (or never
+ *   close), `@import`, `image-set()`, `expression()`, `-moz-binding`,
+ *   `behavior:`, in <style> and in every attribute value;
  * - `javascript:`, `vbscript:` and `data:text/html` anywhere in an attribute;
- * - SMIL that animates an `href`;
- * - a DOCTYPE with an internal subset (entity definitions), and processing
- *   instructions other than the XML declaration (e.g. xml-stylesheet).
+ * - SMIL that animates `href`, `src` or `xml:base`;
+ * - a DOCTYPE with an internal subset (entity definitions), processing
+ *   instructions other than a leading XML declaration (e.g.
+ *   xml-stylesheet), and an XML declaration naming an encoding other than
+ *   UTF-8 (saved files are UTF-8; another declared encoding would make a
+ *   browser read different markup than this scanner did).
+ *
+ * Every pass is linear in the document size: the scanner and the CSS
+ * tokenizer walk the text once with indexOf and single-position sticky
+ * matches, and no pattern can backtrack across the document. The host runs
+ * this after every generation and the webview on every new result, on up to
+ * 2 MB of provider output, so a super-linear pattern is a hang.
  *
  * Shared by the webview and the extension host, so it uses no DOM, Node or
  * encoding APIs.
@@ -55,17 +67,33 @@ class Rejection extends Error {
 }
 
 /** Elements that run code, embed other documents or host HTML. */
-const FORBIDDEN_ELEMENTS: Readonly<Record<string, string>> = {
-  script: '<script>',
-  foreignobject: '<foreignObject>',
-  iframe: '<iframe>',
-  embed: '<embed>',
-  object: '<object>',
-  handler: '<handler>',
-};
+const FORBIDDEN_ELEMENTS: ReadonlyMap<string, string> = new Map([
+  ['script', '<script>'],
+  ['foreignobject', '<foreignObject>'],
+  ['iframe', '<iframe>'],
+  ['embed', '<embed>'],
+  ['object', '<object>'],
+  ['handler', '<handler>'],
+]);
 
 /** Attributes (local names) whose value is a URL the document would load or follow. */
 const URL_ATTRIBUTES = new Set(['href', 'src', 'base']);
+
+/**
+ * Namespaces a document may declare: SVG, XLink, the XML namespace, and the
+ * C2PA provenance namespace Recraft puts in its <metadata> (a real Recraft
+ * V4.1 Vector response declares `xmlns:c2pa`). Anything else (XHTML, MathML,
+ * an editor's private vocabulary) is refused rather than reasoned about.
+ */
+const ALLOWED_NAMESPACES = new Set([
+  'http://www.w3.org/2000/svg',
+  'http://www.w3.org/1999/xlink',
+  'http://www.w3.org/XML/1998/namespace',
+  'http://c2pa.org/manifest',
+]);
+
+/** How the SMIL rule names an animated URL attribute. */
+const URL_ATTRIBUTE_LABELS: ReadonlyMap<string, string> = new Map([['href', 'href'], ['src', 'src'], ['base', 'xml:base']]);
 
 /** SMIL elements that can rewrite another attribute over time. */
 const ANIMATION_ELEMENTS = new Set(['animate', 'set', 'animatemotion', 'animatetransform', 'animatecolor']);
@@ -131,14 +159,6 @@ function codePoint(value: number, fallback: string): string {
   return Number.isFinite(value) && value >= 0 && value <= 0x10ffff ? String.fromCodePoint(value) : fallback;
 }
 
-/** CSS with comments removed and escapes (`\6a`, `\:`) resolved. */
-function normalizeCss(css: string): string {
-  return css
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\\([0-9a-f]{1,6})\s?/gi, (_match, hex: string) => codePoint(parseInt(hex, 16), ''))
-    .replace(/\\(.)/g, '$1');
-}
-
 /** Lower-cased with whitespace and control characters removed. */
 function compact(value: string): string {
   // eslint-disable-next-line no-control-regex
@@ -158,21 +178,175 @@ function describeUrl(url: string): string {
 
 /** Reject active content and external loads in CSS (a <style> body, a style attribute or any attribute value). */
 function checkCss(css: string): void {
-  const normalized = normalizeCss(css);
-  const flat = compact(normalized);
+  // Every check needs one of these: `(` (url(), image-set(), expression()),
+  // `:` (behavior:, javascript:), `@` (@import), `/` (a comment) or `\` (an
+  // escape that could spell any of them). Most attribute values have none.
+  if (!CSS_TRIGGER.test(css)) return;
+  const { text, urls } = tokenizeCss(css);
+  const flat = compact(text);
   if (flat.includes('@import')) throw new Rejection('imports a stylesheet (@import)');
   if (flat.includes('image-set(')) throw new Rejection('uses image-set(), which can load external images');
   if (flat.includes('expression(')) throw new Rejection('uses a CSS expression()');
   if (flat.includes('-moz-binding') || flat.includes('behavior:')) throw new Rejection('uses a CSS binding');
   if (flat.includes('javascript:') || flat.includes('vbscript:')) throw new Rejection('contains a javascript: URL');
-
-  const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi;
-  for (const match of normalized.matchAll(urlPattern)) {
-    const target = match[1] ?? match[2] ?? match[3] ?? '';
+  for (const target of urls) {
     if (!isLocalReference(target)) {
       throw new Rejection(`links to an external resource (${describeUrl(target)})`);
     }
   }
+}
+
+const CSS_TRIGGER = /[(:@/\\]/;
+
+/** Functions whose argument is a resource the browser loads. */
+const URL_FUNCTIONS = new Set(['url', 'src', 'image']);
+
+const isCssNewline = (ch: string) => ch === '\n' || ch === '\r' || ch === '\f';
+const isCssWhitespace = (ch: string) => ch === ' ' || ch === '\t' || isCssNewline(ch);
+const isHexDigit = (ch: string) => {
+  const c = ch.charCodeAt(0);
+  return (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x46) || (c >= 0x61 && c <= 0x66);
+};
+/** CSS "name code point": letter, digit, `-`, `_`, or anything non-ASCII. */
+const isNameChar = (ch: string) => {
+  const c = ch.charCodeAt(0);
+  return (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || c === 0x2d || c === 0x5f || c >= 0x80;
+};
+
+/**
+ * A single pass over CSS, following the CSS Syntax tokenizer where it
+ * matters: comments are dropped (outside strings and url tokens only),
+ * escapes are decoded, strings are kept, and the argument of every
+ * `url(` / `src(` / `image(` is collected. An unquoted url token is read the
+ * way a browser reads it, without comment processing, so a `/*` inside one
+ * can't hide what follows. Fails closed: a comment, url( or url argument the
+ * tokenizer can't finish is a rejection. Linear: every step advances.
+ */
+function tokenizeCss(css: string): { text: string; urls: string[] } {
+  const out: string[] = [];
+  const urls: string[] = [];
+  let ident = '';
+  let i = 0;
+
+  /** Decode the escape whose backslash is at `at`; returns the character and the index after it. */
+  const escape = (at: number): { value: string; next: number } => {
+    let j = at + 1;
+    if (j >= css.length) return { value: '\ufffd', next: j };
+    if (!isHexDigit(css[j])) return { value: css[j], next: j + 1 };
+    let hex = '';
+    while (j < css.length && hex.length < 6 && isHexDigit(css[j])) hex += css[j++];
+    if (j < css.length && isCssWhitespace(css[j])) j += css[j] === '\r' && css[j + 1] === '\n' ? 2 : 1;
+    const code = parseInt(hex, 16);
+    const valid = code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+    return { value: valid ? String.fromCodePoint(code) : '\ufffd', next: j };
+  };
+
+  /** Read a string token opened at `at`; returns its decoded value and the index after it. */
+  const string = (at: number): { value: string; next: number } => {
+    const quote = css[at];
+    let value = '';
+    let j = at + 1;
+    while (j < css.length) {
+      const ch = css[j];
+      if (ch === quote) return { value, next: j + 1 };
+      if (isCssNewline(ch)) return { value, next: j }; // a bad string ends at the line break
+      if (ch === '\\') {
+        if (j + 1 < css.length && isCssNewline(css[j + 1])) {
+          j += 2; // line continuation
+          continue;
+        }
+        const decoded = escape(j);
+        value += decoded.value;
+        j = decoded.next;
+        continue;
+      }
+      value += ch;
+      j++;
+    }
+    return { value, next: j }; // a string left open runs to the end
+  };
+
+  const skipWhitespace = (from: number): number => {
+    let j = from;
+    while (j < css.length && isCssWhitespace(css[j])) j++;
+    return j;
+  };
+
+  /** Read the argument of a url-like function whose `(` is at `open`; returns the index after its `)`. */
+  const urlArgument = (open: number): number => {
+    const unclosed = "isn't well-formed (a CSS url( is never closed)";
+    let j = skipWhitespace(open + 1);
+    if (j >= css.length) throw new Rejection(unclosed);
+    if (css[j] === '"' || css[j] === "'") {
+      const read = string(j);
+      urls.push(read.value);
+      j = skipWhitespace(read.next);
+      if (j >= css.length) throw new Rejection(unclosed);
+      if (css[j] !== ')') throw new Rejection("isn't well-formed (a CSS url( it can't read)");
+      return j + 1;
+    }
+    let value = '';
+    while (j < css.length) {
+      const ch = css[j];
+      if (ch === ')') {
+        urls.push(value);
+        return j + 1;
+      }
+      if (isCssWhitespace(ch)) {
+        j = skipWhitespace(j);
+        if (j >= css.length) throw new Rejection(unclosed);
+        if (css[j] !== ')') throw new Rejection("isn't well-formed (a CSS url( it can't read)");
+        continue;
+      }
+      if (ch === '\\') {
+        if (j + 1 < css.length && isCssNewline(css[j + 1])) throw new Rejection("isn't well-formed (a CSS url( it can't read)");
+        const decoded = escape(j);
+        value += decoded.value;
+        j = decoded.next;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '(') throw new Rejection("isn't well-formed (a CSS url( it can't read)");
+      value += ch;
+      j++;
+    }
+    throw new Rejection(unclosed);
+  };
+
+  while (i < css.length) {
+    const ch = css[i];
+    if (ch === '/' && css[i + 1] === '*') {
+      const end = css.indexOf('*/', i + 2);
+      if (end === -1) throw new Rejection("isn't well-formed (a CSS comment is never closed)");
+      i = end + 2;
+      ident = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      const read = string(i);
+      out.push(ch, read.value, ch);
+      i = read.next;
+      ident = '';
+      continue;
+    }
+    if (ch === '\\' && !(i + 1 < css.length && isCssNewline(css[i + 1]))) {
+      const decoded = escape(i);
+      out.push(decoded.value);
+      ident += decoded.value; // an escaped character is part of a name
+      i = decoded.next;
+      continue;
+    }
+    if (ch === '(' && URL_FUNCTIONS.has(ident.toLowerCase())) {
+      out.push('(');
+      i = urlArgument(i);
+      out.push(')');
+      ident = '';
+      continue;
+    }
+    out.push(ch);
+    ident = isNameChar(ch) ? ident + ch : '';
+    i++;
+  }
+  return { text: out.join(''), urls };
 }
 
 function localName(qualifiedName: string): string {
@@ -189,12 +363,19 @@ interface Attribute {
  * A single forward pass over the markup: prolog, elements, attributes, text,
  * comments and CDATA. It tracks element nesting so it can require exactly one
  * <svg> root, and collects <style> text for the CSS check. Sticky regexes
- * keep it linear in the document size.
+ * match at one position each and never span more than the token they read,
+ * which keeps the pass linear in the document size.
+ *
+ * Names are ASCII XML names (`[A-Za-z_][A-Za-z0-9_.:-]*`; an attribute may
+ * also start with `:`), and a name must end at whitespace, `/`, `>` (or `=`
+ * for an attribute). XML allows more letters in names; a name the scanner
+ * would otherwise read only part of (and then misread the rest) is a
+ * rejection instead.
  */
 class Scanner {
-  private static readonly ELEMENT_NAME = /[A-Za-z_][\w.:-]*/y;
-  private static readonly END_TAG = /<\/([^\s>]+)\s*>/y;
-  private static readonly ATTRIBUTE_NAME = /[^\s=/>"']+/y;
+  private static readonly ELEMENT_NAME = /[A-Za-z_][A-Za-z0-9_.:-]*/y;
+  private static readonly END_TAG = /<\/([A-Za-z_][A-Za-z0-9_.:-]*)[ \t\r\n]*>/y;
+  private static readonly ATTRIBUTE_NAME = /[A-Za-z_:][A-Za-z0-9_.:-]*/y;
   private static readonly UNQUOTED_VALUE = /[^\s>]*/y;
   private static readonly WHITESPACE = /\s*/y;
 
@@ -238,9 +419,15 @@ class Scanner {
     return this.source.startsWith(prefix, this.position);
   }
 
-  private text(text: string): void {
+  /**
+   * Character data between markup. Inside <style> it is collected as the CSS
+   * the browser will read: the XML parser resolves entities in text but not
+   * in CDATA sections, so only text outside CDATA is decoded (decoding a
+   * CDATA `&#47;*` would invent a comment that hides the CSS after it).
+   */
+  private text(text: string, cdata = false): void {
     if (this.inStyle()) {
-      this.styleText += text;
+      this.styleText += cdata ? text : decodeXmlEntities(text);
       return;
     }
     if ((!this.rootSeen || this.rootClosed) && text.trim() !== '') {
@@ -253,7 +440,7 @@ class Scanner {
     if (this.at('<![CDATA[')) {
       const end = this.source.indexOf(']]>', this.position);
       if (end === -1) throw new Rejection("isn't well-formed (a CDATA section is never closed)");
-      this.text(this.source.slice(this.position + '<![CDATA['.length, end));
+      this.text(this.source.slice(this.position + '<![CDATA['.length, end), true);
       this.position = end + 3;
       return;
     }
@@ -284,9 +471,25 @@ class Scanner {
   private processingInstruction(): void {
     const end = this.source.indexOf('?>', this.position);
     if (end === -1) throw new Rejection("isn't well-formed (a processing instruction is never closed)");
-    const target = /^<\?([^\s?]+)/.exec(this.source.slice(this.position, end))?.[1] ?? '';
-    if (target.toLowerCase() !== 'xml' || this.rootSeen) {
+    const body = this.source.slice(this.position, end);
+    const target = /^<\?([^\s?]+)/.exec(body)?.[1] ?? '';
+    if (target.toLowerCase() !== 'xml') {
       throw new Rejection(`has a processing instruction (<?${target}>)`);
+    }
+    // The XML declaration: only first in the document (a byte order mark may
+    // precede it), exactly `xml`, and UTF-8 if it names an encoding.
+    const start = this.source.charCodeAt(0) === 0xfeff ? 1 : 0;
+    if (this.position !== start || target !== 'xml') {
+      throw new Rejection("isn't well-formed (the XML declaration must come first)");
+    }
+    // Browsers sniff the label leniently, so any mention of an encoding must
+    // be a quoted UTF-8 label.
+    if (/\sencoding/i.test(body)) {
+      const encoding = /\sencoding\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(body);
+      const name = encoding ? encoding[1] ?? encoding[2] : body.slice(body.search(/\sencoding/i)).trim();
+      if (!encoding || !/^utf-?8$/i.test(name)) {
+        throw new Rejection(`declares an encoding other than UTF-8 (${describeUrl(name)})`);
+      }
     }
     this.position = end + 2;
   }
@@ -300,8 +503,7 @@ class Scanner {
       throw new Rejection(`isn't well-formed (</${match[1]}> doesn't close <${expected ?? 'nothing'}>)`);
     }
     if (localName(name) === 'style' && this.styleText) {
-      // The XML parser resolves entities in <style> text before CSS sees it.
-      checkCss(decodeXmlEntities(this.styleText));
+      checkCss(this.styleText);
       this.styleText = '';
     }
     if (this.open.length === 0) this.rootClosed = true;
@@ -311,6 +513,7 @@ class Scanner {
     this.position++; // '<'
     const nameMatch = this.take(Scanner.ELEMENT_NAME);
     if (!nameMatch) throw new Rejection("isn't well-formed (a stray '<')");
+    this.requireNameEnd('an element name', false);
     const qualifiedName = nameMatch[0];
     const name = localName(qualifiedName);
 
@@ -320,13 +523,23 @@ class Scanner {
       this.rootSeen = true;
     }
     if (this.inStyle()) throw new Rejection("isn't well-formed (an element inside <style>)");
-    const forbidden = FORBIDDEN_ELEMENTS[name];
+    const forbidden = FORBIDDEN_ELEMENTS.get(name);
     if (forbidden) throw new Rejection(`contains a ${forbidden} element`);
 
     const { attributes, selfClosing } = this.attributes();
     this.checkAttributes(name, attributes);
     if (!selfClosing) this.open.push(qualifiedName.toLowerCase());
     else if (this.open.length === 0) this.rootClosed = true;
+  }
+
+  /** A name must end where XML would end it; otherwise only part of it was read. */
+  private requireNameEnd(what: string, attribute: boolean): void {
+    const next = this.source[this.position];
+    // XML whitespace only: U+FEFF, for one, is whitespace to JavaScript but a
+    // name character to XML.
+    const ends = next === undefined || next === '/' || next === '>' || next === ' ' || next === '\t'
+      || next === '\n' || next === '\r' || (attribute && next === '=');
+    if (!ends) throw new Rejection(`isn't well-formed (${what} it can't read)`);
   }
 
   private inStyle(): boolean {
@@ -350,6 +563,7 @@ class Scanner {
 
       const nameMatch = this.take(Scanner.ATTRIBUTE_NAME);
       if (!nameMatch) throw new Rejection("isn't well-formed (a malformed attribute)");
+      this.requireNameEnd('an attribute name', true);
       const name = nameMatch[0];
       this.skipWhitespace();
 
@@ -378,6 +592,7 @@ class Scanner {
       const flat = compact(value);
 
       if (local.startsWith('on')) throw new Rejection(`has an event handler attribute (${name})`);
+      if (name.toLowerCase().startsWith('xmlns')) this.checkNamespaceDeclaration(name, value);
       if (flat.includes('javascript:') || flat.includes('vbscript:')) {
         throw new Rejection('contains a javascript: URL');
       }
@@ -385,12 +600,24 @@ class Scanner {
       if (URL_ATTRIBUTES.has(local) && value.trim() !== '' && !isLocalReference(value)) {
         throw new Rejection(`links to an external resource (${describeUrl(value)})`);
       }
-      if (ANIMATION_ELEMENTS.has(element) && local === 'attributename' && localName(value.trim()) === 'href') {
-        throw new Rejection('animates a link target (SMIL on href)');
+      if (ANIMATION_ELEMENTS.has(element) && local === 'attributename') {
+        const animated = URL_ATTRIBUTE_LABELS.get(localName(value.trim()));
+        if (animated) throw new Rejection(`animates a link target (SMIL on ${animated})`);
       }
-      // Presentation attributes take CSS too: fill="url(#grad)" is local,
-      // fill="url(https://…)" is a remote load.
-      if (local === 'style' || flat.includes('url(')) checkCss(value);
+      // Presentation attributes take CSS too (fill="url(#grad)" is local,
+      // fill="url(https://…)" a remote load), and CSS escapes can spell
+      // url( without the literal text, so every value gets the CSS check.
+      checkCss(value);
+    }
+  }
+
+  /** `xmlns` / `xmlns:prefix` must name an allowed namespace, exactly. */
+  private checkNamespaceDeclaration(name: string, value: string): void {
+    if (name !== 'xmlns' && !name.startsWith('xmlns:')) {
+      throw new Rejection(`isn't well-formed (a reserved attribute name, ${name})`);
+    }
+    if (!ALLOWED_NAMESPACES.has(value)) {
+      throw new Rejection(`declares a namespace Pixel Minion doesn't allow (${describeUrl(value) || 'empty'})`);
     }
   }
 }
