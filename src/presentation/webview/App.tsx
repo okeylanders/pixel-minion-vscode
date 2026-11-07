@@ -24,6 +24,8 @@ import {
   ImageGenerationView,
   SVGGenerationView,
   OpenRouterAlert,
+  TabImageIcon,
+  TabSvgIcon,
 } from './components';
 import {
   useSettings,
@@ -35,23 +37,9 @@ import {
   useOpenRouterBalance,
 } from './hooks';
 
-const ImageTabIcon = (
-  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.7" />
-    <circle cx="8.5" cy="9" r="1.5" stroke="currentColor" strokeWidth="1.7" />
-    <path d="m5 18 5-5 3 3 2-2 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-  </svg>
-);
-
-const SvgTabIcon = (
-  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" aria-hidden="true">
-    <path d="M7 4 3 8l4 4M17 4l4 4-4 4M14.5 3l-5 18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
 const TABS: Tab[] = [
-  { id: 'image', label: 'Image', icon: ImageTabIcon },
-  { id: 'svg', label: 'SVG', icon: SvgTabIcon },
+  { id: 'image', label: 'Image', icon: <TabImageIcon /> },
+  { id: 'svg', label: 'SVG', icon: <TabSvgIcon /> },
 ];
 
 /**
@@ -202,6 +190,7 @@ export function App(): JSX.Element {
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        ariaLabel="Pixel Minion modes"
       />
 
       <ViewContainer>

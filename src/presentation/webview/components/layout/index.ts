@@ -4,6 +4,9 @@ export type { AppHeaderProps } from './AppHeader';
 export { TabBar } from './TabBar';
 export type { TabBarProps, Tab } from './TabBar';
 
+export { TabImageIcon, TabSvgIcon } from './tabIcons';
+export type { TabIconProps } from './tabIcons';
+
 export { ViewContainer } from './ViewContainer';
 export type { ViewContainerProps } from './ViewContainer';
 

@@ -1,8 +1,9 @@
 /**
  * Tab Styles
  *
- * Prose Minion button-style tabs for view switching.
- * Design: Raised buttons with borders, hover lift, active highlight.
+ * The family mode bar: icon-over-label cards in one equal-width row. The
+ * active tab carries the brand accent as border, ring, 10% tint and icon
+ * colour (Frame recipe); glyphs are 20px LineGlyphs (tabIcons.tsx).
  */
 
 .tab-bar {
@@ -10,7 +11,7 @@
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   gap: 6px;
-  padding: 12px 14px 14px;
+  padding: 12px var(--px-gutter) 14px;
   background: transparent;
 }
 
@@ -26,7 +27,7 @@
   color: var(--px-text-muted);
   background: var(--px-card);
   border: 1px solid var(--px-border-soft);
-  border-radius: 6px;
+  border-radius: var(--px-radius);
   cursor: pointer;
   font-family: var(--px-sans);
   text-align: center;
@@ -54,21 +55,10 @@
 }
 
 .tab-button.active .tab-icon {
-  color: var(--px-accent);
-}
-
-.tab-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.tab-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   color: currentColor;
-  /* Icon SVGs are sized 1em, so font-size is the single control point. */
-  font-size: 24px;
   line-height: 1;
 }
 
