@@ -56,6 +56,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **WebP and GIF images keep their format when saved.** Files are named after the image's real format (`.png`, `.jpg`, `.webp`, `.gif`) instead of always `.jpg`. Data that isn't a supported image is refused instead of being saved under the wrong name.
 - A failed settings change now shows its error in the tab you are looking at, without stopping a generation in progress.
 - The panel no longer re-saves all of its state, including every generated image, each time it redraws.
+- **Enhance Prompt no longer rewrites a prompt you have moved on from.** If you press Generate or clear the conversation while an enhancement is still running, the enhancement is discarded, and a change you type while it runs is kept.
+- **A request that fails unexpectedly no longer spins forever.** It now ends with an error, and an error that can't be matched to a request is shown in the tab you are looking at instead of being lost.
 
 ## [1.3.0] - 2026-05-20
 

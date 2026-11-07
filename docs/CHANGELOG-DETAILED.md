@@ -156,7 +156,7 @@ Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.
 
 ### P2: request ownership hardening (`claude/pixel-minion-request-ownership-dhbqpd`)
 
-Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [parity plan §5](plans/frame-image-parity-plan.md)). Fixes the pre-existing ownership defects confirmed in the PR #12 review (ledger S2, S3). Commit `a2d5115`.
+Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [parity plan §5](plans/frame-image-parity-plan.md)). Fixes the pre-existing ownership defects confirmed in the PR #12 review (ledger S2, S3). Stacked on PR B (`claude/pixel-minion-picker-catalog-dhbqpd`). Commits `a2d5115` (ownership), `adcdb92` (adversarial-review follow-up, R5-S8/S9 below).
 
 #### User-facing
 
@@ -165,6 +165,8 @@ Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [par
 - The Image tab sends an attached SVG once (it was sent twice) and records it with its turn, so re-hydration replays it.
 - Refinements use the conversation's thread settings and carry no draft attachments. New note under each tab's attachments while a conversation is active.
 - "Saved" reflects the host's save result; cancel is a distinct, silent outcome; WebP/GIF save as `.webp`/`.gif`; unidentified data is refused.
+- Enhance Prompt never rewrites a prompt the user moved on from: Generate and Clear discard a running enhancement, and an edit made while it runs is kept.
+- A request the host fails to process (e.g. a malformed payload) is answered with an error instead of spinning forever; an error that matches no request appears in the visible tab instead of nowhere.
 
 #### Webview
 
@@ -179,9 +181,17 @@ Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [par
 - **Memoized persistence**: `persistedState` is a `useMemo` in `useImageGeneration`, `useSVGGeneration`, `useSettings` and `useTokenTracking`. All four were new objects on every render, so App's save effect called `vscode.setState` (with every base64 image) on every render.
 - `clearConversation` now also posts `*_GENERATION_CLEAR` (with a `*-clear-` id), so the host frees the conversation; it was never told before.
 
+#### Review follow-up (`adcdb92`)
+
+An independent adversarial review of `a2d5115` (round 5) found two webview/host gaps, fixed here; ids R5-S8 / R5-S9 in the [ledger](pr-reviews/pr-12-design-system-alignment-review.md).
+
+- **R5-S8, late enhance** (`useImageGeneration`, `useSVGGeneration`): `pendingEnhance` is now `{ correlationId, prompt }`. `generate()` and `clearConversation()` call `dropPendingEnhance()` (ref cleared, `isEnhancing` false), so the answer is ignored; before, Generate dispatched "a fox" and the answer then replaced the box with the enhanced text under the running request, and Clear left the spinner running and was refilled. The answer is applied with a functional update only while `current.trim()` still equals the sent prompt, so an edit made during the enhance wins. Generate is **not** blocked while enhancing: it commits to the text on screen (which the turn snapshot records), and blocking it would make a lost enhance reply disable Generate too. The discarded enhance still costs its one small text call.
+- **R5-S9a, throws outside a handler's try** (`MessageHandler.handleMessage`): any rejection from `router.route` is logged and answered with `ERROR` (`source: 'extension.router'`, `code: 'UNHANDLED_ERROR'`, a generic message pointing at the output log) carrying the request's `correlationId`. Example: `EnhanceHandler` and both generation handlers log `prompt.substring(0, 50)` before their `try`, so a payload without a prompt threw into the provider's log-only catch and the request's spinner never stopped. If a domain handler had already answered, the extra error is stale and the webview drops it. A message that is not an envelope is ignored with a `warn`. New `MessageSource` `'extension.router'`.
+- **R5-S9c, uncorrelated errors** (`App.tsx`): the unclaimed-error rule now keys on the id, not the source. An error neither hook claims is dropped only when its `correlationId` is an Image/SVG tab id (`isGenerationTabRequestId`, `utils/requestId.ts`): such an error answers a request that is no longer outstanding. Everything else, including an error from `extension.imageGeneration` / `svgGeneration` / `enhance` with no id, is shown in the visible tab (P2 dropped those). `REQUEST_SOURCES` is gone.
+
 #### Host
 
-- **Rollback, in-flight guard, first-turn release** (`ImageOrchestrator.ts`, ported from frame-minion@40e7949 `ImageOrchestrator.ts:102-166`; same pattern in `SVGOrchestrator.ts`): a turn records the message count (and image seed) before adding the user message; any failure, including an SVG reply with no `<svg>`, splices back to it, and a conversation whose first turn failed is removed. A per-conversation `inFlight` set rejects an overlapping request (`already generating`) and a clear while a turn runs (`Wait for … to finish`). Without it, a second continuation could push its user message into the array the first request was about to serialize.
+- **Rollback, in-flight guard, first-turn release** (`ImageOrchestrator.ts`, ported from frame-minion@40e7949 `ImageOrchestrator.ts:102-166`; same pattern in `SVGOrchestrator.ts`): a turn records the message count, turn number and (image) seed and last images before adding the user message (turn number and last images since `adcdb92`, R5-S9b: a result without an `images` array made `addAssistantResponse` throw after it had advanced `turnNumber`, so the rollback left a phantom turn and a failed first turn was never released); any failure, including an SVG reply with no `<svg>`, splices back to it, and a conversation whose first turn failed is removed. A per-conversation `inFlight` set rejects an overlapping request (`already generating`) and a clear while a turn runs (`Wait for … to finish`). Without it, a second continuation could push its user message into the array the first request was about to serialize.
 - **Deep copy** (`ImageConversationManager.addAssistantResponse`, Frame `:141`): the provider's assistant message is copied with JSON round-trip, so the transcript shares no nested parts with the result the handler reads. A non-array `content` keeps its string text (Frame `:162`).
 - **Clear errors**: `handleClearConversation` in both handlers catches a refused clear and posts `ERROR` with the request's correlation id.
 - **Save outcomes** (`ImageGenerationHandler`, `SVGGenerationHandler`): exactly one `*_SAVE_RESULT` per request. A dismissed dialog returns `cancelled: true` (it threw `Save cancelled` before). Opening the written file is in its own `try`; a failure there is a `warn` and no longer posts a second, failed result after the success.
@@ -189,15 +199,16 @@ Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [par
 
 #### Intentionally not in P2
 
-- Generate does not release the previous host conversation, and there are no archived threads (P4).
+- Generate does not release the previous host conversation, and there are no archived threads (P4). Host memory therefore grows by one conversation per Generate until the extension restarts (R5-S9, deferred to P4's archives, which give conversations an owner and a lifetime).
 - Typing in the prompt still re-serializes the whole history, because the draft and history share one persisted object; bounded persistence with a separate draft reserve is P3 (Frame R-3).
-- Reloading the webview mid-generation still loses the pending request (Frame F-10); pending refs are not persisted by design.
+- Reloading the webview mid-generation still loses the pending request (Frame F-10, R5-S9); pending refs are not persisted by design, and a reloaded webview cannot tell a request still running on the host from one that died with it.
+- Re-hydrating an image conversation after a host restart does not replay the raster references of its first turn (R5-S9): the webview doesn't persist them (base64, per-request). Replaying them needs P3's host transcript store.
 - Host-side save-filename validation is P5a (ledger S4).
 - Upstream to Frame: the open-after-save second result and the "Saved" timer exist in Frame's Image tab too.
 
 #### Test coverage
 
-322 → 375 tests (28 → 34 suites).
+516 → 569 tests (34 → 40 suites) at `a2d5115`; 583 tests (41 suites) with `adcdb92`. Counts are on top of PR B (34 suites / 516 tests).
 
 - `ImageOrchestrator.test.ts` (new; adapted from Frame `ImageConversationModes.test.ts:120,163,203`, without modes and store): rollback of prompt and seed, first-turn release, a re-hydrated thread keeps its history on failure, one provider request under concurrency, clear refused mid-turn, SVG sent once (fresh and after re-hydration). Drives the real `OpenRouterImageClient` against a mocked `fetch`, so assertions are on request bodies.
 - `SVGOrchestrator.test.ts`: rollback after a provider error and after a reply with no SVG, first-turn release, concurrency, SVG text once.
@@ -206,6 +217,7 @@ Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [par
 - `AppErrorRouting.test.tsx` (jsdom, renders `App`): an Image enhance error leaves the SVG generation running and error-free; only its own error settles it; a settings error shows in the visible tab only; an unrelated re-render doesn't call `setState`.
 - `GenerationSaveHandlers.test.ts`: `.webp` from WebP bytes, bytes beat a wrong label, unidentified data refused, cancel reported as `cancelled`, open failure keeps the single success result, refused clear correlated.
 - `imageFormats.test.ts`: extension map and signature sniffing.
+- `adcdb92`: a late enhance after Generate, after Clear and after an edit, in both hooks (each fails without the fix); `MessageHandlerFailures.test.ts` (real domain handlers: an enhance without a prompt and a generation without a payload are answered with a correlated `extension.router` error; non-envelopes are ignored); `AppErrorRouting.test.tsx` shows an uncorrelated generation-host error and settles / drops correlated router errors; rollback after a recorded reply restores turn number, seed and last images and still releases a failed first turn (image), and restores the turn number (SVG).
 
 Lint: 11 → 9 errors (two invalid `react-hooks` disable comments removed with the effects they annotated), 22 → 20 warnings (unused `pendingPrompt`).
 
