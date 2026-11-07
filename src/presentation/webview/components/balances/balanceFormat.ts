@@ -6,6 +6,7 @@
 import {
   OpenRouterAccountIssue,
   OpenRouterBalancePayload,
+  OpenRouterBalanceStaleness,
   OpenRouterKeyLimit,
 } from '@messages';
 
@@ -81,6 +82,11 @@ export function describeCreditsUnavailable(balance: OpenRouterBalancePayload): s
     : 'Account balance unavailable.';
 }
 
+/** The note shown when a refresh failed and the figures are the last ones read for this key. */
+export function describeStale(stale: OpenRouterBalanceStaleness): string {
+  return `Showing last known figures: ${describeIssue(stale.issue)}.`;
+}
+
 /** True when the key has a spend cap with known headroom. */
 export function hasEnforcedLimit(
   keyLimit: OpenRouterKeyLimit | undefined
@@ -103,13 +109,29 @@ export interface BalanceHeadline {
   tone: BalanceTone;
   /** What `text` is, for the pill's tooltip. */
   caption: string;
+  /** `text` is a last known figure the latest refresh couldn't update. */
+  stale?: true;
 }
 
 /**
  * The one number to lead with: the account balance when `/credits` was
- * readable, otherwise the key's spend-cap headroom (labelled as such).
+ * readable, otherwise the key's spend-cap headroom (labelled as such). A
+ * figure carried over from the last good read is flagged `stale`, and its
+ * caption says why it couldn't be refreshed.
  */
 export function openRouterHeadline(balance: OpenRouterBalancePayload | null): BalanceHeadline {
+  const headline = currentHeadline(balance);
+  // A muted headline isn't a figure, so there is nothing to call "last known".
+  if (!balance?.stale || headline.tone === 'muted') return headline;
+  return {
+    ...headline,
+    // No trailing period: the pill appends its own sentence.
+    caption: `${headline.caption}. Last known figures: ${describeIssue(balance.stale.issue)}`,
+    stale: true,
+  };
+}
+
+function currentHeadline(balance: OpenRouterBalancePayload | null): BalanceHeadline {
   if (!balance) {
     return { text: '…', tone: 'muted', caption: 'Loading balance' };
   }

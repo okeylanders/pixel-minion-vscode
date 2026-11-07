@@ -171,6 +171,29 @@ describe('OpenRouter balance header', () => {
     expect(strip.textContent).toContain("Balance unavailable: couldn't reach OpenRouter.");
   });
 
+  it('shows last known figures as last known, with when they were read and why they could not refresh', () => {
+    const { amount, pill, strip, expand } = renderHeader(balances(ok({
+      creditsStatus: 'unavailable',
+      credits: { totalCredits: 20, totalUsage: 7.66, remaining: 12.34 },
+      creditsIssue: { kind: 'network' },
+      keyIssue: { kind: 'network' },
+      stale: { figuresFetchedAt: new Date(2026, 10, 7, 15, 41).getTime(), issue: { kind: 'network' } },
+      fetchedAt: NOW,
+    })));
+    expand();
+
+    expect(amount.textContent).toBe('$12.34');
+    expect(amount.classList.contains('is-stale')).toBe(true);
+    expect(pill.getAttribute('title')).toMatch(/^Account balance\. Last known figures: couldn't reach OpenRouter\./);
+    expect(strip.querySelector('.px-balance-card')?.classList.contains('is-stale')).toBe(true);
+    expect(strip.querySelector('.px-balance-amount')?.textContent).toBe('$12.34');
+    expect(strip.querySelector('.px-balance-note')?.textContent).toBe(
+      "Showing last known figures: couldn't reach OpenRouter."
+    );
+    const updated = strip.querySelectorAll('.px-balance-meta span')[1] as HTMLElement;
+    expect(updated.textContent).toMatch(/^Updated3:41\sPM · last known · couldn't refresh$/);
+  });
+
   it('keeps the current value on screen while a refresh is in flight', () => {
     const { amount, pill, strip, expand } = renderHeader(balances(ok({
       credits: { totalCredits: 20, totalUsage: 7.66, remaining: 12.34 },

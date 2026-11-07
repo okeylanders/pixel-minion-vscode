@@ -50,15 +50,16 @@ export interface OpenRouterCredits {
 }
 
 export interface OpenRouterBalancePayload {
-  /** `ok` when either call returned data; `no_key` when no key is stored. */
+  /** `ok` when there is a figure to show; `no_key` when no key is stored. */
   status: OpenRouterBalanceStatus;
-  /** Present iff `/key` succeeded. */
+  /** Present when `/key` succeeded, or carried over from the last read (see `stale`). */
   keyLimit?: OpenRouterKeyLimit;
-  /** Present iff `/credits` succeeded. */
+  /** Present when `/credits` succeeded, or carried over from the last read (see `stale`). */
   credits?: OpenRouterCredits;
   /**
-   * Outcome of `/credits` on its own. A key can read its spend limit while
-   * `/credits` fails, and the UI must then not present the cap as the balance.
+   * Outcome of this attempt's `/credits` call on its own. A key can read its
+   * spend limit while `/credits` fails, and the UI must then not present the
+   * cap as the balance.
    */
   creditsStatus: OpenRouterBalanceStatus;
   /** Why `/key` failed, when it did. */
@@ -66,13 +67,28 @@ export interface OpenRouterBalancePayload {
   /** Why `/credits` failed, when it did. */
   creditsIssue?: OpenRouterAccountIssue;
   /**
+   * Set when this refresh could not read a figure for a transient reason
+   * (offline, 429, 5xx, unreadable reply) and the payload carries that
+   * figure's last good value for the same stored key instead. Never set
+   * across a key change. A rejected key or a forbidden endpoint is an answer,
+   * not a glitch, so those drop the old figure rather than going stale.
+   */
+  stale?: OpenRouterBalanceStaleness;
+  /**
    * Which stored key these figures belong to. The host bumps it whenever the
    * key is saved, replaced or cleared, and stamps each payload with the epoch
    * its fetch started under; the webview ignores payloads from an older epoch.
    */
   accountEpoch: number;
-  /** Epoch ms when the host fetched these figures. */
+  /** Epoch ms when the host made this attempt (see `stale` for older figures). */
   fetchedAt: number;
+}
+
+export interface OpenRouterBalanceStaleness {
+  /** When the oldest figure carried over was actually read. */
+  figuresFetchedAt: number;
+  /** Why the latest attempt could not refresh it. */
+  issue: OpenRouterAccountIssue;
 }
 
 /**

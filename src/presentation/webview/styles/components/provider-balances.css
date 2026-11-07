@@ -197,6 +197,13 @@
   opacity: 0.6;
 }
 
+/* Last known figure (the latest refresh failed): keep it, but not as current.
+   A zero balance keeps its warning colour. */
+.px-balance-card.is-stale .px-balance-amount:not(.is-zero),
+.px-balance-summary-amount.is-stale:not(.is-zero) {
+  color: var(--px-text-muted);
+}
+
 .px-balance-of {
   margin-left: 4px;
   color: var(--px-text-muted);

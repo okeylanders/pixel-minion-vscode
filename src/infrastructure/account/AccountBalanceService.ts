@@ -9,6 +9,10 @@
  *   outage or a 5xx isn't pinned for two minutes) and share one in-flight
  *   fetch.
  * - Honor `forceRefresh`, but never more than once a second.
+ * - When a refresh can't read a figure for a transient reason (offline, 429,
+ *   5xx, unreadable reply), carry that figure's last good value for the same
+ *   key, marked `stale`, instead of blanking a balance that was fine a moment
+ *   ago. A rejected key or a forbidden endpoint drops the figure instead.
  * - Own the trailing post-request refresh. OpenRouter's billing figures lag
  *   spend by roughly 5-10 s, so the refresh waits 10 s after the last
  *   terminal AI response; bursts coalesce to one fetch.
@@ -16,7 +20,13 @@
  *   stamp every payload with the key epoch its fetch started under so the
  *   webview can discard a late answer for the previous key.
  */
-import { OpenRouterBalancePayload } from '@messages';
+import {
+  OpenRouterAccountIssue,
+  OpenRouterAccountIssueKind,
+  OpenRouterBalancePayload,
+  OpenRouterCredits,
+  OpenRouterKeyLimit,
+} from '@messages';
 import { LoggingService } from '@logging';
 import { OpenRouterAccountClient } from '../ai/clients/OpenRouterAccountClient';
 
@@ -32,12 +42,29 @@ export const POST_REQUEST_REFRESH_DELAY_MS = 10_000;
 
 export type BalanceRefreshListener = (payload: OpenRouterBalancePayload) => void;
 
+/**
+ * Failures that are an answer about the key rather than a glitch: the figure
+ * they hid is forgotten, never carried over as "last known".
+ */
+const AUTHORITATIVE_ISSUES: ReadonlySet<OpenRouterAccountIssueKind> = new Set<OpenRouterAccountIssueKind>([
+  'invalid_key',
+  'forbidden',
+]);
+
+/** A figure as last read for the current key, and when. */
+interface Remembered<T> {
+  value: T;
+  fetchedAt: number;
+}
+
 export class AccountBalanceService {
   private cache?: OpenRouterBalancePayload;
   private pending?: Promise<OpenRouterBalancePayload>;
   private pendingForced = false;
   /** Bumped when the stored key changes; fetches from an older key are discarded. */
   private keyGeneration = 0;
+  /** Each figure's last good read for the current key; the source of carried-over values. */
+  private lastGood: { keyLimit?: Remembered<OpenRouterKeyLimit>; credits?: Remembered<OpenRouterCredits> } = {};
   private refreshTimer?: ReturnType<typeof setTimeout>;
   private readonly listeners = new Set<BalanceRefreshListener>();
   private disposed = false;
@@ -95,6 +122,7 @@ export class AccountBalanceService {
   invalidate(): void {
     this.keyGeneration += 1;
     this.cache = undefined;
+    this.lastGood = {};
     this.pending = undefined;
     this.pendingForced = false;
   }
@@ -161,8 +189,9 @@ export class AccountBalanceService {
         // The key changed mid-flight; these figures belong to the old key.
         return this.getBalance();
       }
-      this.cache = payload;
-      return payload;
+      const shown = this.withLastGoodFigures(payload);
+      this.cache = shown;
+      return shown;
     });
     const settle = () => {
       if (this.pending === pending) {
@@ -174,6 +203,38 @@ export class AccountBalanceService {
     this.pending = pending;
     this.pendingForced = forced;
     return pending;
+  }
+
+  /**
+   * Fill each figure this attempt couldn't read for a transient reason with
+   * its last good value for the same key, marked `stale`, and remember the
+   * fresh ones. Only called for a fetch that still belongs to the current key.
+   */
+  private withLastGoodFigures(next: OpenRouterBalancePayload): OpenRouterBalancePayload {
+    if (next.status === 'no_key') {
+      this.lastGood = {};
+      return next;
+    }
+    const key = settleFigure(this.lastGood.keyLimit, next.keyLimit, next.keyIssue, next.fetchedAt);
+    const credits = settleFigure(this.lastGood.credits, next.credits, next.creditsIssue, next.fetchedAt);
+    this.lastGood = { keyLimit: key.remember, credits: credits.remember };
+
+    // The balance is the headline figure, so its reason leads.
+    const carried = credits.carried ?? key.carried;
+    if (!carried) return next;
+    return {
+      ...next,
+      status: 'ok',
+      ...(key.carried ? { keyLimit: key.carried.value } : {}),
+      ...(credits.carried ? { credits: credits.carried.value } : {}),
+      stale: {
+        figuresFetchedAt: Math.min(
+          key.carried?.fetchedAt ?? Infinity,
+          credits.carried?.fetchedAt ?? Infinity
+        ),
+        issue: carried.issue,
+      },
+    };
   }
 
   private async fetchBalance(accountEpoch: number): Promise<OpenRouterBalancePayload> {
@@ -198,6 +259,25 @@ export class AccountBalanceService {
       fetchedAt,
     };
   }
+}
+
+/**
+ * One figure's outcome against its last good read. A fresh value is shown
+ * and remembered. A transient failure carries the remembered value over
+ * (keeping its original read time, so repeated failures don't make it look
+ * newer). No value, or an authoritative failure, forgets it.
+ */
+function settleFigure<T>(
+  previous: Remembered<T> | undefined,
+  fresh: T | undefined,
+  issue: OpenRouterAccountIssue | undefined,
+  fetchedAt: number
+): { remember?: Remembered<T>; carried?: Remembered<T> & { issue: OpenRouterAccountIssue } } {
+  if (fresh !== undefined) return { remember: { value: fresh, fetchedAt } };
+  if (previous && issue && !AUTHORITATIVE_ISSUES.has(issue.kind)) {
+    return { remember: previous, carried: { ...previous, issue } };
+  }
+  return {};
 }
 
 /** How long a payload may be served from the cache to a non-forced caller. */

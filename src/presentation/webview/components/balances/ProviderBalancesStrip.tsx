@@ -10,7 +10,9 @@
  *   unavailable" and why, once.
  * - neither: why the balance is unavailable (invalid key vs offline vs
  *   OpenRouter error), once.
- * A refresh keeps the current figures on screen and marks the card busy.
+ * A refresh keeps the current figures on screen and marks the card busy. A
+ * refresh that failed for a transient reason keeps the last good figures,
+ * marked "last known", with why and when they were read.
  */
 import React from 'react';
 import { OpenRouterBalancePayload, OpenRouterKeyLimit, TokenUsage } from '@messages';
@@ -18,6 +20,7 @@ import { UseOpenRouterBalanceReturn } from '@hooks/domain';
 import {
   RESET_LABELS,
   describeCreditsUnavailable,
+  describeStale,
   describeUnavailable,
   formatRequestCost,
   formatUsd,
@@ -80,7 +83,10 @@ export const ProviderBalancesStrip: React.FC<ProviderBalancesStripProps> = ({
           <RefreshIcon />
         </button>
       </div>
-      <div className={`px-balance-card${refreshing ? ' is-refreshing' : ''}`} aria-busy={isLoading}>
+      <div
+        className={`px-balance-card${refreshing ? ' is-refreshing' : ''}${balance?.stale ? ' is-stale' : ''}`}
+        aria-busy={isLoading}
+      >
         <div className="px-balance-provider">
           <span className="px-provider-dot" aria-hidden="true" />
           <span>OpenRouter</span>
@@ -93,7 +99,8 @@ export const ProviderBalancesStrip: React.FC<ProviderBalancesStripProps> = ({
           </span>
           <span>
             <b>Updated</b>
-            {balance ? formatWhen(balance.fetchedAt) : '—'}
+            {balance ? formatWhen(balance.stale?.figuresFetchedAt ?? balance.fetchedAt) : '—'}
+            {balance?.stale ? " · last known · couldn't refresh" : ''}
             {refreshing ? ' · refreshing…' : ''}
           </span>
         </div>
@@ -118,6 +125,15 @@ const OpenRouterBody: React.FC<{ balance: OpenRouterBalancePayload | null }> = (
   if (balance.status === 'unavailable') {
     return <div className="px-balance-note">{describeUnavailable(balance)}</div>;
   }
+  return (
+    <>
+      <OpenRouterFigures balance={balance} />
+      {balance.stale && <div className="px-balance-note">{describeStale(balance.stale)}</div>}
+    </>
+  );
+};
+
+const OpenRouterFigures: React.FC<{ balance: OpenRouterBalancePayload }> = ({ balance }) => {
 
   const { credits, keyLimit } = balance;
   if (credits) {
