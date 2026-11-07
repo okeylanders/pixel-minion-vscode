@@ -14,7 +14,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Pixel's own brand colours (ember and oxblood, from the logo), and the full-colour logo in the header.
   - Cleaner Image and SVG tabs: controls stack neatly, and generated images and SVGs have room to breathe even in a narrow sidebar.
   - One consistent style for fields and buttons, a refreshed Settings panel, and friendlier empty states.
-- **Model browser.** Browse every image and SVG model by provider or family, with search, prices and short descriptions.
+- **New model browser** - The Image, SVG and Settings model pickers open the same browser as Frame Minion: search, three ways to group models (by provider, by family, by release date), and a card for each model showing its price, what the estimate assumes, badges and a short description. The current model is scrolled into view when the browser opens, and the browser works from the keyboard and with screen readers.
 - **OpenRouter balance in the header.**
   - See your remaining credit at a glance and expand it for details.
   - It refreshes automatically after each generation and whenever you change your API key.
@@ -23,14 +23,31 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Full keyboard support for tabs and dialogs: arrow keys move between tabs, focus stays inside an open dialog and returns when it closes, and Escape closes only the top dialog.
   - High-contrast theme support.
   - Respects "reduce motion".
+- **New image models**
+  - ⭐ Nano Banana 2.1 - Google's newest Flash-tier image model, at half Nano Banana 2's output price
+  - Seedream 5.0 Pro, Seedream 5.0 Lite and Seedream 5.0 Flash
+  - MAI-Image 2.6 and MAI-Image 2.6 Flash
+  - Riverflow V2.6 Pro
+  - Recraft V4.1 Flash (prompt only, no reference images)
+  - Grok Imagine Image 2.0
+- **New SVG code models**
+  - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
+  - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
 
 ### Changed
 
-- **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log. This covers models OpenRouter has retired: the Riverflow V2 preview tiers, Grok Imagine (Image Quality), Claude Opus 4 and Claude Opus 5 Fast.
+- **Honest price estimates** - Each model's price now follows how it is actually billed: per image, per megapixel or per token. Per-image estimates for token-billed models come from each model's own reference, so GPT-5.4 Image 2 now reads ≈ $0.211 per image at 1K high quality instead of ≈ $0.039. This corrects the estimate; OpenRouter's prices did not go up. Extra charges for reference images are shown where OpenRouter lists them.
+- **SVG models are grouped by how they make SVG** - "Native SVG" (Recraft) or "SVG code". Code models show their per-token price, with an approximate cost per SVG and a note when the model reasons by default.
+- **Older SVG models keep working** - Claude Opus 5, Claude Fable 5, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
+- **GPT-5 Image Mini** is labelled "retiring Dec 1, 2026", the date OpenRouter has announced.
+- **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log: Grok Imagine (Image Quality) → Grok Imagine Image 2.0, Claude Opus 4 and Claude Opus 5 Fast → Claude Opus 5.5, and the Riverflow V2 preview tiers → Riverflow V2.5.
+- The model picker in each tab is the same height and style as the fields beside it.
 
 ### Fixed
 
 - Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
+- **Long SVGs from code models could come back cut off** - Most code models reason before they answer, and that reasoning counts against the response limit. SVG requests now allow up to 32,000 tokens (was 16,384).
+- The SVG model browser grouped Gemini text models with the image models.
 
 ## [1.3.0] - 2026-05-20
 

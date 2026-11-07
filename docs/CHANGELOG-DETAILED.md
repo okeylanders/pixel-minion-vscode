@@ -71,6 +71,91 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
 - `tsc -p tsconfig.webview.json` now actually type-checks the webview. It previously inherited `exclude: ["src/presentation/webview"]` and checked 0 of 52 files.
 - Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A.
 
+### PR B — Model picker parity and catalog refresh
+
+Stacked on PR A (`claude/pixel-minion-design-review-dhbqpd`). Branch `claude/pixel-minion-picker-catalog-dhbqpd`. Roadmap row B in [docs/plans/frame-parity-roadmap.md](plans/frame-parity-roadmap.md); review rows in [docs/pr-reviews/pr-12-design-system-alignment-review.md](pr-reviews/pr-12-design-system-alignment-review.md).
+
+| Commit | What |
+| --- | --- |
+| `5d8bb2d` | Catalogs move to `src/shared/models` with Frame's unit-aware types; Frame sprint-06 picker ported |
+| `7038e87` | Catalog refresh from the 2026-11-07 audit, chat-routable models only |
+| `a679286` | SVG turns send `max_tokens: 32000` (M1) |
+| `5507ed9` | Visual-pass polish: browser search focus ring; regrouping scrolls the list to the top |
+
+#### Catalogs and types (`5d8bb2d`)
+
+- `[+] src/shared/models/{ImageModels,SVGModels,RetiredModels,index}.ts`. `OPENROUTER_IMAGE_MODELS`, `OPENROUTER_SVG_MODELS`, `DEFAULT_IMAGE_MODEL`, `DEFAULT_SVG_MODEL`, `RETIRED_MODELS` / `RETIRED_MODEL_REPLACEMENTS` now live in `shared`, so the webview stops importing `src/infrastructure` (it did from `ImageGenerationView`, `SVGGenerationView`, `SettingsView` and both hooks). `infrastructure/ai/providers/OpenRouterProvider.ts` keeps only `OPENROUTER_CONFIG` (Frame's layout; no re-exports).
+- `src/shared/types/providers.ts`:
+  - Verbatim from frame-minion@40e7949: `ImagePricingUnit`, `ImagePricing` (`unit`, `output`, `input?`, `approxUsdPerImage?`, `approxNote?`, `approxBasis?`) and `ImageModelDefinition` (`transport?`, `supportsSeed?`, `referenceImages?`, `referenceMimeTypes?`, `imagePricing?`, `supportedResolutions?`, `supportedAspectRatios?`). The old unit-mixed `ModelDefinition { inputCost, outputCost }` is gone.
+  - Pixel-only: `ImageApiAspectRatio` (Frame's 25-value `AspectRatio` union under a new name, because Pixel's `AspectRatio` is still the 7 ratios the tabs send; the rename to `SVGAspectRatio` is P3's), `TextPricing { inputPer1M, outputPer1M }`, and `SvgModelDefinition = NativeVectorSvgModelDefinition (ImageModelDefinition & { kind: 'native-vector' }) | CodeSvgModelDefinition ({ kind: 'code', textPricing, acceptsImageInput, reasoning? })`. `reasoning` copies the chat feed's `mandatory` / `default_enabled` / `default_effort`.
+  - Removed the unused `AIProvider` interface and with it the type import from `infrastructure/ai/clients/TextClient`.
+  - The capability fields are documented `⚠️ Not yet consumed`: they're recorded from the Image API endpoint records for P3 and Frame parity, and no request reads them. `transport` is left unset on every row (no row claims a route Pixel doesn't use).
+- Image rows (27 ids at this commit) copied from Frame's catalog, which changes visible names (e.g. "Nano Banana 2 (Google: Gemini 3.1 Flash Image)", "Microsoft: MAI-Image 2.5") and families (derived from the label after any "Vendor:" prefix). Nano Banana Pro keeps Pixel's ⭐ (documented delta).
+- Provenance headers (`// Ported from frame-minion@40e7949 packages/core/src/<path>; keep in sync`) on `ImageModels.ts`, `providers.ts`, `ModelBrowserModal.tsx`, `ModelBrowserSelect.tsx`, `modelBrowserOptions.ts`, `model-browser.css` and `image/ModelSelector.tsx`, each listing its Pixel deltas.
+
+#### Picker (`5d8bb2d`, `5507ed9`)
+
+- `ModelBrowserModal.tsx` is Frame's: search over 11 fields, pivots By Provider / By Family / By Release Date (strict `YYYY-MM-DD`; invalid dates such as `2026-02-30` group as "Release date unavailable"; months newest first), group chips with counts, the OpenRouter provider highlight, and Frame's card anatomy (cost pill, release / meta / tone badges incl. `warn`, `costDescription`, narrative, supporting description).
+- Pixel deltas kept or added (upstream candidates):
+  - `useOverlayDismiss` wiring from PR A (Escape scoped to the top overlay, focus to search on open and back to the trigger on close, inert frame, Tab trap). Frame's own window Escape listener is not ported, and there's no `autoFocus`.
+  - `role="dialog"` on the panel, presentational backdrop that closes on mousedown.
+  - Pivots are a WAI-ARIA tablist (roving Tab stop, Left/Right/Home/End via PR A's `tabKeyboard.nextTabIndex`) controlling the list as a `tabpanel`; group chips are `role="group"` toggles with `aria-pressed`; cards are `aria-pressed`, named by their title (`aria-labelledby`) and described by the cost pill and details (`aria-describedby`) so a screen reader doesn't read a 300-character name.
+  - The selected card is scrolled into view on open (`scrollIntoView({ block: 'center' })`, guarded for jsdom); a pivot or chip change scrolls the list to the top.
+  - The query and group chip reset on close; the pivot is kept.
+  - `footerLabel` prop (default "Curated by Pixel Minion").
+- `modelBrowserTypes.ts` stays (Frame declares the option types in the `.tsx`): the host `tsc -p tsconfig.json` compiles the webview's `.ts` tests without JSX, and `modelBrowserOptions.ts` must not pull a `.tsx` into that program. The modal re-exports the types.
+- `ModelBrowserSelect.tsx` is Frame's single-line trigger (label, chevron, `helperText`, `loadingLabel`, `Custom: <id>` fallback, `aria-label` "Browse … options. Current model: …"), plus `htmlFor` label association, `aria-haspopup="dialog"` and `aria-expanded`. Pixel's two-line 44 px trigger with its estimate sub-line is gone.
+- `modelBrowserOptions.ts`: Frame's `providerFromId`, `familyFromLabel`, `stripRecommended`, `costPair`, `formatUsd`, `imageNativePricingLabel`, `imagePricingLabel`, `imagePricingDescription`, `imageUnitBadgeLabel`, `recommendedBadge` and `modelDefinitionToBrowserOption`. No `startsWith(` remains; units come from `imagePricing.unit`. Deltas: `PROVIDER_LABELS` is Frame's image/text subset plus `krea` and `qwen`; label helpers take an output noun ("| SVG"); metadata can carry `retiresOn` → a `warn` badge.
+- `svgModelToBrowserOption` (Pixel-only): family is the kind ("Native SVG" / "SVG code"), which fixes Gemini 3.1 Pro being grouped as "Gemini Image" by a label regex. Native vector: `≈ $0.3 | SVG`, badges `native SVG` + `per SVG`. Code: `$4/$20 per 1M` in the pill; the 1k-in + 4k-out house estimate moves to `costDescription` with a caveat when the model reasons by default (`mandatory || default_enabled`); badges `SVG code`, `per token`, `image input`.
+- `image/ModelSelector.tsx` (Frame's, with `label` / `subtitle` props) and `[+] svg/SVGModelSelector.tsx` keep an off-list selection visible as a "Custom: <id>" card with helper text ("Not in Pixel Minion's curated list. Requests still use this model id."). The tabs and Settings all use these selectors.
+- `model-browser.css` is Frame's sheet on `--px-*` tokens. Deltas:
+  - The trigger is a Pixel field: `--px-control-h` (34 px), `padding: 0 10px 0 11px` (12 px value inset, chevron on the select chevron's 11 px edge), `--px-field` surface, field focus ring (overrides PR A's global button outline at higher specificity). Measured in the harness: height, inset, chevron edge, surface, font and radius equal the Aspect Ratio select. Frame's trigger uses the dropdown colours and renders white beside Pixel's tan fields in Light Modern.
+  - Search box and pivot track on `--px-field` (Frame: near-black / grey inset), search focus = field focus ring; card hover/selected on `--px-field-hover` (accent stays border + ring + medallion). `--px-inset` remains for code and preview wells.
+  - Contrast (measured in the harness, Dark / Light Modern / Flame): group headings, counts and chip counts use muted text (Frame: dim, ~1.7:1 for counts); badges 10.5 px; accent badges and the active chip keep the accent as tint + border with foreground text (ember on the tint was ~3.1:1 in Light Modern). All measured text is ≥ 4.5:1 except the eyebrow in Light Modern (3.78:1), which uses the family `--px-accent-text` token; flagged for the token owner rather than forked here.
+  - Cost pills stay on one line at ≤ 520 px (`white-space: nowrap`, ellipsis safety net; every curated label fits a 320 px card).
+  - One `z-index` (the backdrop's, 1000), commented, so overlay stacking stays in one place.
+  - High-contrast selected states remain in `design-tokens.css` (class names unchanged).
+
+#### Catalog refresh (`7038e87`)
+
+Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.md) §1e / §2d, filtered by the same day's `/chat/completions` probe. Models the probe found Image-API-only (GPT Image 2.5 / 2.6, FLUX.3, Qwen Image, Krea, Muse) are not added; `OpenRouterImageClient.test.ts` still fails if any reaches a catalog. Every new or changed price has a source comment (`[endpoints]`, `[chat feed]`, `[bench]`).
+
+- Image: 27 → 36.
+  - Added (9): `google/gemini-nano-banana-2.1` ⭐ (out $30/1M; prompt $1.5/1M; estimate ≈ $0.036 @ 1K is OpenRouter's measured benchmark median and says so, because Google's token count couldn't be verified), `bytedance-seed/seedream-5-0-{pro,lite,flash}`, `microsoft/mai-image-2.6`, `microsoft/mai-image-2.6-flash`, `recraft/recraft-v4.1-flash` (refs 0–0), `sourceful/riverflow-v2.6-pro`, `x-ai/grok-imagine-image-2.0`.
+  - Left out although chat-routable: `recraft/recraft-v4-styles` / `-styles-pro` (refs 1–10 required; no Generate gating until P3/P4). Commented in `ImageModels.ts`.
+  - Drift: input-image rates for GPT-5.4 Image 2 ($8/1M), GPT-5 Image ($10), GPT-5 Image Mini ($2.5); Riverflow V2 Pro / Fast `input: 0.2` per reference with a basis that says so; measured-above-list notes for Riverflow V2.6 Pro ($0.157), V2.5 Pro ($0.248), V2.5 Fast ($0.029) (audit O6); `@ 1K` qualifiers on tiered Riverflow rows; `supportsSeed: false` wherever the endpoint record lists no `seed` (Gemini, GPT, MAI, Riverflow, Recraft, Grok).
+  - `openai/gpt-5-image-mini`: `retiresOn: '2026-12-01'` (chat feed `expiration_date`) → "retiring Dec 1, 2026" warn badge. Not added to `RETIRED_MODELS`: it is still served.
+- SVG: 8 → 12 (2 native vector + 10 code), per audit §2d.
+  - Added: `anthropic/claude-opus-5.5` ⭐ ($4/$20), `anthropic/claude-fable-5.1` ⭐ ($10/$50), `anthropic/claude-sonnet-5.5` ($2/$10), `anthropic/claude-haiku-5.5` ($0.10/$0.50), `openai/gpt-6.1-sol` ⭐ ($2/$10), `openai/gpt-6-astra` ($10/$50), `openai/gpt-6.1-terra` ($1/$5), `google/gemini-4-argon` ($2/$10), `google/gemini-3.8-flash` ($0.75/$3.75), `x-ai/grok-4.7` ($2/$6). ⭐ follows the owner's slots onto their successors (Opus, Fable, OpenAI high-end). No SVG-quality benchmark exists (audit O7).
+  - Removed (superseded, still live): `claude-fable-5`, `claude-opus-5`, `gpt-5.6-sol`, `gpt-5.6-sol-pro` (stored $5/$30 vs live $4/$20: U6), `gpt-5.4`, `gemini-3.1-pro-preview`. **Intentionally not migrated**: OpenRouter still serves them, so a saved pick keeps working and shows as "Custom" rather than silently changing model and price.
+  - Left out: `recraft/recraft-v4-styles-pro-vector` / `-styles-vector` (refs 1–10 required).
+- `RETIRED_MODELS`: `grok-imagine-image-quality` → `grok-imagine-image-2.0`; `claude-opus-4` and `claude-opus-5-fast` → `claude-opus-5.5` (Opus 5 is no longer in the catalog).
+- Metadata: release date (OpenRouter `created`) and narrative for every new row.
+- Defaults unchanged (`google/gemini-3.1-flash-image`, `recraft/recraft-v4.1-pro-vector`).
+- `package.json` `imageModel` / `svgModel` descriptions name the current recommendations.
+
+#### SVG output budget (`a679286`, review M1)
+
+- `SVGOrchestrator` sends `maxTokens: SVG_MAX_OUTPUT_TOKENS` (32,000) on every turn; the text client's default stays 16,384 for Enhance and chat. On OpenRouter `max_tokens` covers reasoning + visible output on most providers, and the recommended code models reason by default (Opus 5.5 / Fable 5.1 / Sonnet 5.5 / Grok 4.7 at high effort), so 16,384 could end a long SVG at `finish_reason: "length"`.
+- Why not 48,000: 32,000 doubles the headroom, stays under the smallest output cap of any endpoint serving a curated code model (65,536 for Gemini 3.8 Flash and Gemini 4 Argon on vertex/us, 2026-11-07), and bounds a runaway turn at $1.60 on Fable 5.1's output rate ($2.40 at 48,000).
+- `CLAUDE.md` / `AGENTS.md` claimed 48,000 for text and SVG clients; corrected to 16,384 / 32,000.
+
+#### Not in this PR
+
+- No request or routing change apart from M1: modalities still come from id prefixes (catalog-driven modalities and the Image API transport are P3), `SVGOrchestrator.selectClient` and the Refine gate still key on `recraft/` (P5b; a catalog test pins that every native-vector row is `recraft/` until then), no aspect ratio is sent to vector models, and no capability field is enforced.
+- Image-API-only models, Recraft Styles (both kinds) and Krea K3 Edit wait for P3 (transport + reference gating).
+- The GPT per-image estimate basis ("@ 1K · high" vs OpenRouter's measured medians, audit O5) is unchanged pending the family-wide decision.
+- `README.md`'s model tables were already stale before this PR (they list Claude Opus 4.7 and GPT-5.1 Codex); left for the release pass.
+
+#### Tests
+
+- 28 suites / 322 tests → 32 suites / 497 tests. `tsc` (host and webview) clean; `npm run build` passes; ESLint unchanged (11 pre-existing errors, 22 warnings).
+- Ported from Frame: `ModelBrowserModal.test.tsx` (7), `ModelBrowserSelect.test.tsx` (2), the "image pricing labels" block of `modelBrowserOptions.test.ts` (limited to Pixel's rows). Sample data renamed away from fal.ai.
+- New: modal overlay/ARIA/scroll/reset/footer cases; select label, `aria-expanded` and helper cases; `SVGModelSelector.test.tsx` (kind grouping, custom cards); `shared/models/catalog.test.ts` (defaults shipped, no retired id listed, every retired id moves to a shipped model, coherent capabilities, SVG pricing shape per kind, native vector ⇔ `recraft/` while routing keys on it); refresh-specific label, rate, date and retiring-badge cases; the modality snapshot gained the 9 new image ids; `SVGOrchestrator` pins `maxTokens: 32000`.
+- `modelBrowserOptions.test.ts` moved to `__tests__/presentation/webview/components/shared/` to mirror the source.
+
+---
+
 ## [1.3.0] - 2026-05-20
 
 ### Overview

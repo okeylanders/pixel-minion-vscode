@@ -64,22 +64,22 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | D2 | 🔴 | `--pm-*` / `.pm-*` prefix collides with Prose Minion's tokens and classes, which have different meanings. Frame vocabulary incomplete | D | A | ✅ Fixed in `078bcf4` |
 | C1 / U4 | 🔴 | 9 image models (Krea 2 ×3, MAI-Image 2.5 ×2, Recraft V4.1 ×4) request `['image','text']`; live outputs are `['image']` → 404. Recraft V4.1 is a regression (code and test flipped) | C, U — **consensus** | A (hotfix) · B (catalog-driven) | ✅ Fixed in `4aee37e` (+ `ebc9f59`) |
 | U1 / C2 | 🔴 | `anthropic/claude-opus-5-fast` delisted (0 endpoints) | U, C — **consensus** | A | ✅ Fixed in `76fddce` |
-| U2 / C2 | 🔴 | `x-ai/grok-imagine-image-quality` delisted (0 endpoints; Image API 404). Replacement `x-ai/grok-imagine-image-2.0` | U, C — **consensus** | A (remove + migrate) · B/P3 (add 2.0) | ✅ Removed + migrated in `76fddce`; Grok Imagine 2.0 → B |
+| U2 / C2 | 🔴 | `x-ai/grok-imagine-image-quality` delisted (0 endpoints; Image API 404). Replacement `x-ai/grok-imagine-image-2.0` | U, C — **consensus** | A (remove + migrate) · B/P3 (add 2.0) | ✅ Removed + migrated in `76fddce`; Grok Imagine 2.0 added and migration retargeted in `7038e87` |
 | U3 | 🔴 **pre**, verified | Transport: only the Gemini image family, the GPT-5 image wrappers and Muse list `/chat/completions`. Recraft (incl. default SVG model), FLUX, Krea, Riverflow, Seedream, MAI and `gpt-image-*` list only `/api/v1/images`. Frame reached the same conclusion 2026-09-10 | U, S | Keyed smoke test → P3 | ◐ Verified 2026-11-07 (keyed probe, $0.111): v1.3.0 catalog routes; six PR #12 additions are Image-API-only, removed in `ebc9f59`; transport → P3 |
 | S1 | 🔴 **pre** | Generated SVG injected via `dangerouslySetInnerHTML` ×5 per result (`SVGPreview.tsx:20-23`). CSP blocks scripts, but `style-src 'unsafe-inline'` lets `<style>` restyle or hide the UI. Duplicate ids collide with app SVG ids. Saved files keep any `<script>` | S | P5a | ⏳ Open |
 | D3 / V6 | 🟠 | Header lockup off-family: monochrome link-blue glyph on a themed tile; 17/10.5 px; doubled centred 1 px rule; tagline copied from Frame | D, V — **consensus** | A | ✅ Fixed in `9800bad` |
-| D4 / V3 / C10 | 🟠 | Picker ≠ Frame sprint-06: two-line 44 px trigger; 2 pivots (no By Release Date); no OpenRouter highlight or cost description; combined price pill widened to 220 px. SVG text model Gemini 3.1 Pro grouped as "Gemini Image" | D, V, C — **consensus** | B | ⏳ Open |
-| C3 / C9 / U-1b | 🟠 | Per-image estimates invented (1,290 tokens applied to all Google/OpenAI/Microsoft). Units guessed from id prefix; input charges never shown; type says "$ per 1M tokens" | C, U, S — **consensus** | B | ⏳ Open |
+| D4 / V3 / C10 | 🟠 | Picker ≠ Frame sprint-06: two-line 44 px trigger; 2 pivots (no By Release Date); no OpenRouter highlight or cost description; combined price pill widened to 220 px. SVG text model Gemini 3.1 Pro grouped as "Gemini Image" | D, V, C — **consensus** | B | ✅ Fixed in 5d8bb2d |
+| C3 / C9 / U-1b | 🟠 | Per-image estimates invented (1,290 tokens applied to all Google/OpenAI/Microsoft). Units guessed from id prefix; input charges never shown; type says "$ per 1M tokens" | C, U, S — **consensus** | B | ✅ Fixed in 5d8bb2d (unit-aware pricing), 7038e87 (input rates) |
 | D5 | 🟠 | Image/SVG tabs still the old look: user bubble, image card, 💾 save, solid-blue Generate, card spacing, control grid, prompt field | D | A | ✅ Fixed in `0d39415` |
 | V2 | 🟠 | Two field-surface families: inputs on `--pm-inset` (near-black in dark, grey "disabled" in Light Modern) vs selects on `--pm-field`. Regression | V | A | ✅ Fixed in `1b2c8f1` |
 | V4 / D10 | 🟠 | Controls 44 px vs Frame's 34–36 px (`main` 34–36); radii 2–12 mixed within a card; add-reference chip wraps to 3 lines at 320 | V, D — **consensus** | A | ✅ Fixed in `1b2c8f1` (picker trigger height → B) |
 | V5 | 🟠 | Model/Aspect side by side with Seed orphaned at 480; picker truncated | V | A | ✅ Fixed in `0d39415` |
 | D6 | 🟠 | High-contrast regression: `contrastBorder` field and tab outlines replaced by warm hairlines (≈1.15–1.3:1) | D | A | ✅ Fixed in `078bcf4` |
-| D7 / C8 | 🟠 | Model browser a11y: no focus trap or return, background not inert, Escape not scoped, chips/selection unannounced, trigger label unassociated, no `aria-expanded` | D, C — **consensus** | A (overlay hook) · B (picker port) | ◐ Overlay hook + paint order in `7294c29`, `01a230c`; picker internals → B |
+| D7 / C8 | 🟠 | Model browser a11y: no focus trap or return, background not inert, Escape not scoped, chips/selection unannounced, trigger label unassociated, no `aria-expanded` | D, C — **consensus** | A (overlay hook) · B (picker port) | ✅ Overlay hook + paint order in `7294c29`, `01a230c`; picker internals in `5d8bb2d` |
 | C4 | 🟠 | Balance survives API key clear/replace (shows account A's balance beside the no-key alert) | C | A | ✅ Fixed in `25a6f55` |
 | C5 | 🟠 | When `/credits` 403s, the key spend cap is labelled "Account balance" | C | A | ✅ Fixed in `609da39` |
 | S2 | 🟠 **pre** | Request ownership: no correlation ids; stale `referenceSvgText` (SVG text never recorded, but sent twice); a failed turn is resent with the next request; Refine eligibility uses the draft model, not the thread's; an enhance error clears the other tab's spinner; `persistedState` serialized every render | S | P2 (+ P5a for SVG refine) | ⏳ Open |
-| U5 | 🟠 | `openai/gpt-5-image-mini` expires 2026-12-01 | U | B | ⏳ Open |
+| U5 | 🟠 | `openai/gpt-5-image-mini` expires 2026-12-01 | U | B | ✅ Fixed in 7038e87 (labelled "retiring Dec 1, 2026") |
 | C6 | 🟡 | Frame PR-12 review fixes lost: zero-cap reads "depleted"; "$-1.50"; invalid key vs offline identical (status dropped); per-handler debounce timer never disposed | C | A | ✅ Fixed in `25a6f55` (d), `609da39` (a–c) |
 | C7 | 🟡 | No balance cache or dedupe; `forceRefresh` ignored; every load sends 2 requests (4 HTTP calls) | C | A | ✅ Fixed in `25a6f55` |
 | D8 | 🟡 | Header wraps at ~300 px; the `flex-wrap` media query is a no-op | D | A | ✅ Fixed in `9800bad`, `ac00ef1` |
@@ -92,13 +92,13 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | D16 | 🟡 | Focus rings half themed; model cards have hover but no focus style | D | A | ✅ Fixed in `787233c` |
 | D18 | 🟡 | Hard-coded colours and shadows (check badge contrast, `#65d27a` "live" dot on a static catalog) | D | A | ✅ Fixed in `078bcf4` |
 | V9 | 🟡 | Empty output wells are blank boxes | V | A | ✅ Fixed in `0d39415` |
-| V10 | 🟡 | Field text insets zig-zag (picker 11 px vs 17 px); two chevron styles | V | A (fields) · B (picker) | ◐ Fields in `a59f5fc`; picker trigger → B |
+| V10 | 🟡 | Field text insets zig-zag (picker 11 px vs 17 px); two chevron styles | V | A (fields) · B (picker) | ✅ Fields in `a59f5fc`; picker in `5d8bb2d` |
 | V11 | 🟡 **pre** | Refine bar Send overhangs by 16 px at 320 (`min-width: 0` missing) | V | A | ✅ Fixed in `0d39415` |
 | V12 | 🟡 | "no key" styled like an amount | V | A | ✅ Fixed in `609da39`, `e5c37e5` |
 | V13 | 🟡 **pre** | Destructive red trash icon at rest | V | A | ✅ Fixed in `0d39415` |
 | V14 | 🟡 **pre** | SVG code: per-line background bands, mid-token wraps | V | A | ✅ Fixed in `0d39415` |
-| U6 | 🟡 | GPT-5.6 Sol / Sol Pro stored at $5/$30; live $4/$20 | U, C — **consensus** | B | ⏳ Open |
-| M1 | 🟡 **pre** | SVG text client sends `max_tokens: 16384` (CLAUDE.md says 48 000). Reasoning models can truncate long SVGs | U | B | ⏳ Open |
+| U6 | 🟡 | GPT-5.6 Sol / Sol Pro stored at $5/$30; live $4/$20 | U, C — **consensus** | B | ✅ Fixed in 7038e87 (superseded by GPT-6.1 Sol) |
+| M1 | 🟡 **pre** | SVG text client sends `max_tokens: 16384` (CLAUDE.md says 48 000). Reasoning models can truncate long SVGs | U | B | ✅ Fixed in a679286 (32,000) |
 | S3 | 🟡 **pre** | "Saved" shown by a 1 s timer even on cancel/error (Image and SVG); WebP/GIF saved as `.jpg` | S | P2 | ⏳ Open |
 | S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ⏳ Open |
 | C11 | ⚪ | Post-generation balance refresh depends on `usage` being present | C | A | ✅ Fixed in `25a6f55` |
@@ -109,7 +109,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | D20 | ⚪ | Stale doc comments describe the pre-PR UI | D | A | ✅ Fixed in `9800bad`, `2696d4e` |
 | D21 | ⚪ **pre** | Inert Tailwind pipeline (all three repos) | D | ↪ Deferred: family-wide cleanup, not this PR | ↪ Deferred |
 | D22 | ⚪ | No Conversation / Single Shot mode pill | D | P4 | ⏳ Open |
-| V15 | ⚪ | Modal: no release-date pivot; selected card off-screen on open; cost chips wrap at 320 | V | B | ⏳ Open |
+| V15 | ⚪ | Modal: no release-date pivot; selected card off-screen on open; cost chips wrap at 320 | V | B | ✅ Fixed in 5d8bb2d |
 | V16 | ⚪ | Vertical rhythm and three-edge stagger (header/tabs/well) | V | A | ✅ Fixed in `0d39415` |
 | V17 | ⚪ | Last-request cost hidden in the collapsed pill | V | ↪ Deferred: optional; expanded card already shows it | ↪ Deferred |
 | S5 | ⚪ **pre** | `MarkdownRenderer` claims to sanitize but inserts raw `marked` output (unused today) | S | P5a (remove or sanitize) | ⏳ Open |
@@ -183,3 +183,20 @@ Two independent Round-4 verifications of PR A at `1442c94` (a code review and a 
 - **V#2.** The label now uses `color-mix(in oklab, var(--px-info) 60%, var(--px-text))`, still blue. Measured on the prompt field: ~4.9:1 Light Modern, ~5.5:1 Dark Modern, ~6.4:1 Flame Dark. The 75% mix suggested in review only reached 4.1:1 on Light Modern.
 - **V#5.** `.settings-header` is sticky (opaque `--px-bg`, soft rule) inside the scrolling overlay. The overlay's top padding moved into the content box, because a sticky child sticks below its scroller's padding and let cards show through above the header. Under 560 px tall the header compacts.
 - **V#6.** The Settings heading (`tabIndex={-1}`, no ring) receives `useOverlayDismiss`'s initial-focus ref, and Close is the next Tab stop. The focus trap now also wraps Shift+Tab from a focused element outside the Tab order that sits before the first control; otherwise focus would leave the webview.
+
+### PR B — picker parity and catalog refresh
+
+Branch `claude/pixel-minion-picker-catalog-dhbqpd`: `5d8bb2d` picker port and shared catalogs, `7038e87` catalog refresh, `a679286` SVG `max_tokens`, `5507ed9` visual-pass polish. Detail in [CHANGELOG-DETAILED.md](../CHANGELOG-DETAILED.md).
+
+- **D4 / V3 / C10** ✅ `5d8bb2d`. `ModelBrowserModal` / `ModelBrowserSelect` / `modelBrowserOptions` / `model-browser.css` ported from Frame sprint-06: three pivots incl. By Release Date, OpenRouter group highlight, cost description on every card, Frame's 124 px pill, single-line trigger. The SVG browser groups By Family by kind (Native SVG / SVG code), so a Gemini text model can no longer land in "Gemini Image".
+- **C3 / C9 / U-1b** ✅ `5d8bb2d`, `7038e87`. Frame's `ImagePricing` with an explicit `unit`; labels switch on it (no `startsWith(` left in `modelBrowserOptions.ts`); per-image estimates come from each row's documented basis (GPT-5.4 Image 2 ≈ $0.211 @ 1K high, not ≈ $0.039); input rates are stored and shown (MAI $8 image rate, GPT-5.x wrappers, Riverflow V2 per reference). Code-SVG models carry `TextPricing` per 1M tokens.
+- **D7 / C8** ◐ `5d8bb2d` for the picker half: chips are an `aria-pressed` group, cards are `aria-pressed` and named by their title, pivots are a tablist with a roving Tab stop, the trigger keeps its `htmlFor` label and `aria-expanded`. The overlay hook (focus trap/return, inert, Escape scoping) is PR A's and is wired unchanged.
+- **V10** ◐ `5d8bb2d` for the picker: measured in the harness, the trigger matches the Aspect Ratio select's height (34 px), value inset (12 px), chevron edge (11 px) and glyph, surface, font and radius.
+- **V15** ✅ `5d8bb2d`. Release-date pivot; the current model scrolls into view on open; cost pills stay on one line at ≤ 520 px.
+- **U5** ✅ `7038e87`. `openai/gpt-5-image-mini` shows a "retiring Dec 1, 2026" warn badge. Not in `RETIRED_MODELS`: it is still served; add it with a replacement once it is delisted.
+- **U6** ✅ `7038e87`. GPT-5.6 Sol / Sol Pro left the SVG list for GPT-6.1 Sol ($2/$10), so the drifted $5/$30 is gone. Saved selections of superseded-but-live models are not migrated; they keep working and show as "Custom".
+- **M1** ✅ `a679286`. SVG turns send `max_tokens: 32000` (reasoning counts against it; under every curated endpoint's 65,536 output cap; bounds a runaway turn). `CLAUDE.md` / `AGENTS.md` corrected from 48,000.
+- **U2 / C2** ◐ `7038e87` for the B half: `x-ai/grok-imagine-image-2.0` is in the catalog and `RETIRED_MODELS` now moves `grok-imagine-image-quality` to it (and `claude-opus-4` / `claude-opus-5-fast` to `claude-opus-5.5`). A catalog test pins that every retired id moves to a shipped model.
+- **C1 / U4** — B makes no wire changes, so the catalog-driven half moves to **P3** (with the Image API transport). B extends the modality snapshot test to the 9 new image ids; the prefix routing sends each of them only the modalities it declares.
+- **C13** (stale `svgModel` description in `package.json`): `7038e87` rewrites the `imageModel` and `svgModel` descriptions for the current catalog; the row's other parts are PR A's.
+- Also from PR A's visual review (not ledger rows): picker text no longer uses `--px-text-dim` for meaningful text, badges are 10.5 px, and accent badges use foreground text on the tint. One residual: the modal eyebrow in Light Modern measures 3.78:1 because the family `--px-accent-text` token does; that belongs to the token, not the picker.
