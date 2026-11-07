@@ -129,14 +129,19 @@
   cursor: pointer;
 }
 
-.px-balances-refresh:hover:not(:disabled) {
+.px-balances-refresh:hover:not([aria-disabled="true"]) {
   color: var(--px-text);
   background: var(--px-field-hover);
 }
 
-.px-balances-refresh:disabled {
-  opacity: 0.5;
+/* Busy: aria-disabled (it keeps focus). Dim the glyph, not the button, so a
+   keyboard user's focus ring stays at full strength. */
+.px-balances-refresh[aria-disabled="true"] {
   cursor: progress;
+}
+
+.px-balances-refresh[aria-disabled="true"] svg {
+  opacity: 0.5;
 }
 
 .px-balances-refresh.spinning svg {
@@ -272,7 +277,18 @@
   .px-balance-summary { min-width: 118px; }
 }
 
+/* Reduced motion: the OS query, or VS Code's workbench.reduceMotion that App
+   stamps as data-reduced-motion (see global.css). The spinner slows rather
+   than stops so "busy" stays visible. */
 @media (prefers-reduced-motion: reduce) {
   .px-balances-refresh.spinning svg { animation-duration: 2.4s; }
   .px-balance-bar span { transition: none; }
+}
+
+.app-container[data-reduced-motion] .px-balances-refresh.spinning svg {
+  animation-duration: 2.4s;
+}
+
+.app-container[data-reduced-motion] .px-balance-bar span {
+  transition: none;
 }

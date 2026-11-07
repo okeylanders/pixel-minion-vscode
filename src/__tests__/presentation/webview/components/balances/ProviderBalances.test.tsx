@@ -173,7 +173,27 @@ describe('OpenRouter balance header', () => {
     expect(card.getAttribute('aria-busy')).toBe('true');
     expect(card.querySelector('.px-balance-amount')?.textContent).toBe('$12.34');
     expect(strip.textContent).toContain('refreshing…');
-    expect(within(strip).getByRole('button', { name: 'Refresh OpenRouter balance' })).toHaveProperty('disabled', true);
+    const refresh = within(strip).getByRole('button', { name: 'Refresh OpenRouter balance' });
+    expect(refresh.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('keeps keyboard focus on the refresh button while it is busy, and ignores clicks', () => {
+    const value = balances(ok({ credits: { totalCredits: 1, totalUsage: 0, remaining: 1 } }));
+    const { strip, expand, rerender } = renderHeader(value);
+    expand();
+    const refresh = within(strip).getByRole('button', { name: 'Refresh OpenRouter balance' });
+    refresh.focus();
+    expect(refresh.getAttribute('aria-disabled')).toBeNull();
+
+    // The refresh is now in flight.
+    const busy = { ...value, isLoading: true };
+    rerender(<AppHeader balances={busy} />);
+
+    expect(refresh.hasAttribute('disabled')).toBe(false);
+    expect(refresh.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(refresh);
+    fireEvent.click(refresh);
+    expect(value.refresh).not.toHaveBeenCalled();
   });
 
   it('shows the placeholder only before the first payload', () => {

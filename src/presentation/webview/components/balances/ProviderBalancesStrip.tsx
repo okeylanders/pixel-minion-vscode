@@ -65,11 +65,15 @@ export const ProviderBalancesStrip: React.FC<ProviderBalancesStripProps> = ({
           <ChevronIcon up />
           Account balance
         </button>
+        {/* aria-disabled, not disabled: a disabled button drops keyboard
+            focus to <body> mid-refresh. Clicks are ignored while loading. */}
         <button
           type="button"
           className={`px-balances-refresh${isLoading ? ' spinning' : ''}`}
-          onClick={refresh}
-          disabled={isLoading}
+          onClick={() => {
+            if (!isLoading) refresh();
+          }}
+          aria-disabled={isLoading ? true : undefined}
           title="Refresh OpenRouter balance"
           aria-label="Refresh OpenRouter balance"
         >
