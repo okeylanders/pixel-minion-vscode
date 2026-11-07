@@ -199,6 +199,18 @@ describe('SVGGenerationHandler save', () => {
     ]);
   });
 
+  it('never writes a link that pings a tracker, even with a same-document href (R16-2)', async () => {
+    await handler().handleSaveRequest(createEnvelope(MessageType.SVG_SAVE_REQUEST, 'webview.svgGeneration', {
+      svgCode: '<svg xmlns="http://www.w3.org/2000/svg"><a href="#x" ping="https://tracker.example/ping"><text y="20">Open</text></a></svg>',
+      suggestedFilename: 'a.svg',
+    }, 'svg-save-3'));
+
+    expect(host.workspace.fs.writeFile).not.toHaveBeenCalled();
+    expect(results(MessageType.SVG_SAVE_RESULT).map((m) => m.payload)).toEqual([
+      { success: false, error: 'Not saved: this SVG sends hyperlink-auditing pings when a link is followed (ping).' },
+    ]);
+  });
+
   it('keeps a completed write successful when the editor cannot open it', async () => {
     host.commands.executeCommand.mockRejectedValue(new Error('no editor'));
 

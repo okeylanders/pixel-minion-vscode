@@ -26,11 +26,15 @@
  * - event-handler attributes (`on…`);
  * - namespace declarations other than SVG, XLink, XML and C2PA metadata;
  * - `href` / `xlink:href` / `src` / `xml:base` that leave the document;
+ * - a `ping` attribute with any value, on any element and under any prefix:
+ *   following a link POSTs to every listed URL whatever its href says
+ *   (SVG 2 / HTML hyperlink auditing), and the list can mix local and
+ *   remote entries, so no value is reasoned about;
  * - CSS `url(…)` / `src(…)` / `image(…)` that leave the document (or never
  *   close), `@import`, `image-set()`, `expression()`, `-moz-binding`,
  *   `behavior:`, in <style> and in every attribute value;
  * - `javascript:`, `vbscript:` and `data:text/html` anywhere in an attribute;
- * - SMIL that animates `href`, `src` or `xml:base`;
+ * - SMIL that animates `href`, `src`, `xml:base` or `ping`;
  * - a DOCTYPE with an internal subset (entity definitions), processing
  *   instructions other than a leading XML declaration (e.g.
  *   xml-stylesheet), and an XML declaration naming an encoding other than
@@ -92,8 +96,13 @@ const ALLOWED_NAMESPACES = new Set([
   'http://c2pa.org/manifest',
 ]);
 
-/** How the SMIL rule names an animated URL attribute. */
-const URL_ATTRIBUTE_LABELS: ReadonlyMap<string, string> = new Map([['href', 'href'], ['src', 'src'], ['base', 'xml:base']]);
+/** How the SMIL rule names an animated URL attribute (by local name). */
+const URL_ATTRIBUTE_LABELS: ReadonlyMap<string, string> = new Map([
+  ['href', 'href'],
+  ['src', 'src'],
+  ['base', 'xml:base'],
+  ['ping', 'ping'],
+]);
 
 /** SMIL elements that can rewrite another attribute over time. */
 const ANIMATION_ELEMENTS = new Set(['animate', 'set', 'animatemotion', 'animatetransform', 'animatecolor']);
@@ -613,6 +622,15 @@ class Scanner {
         throw new Rejection('contains a javascript: URL');
       }
       if (flat.includes('data:text/html')) throw new Rejection('embeds an HTML document (data:text/html)');
+      // Hyperlink auditing: a followed link POSTs to each listed URL, and a
+      // local href doesn't make them local. Any value, decoded, is refused;
+      // only an empty ping (no destinations) is left alone. The other SVG 2
+      // <a> attributes (target, download, rel, hreflang, type,
+      // referrerpolicy) only qualify the navigation href makes, and href is
+      // held to the document above, so they send nothing on their own.
+      if (local === 'ping' && value !== '') {
+        throw new Rejection(`sends hyperlink-auditing pings when a link is followed (${name})`);
+      }
       if (URL_ATTRIBUTES.has(local) && value.trim() !== '' && !isLocalReference(value)) {
         throw new Rejection(`links to an external resource (${describeUrl(value)})`);
       }

@@ -39,6 +39,7 @@ export const ACCEPTED_SVGS: Record<string, string> = {
   'a namespaced root': `<svg:svg xmlns:svg="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><svg:rect width="1" height="1"/></svg:svg>`,
   'a lower-case utf-8 XML declaration': `<?xml version="1.0" encoding="utf-8" standalone="no"?><svg ${NS}/>`,
   'an XML declaration without an encoding': `<?xml version='1.0'?>\n<svg ${NS}/>`,
+  'a same-document link with an empty ping (no destinations)': `<svg ${NS}><a href="#x" ping=""><text id="x" y="20">Open</text></a></svg>`,
   'element and attribute names that are also Object members': `<svg ${NS}><constructor toString="1"/><g><animate attributeName="constructor" dur="1s"/></g></svg>`,
   'a typical code-model SVG': `<svg ${NS} ${XLINK} viewBox="0 0 64 64" role="img" aria-label="Pixel's (beta) badge" data-name="badge">
   <title>Badge</title>
@@ -288,6 +289,54 @@ export const REJECTED_SVGS: Record<string, { svg: string; reason: string }> = {
   'an XML declaration after other markup (R5-S6)': {
     svg: `<!-- first --><?xml version="1.0"?><svg ${NS}/>`,
     reason: 'XML declaration',
+  },
+  'a same-document link with an external ping (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping="https://tracker.example/ping"><text y="20">Open</text></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'an entity-encoded ping (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping="&#x68;ttps&#58;//tracker.example/&#112;ing"><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'a ping that is entirely character references (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping="&#47;&#47;t.example"><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'several ping destinations, local first and external last (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping="#a #b https://tracker.example/p"><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'several ping destinations, all local (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping="#a #b"><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'a whitespace-only ping (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" ping=" &#x9; "><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'a ping with no link target (R16-2)': {
+    svg: `<svg ${NS}><a ping="https://tracker.example/p"><rect/></a></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'a prefixed ping (R16-2)': {
+    svg: `<svg ${NS} ${XLINK}><a href="#x" xlink:ping="https://tracker.example/p"><rect/></a></svg>`,
+    reason: 'when a link is followed (xlink:ping)',
+  },
+  'a ping on a namespaced <svg:a> (R16-2)': {
+    svg: `<svg:svg xmlns:svg="http://www.w3.org/2000/svg"><svg:a href="#x" ping="https://tracker.example/p"><svg:rect/></svg:a></svg:svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'a ping on an element other than <a> (R16-2)': {
+    svg: `<svg ${NS}><g ping="https://tracker.example/p"><rect/></g></svg>`,
+    reason: 'hyperlink-auditing pings',
+  },
+  'an upper-case PING (R16-2)': {
+    svg: `<svg ${NS}><a href="#x" PING="https://tracker.example/p"><rect/></a></svg>`,
+    reason: 'when a link is followed (PING)',
+  },
+  'SMIL setting a ping (R16-2)': {
+    svg: `<svg ${NS}><a href="#x"><set attributeName="ping" to="https://tracker.example/p"/><rect/></a></svg>`,
+    reason: 'SMIL on ping',
   },
 };
 
