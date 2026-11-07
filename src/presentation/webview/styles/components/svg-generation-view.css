@@ -1,74 +1,7 @@
 /**
- * SVGGenerationView styles
+ * SVGGenerationView — SVG-tab specifics on top of generation-view.css: the
+ * result header with its inline thumbnail, and the 32/64/128 size row.
  */
-
-.svg-generation-view {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  height: 100%;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  overflow: hidden;
-}
-
-/* Output well - takes remaining space */
-.svg-generation-output-well {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0; /* Important for flex item to shrink */
-  overflow: hidden;
-}
-
-/* Scrollable result area - takes remaining space within well */
-.svg-generation-scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0; /* Important for flex item to shrink */
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.svg-generation-header {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: var(--spacing-md);
-}
-
-.svg-generation-header > * {
-  flex: 1;
-  min-width: 150px;
-}
-
-.svg-generation-prompt-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Actions row: Reference image + Enhance button */
-.svg-generation-actions-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.svg-generation-actions-row .enhance-prompt-button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.svg-generation-error {
-  padding: 8px 12px;
-  background: var(--vscode-inputValidation-errorBackground);
-  border: 1px solid var(--vscode-inputValidation-errorBorder);
-  color: var(--vscode-inputValidation-errorForeground);
-  border-radius: 4px;
-  font-size: 13px;
-}
 
 .svg-generation-result {
   display: flex;
@@ -78,49 +11,36 @@
 
 .svg-result-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .svg-result-title {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
+}
+
+.svg-result-title h3 {
+  margin: 0;
+  overflow: hidden;
+  color: var(--px-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .svg-inline-preview {
   width: 24px;
   height: 24px;
-  border: 1px solid var(--px-border-soft);
-  border-radius: 3px;
-  overflow: hidden;
   flex-shrink: 0;
-  order: -1; /* Move before the h3 */
-}
-
-/* Override SVGPreview styles for inline thumbnail */
-.svg-inline-preview .svg-preview {
-  min-height: unset;
-  padding: 0;
-  border: none;
-  width: 100%;
-  height: 100%;
-}
-
-.svg-inline-preview .svg-preview-content {
-  width: 100%;
-  height: 100%;
-}
-
-.svg-inline-preview .svg-preview-content svg {
-  width: 100%;
-  height: 100%;
-}
-
-.svg-result-header h3 {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  order: -1; /* before the title */
+  overflow: hidden;
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-sm);
 }
 
 .svg-result-actions {
@@ -128,13 +48,32 @@
   gap: 8px;
 }
 
+/* Thumbnails reuse SVGPreview; strip its well chrome to fit the box. */
+.svg-inline-preview .svg-preview,
+.svg-sized-preview-box .svg-preview {
+  width: 100%;
+  height: 100%;
+  min-height: unset;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.svg-inline-preview .svg-preview-content,
+.svg-sized-preview-box .svg-preview-content,
+.svg-inline-preview .svg-preview-content svg,
+.svg-sized-preview-box .svg-preview-content svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Size row: how the result reads at icon sizes. */
 .svg-preview-grid {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: flex-end; /* Right align */
-  margin-bottom: 12px;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .svg-sized-preview {
@@ -146,44 +85,15 @@
 
 .svg-sized-preview-box {
   position: relative;
-  border: 1px solid var(--px-border-soft);
-  border-radius: 4px;
-  background: var(--vscode-editor-background);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
   overflow: hidden;
-}
-
-/* Override SVGPreview styles for sized thumbnails */
-.svg-sized-preview-box .svg-preview {
-  min-height: unset;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.svg-sized-preview-box .svg-preview-content {
-  width: 100%;
-  height: 100%;
-}
-
-.svg-sized-preview-box .svg-preview-content svg {
-  width: 100%;
-  height: 100%;
+  background: var(--px-bg);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-sm);
 }
 
 .svg-sized-label {
-  font-size: 10px;
-  color: var(--vscode-descriptionForeground);
-  order: -1; /* Move above the preview box */
-}
-
-/* Token usage display - subtle, right-aligned */
-.svg-usage-display {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  text-align: right;
-  padding-right: 4px;
-  opacity: 0.8;
+  order: -1; /* above the box */
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 10.5px;
 }

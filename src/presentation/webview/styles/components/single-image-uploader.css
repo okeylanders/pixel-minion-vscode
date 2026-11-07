@@ -1,3 +1,9 @@
+/**
+ * SingleImageUploader — the SVG tab's optional reference image. The Add
+ * button is a family button (`.btn .btn-secondary`); the preview is a small
+ * card with a quiet remove control.
+ */
+
 .single-image-uploader {
   width: 100%;
 }
@@ -6,65 +12,45 @@
   display: none;
 }
 
-.add-reference-button {
-  padding: 4px 8px;
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border: none;
-  border-radius: var(--px-radius-sm);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.add-reference-button:hover:not(:disabled) {
-  background: var(--vscode-button-secondaryHoverBackground);
-}
-
-.add-reference-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .single-image-preview {
   position: relative;
   width: 100%;
   max-width: 300px;
-  border: 1px solid var(--px-border-soft);
-  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--px-inset);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-card);
 }
 
 .single-image-preview img {
+  display: block;
   width: 100%;
   height: auto;
-  display: block;
 }
 
 .remove-image {
   position: absolute;
-  top: var(--spacing-xs);
-  right: var(--spacing-xs);
+  top: 6px;
+  right: 6px;
+  display: flex;
   width: 28px;
   height: 28px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: 50%;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  opacity: 0.9;
+  padding: 0;
+  color: var(--px-text);
+  background: color-mix(in oklab, var(--px-bg) 82%, transparent);
+  border: 1px solid var(--px-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background 100ms, color 100ms;
 }
 
 .remove-image:hover:not(:disabled) {
-  background: var(--vscode-button-hoverBackground);
-  opacity: 1;
-  transform: scale(1.1);
+  color: var(--px-err);
+  background: var(--px-bg);
 }
 
 .remove-image:disabled {

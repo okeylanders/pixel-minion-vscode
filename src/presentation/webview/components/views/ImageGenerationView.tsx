@@ -3,9 +3,13 @@
  *
  * Pattern: Composition of existing image generation components
  * Responsibilities:
- * - Compose ModelSelector, AspectRatioSelector, ImageUploader, ImageGallery
+ * - Compose ModelSelector, AspectRatioSelector, ImageUploader, ConversationThread
  * - Receive hook instance as prop (prose-minion pattern)
  * - Handle image save state tracking
+ *
+ * Layout: generation-view.css (shared with the SVG tab, after Frame's
+ * sprint-06 Image tab): stacked controls card, then an output card that
+ * grows with the conversation, then the sticky refine bar.
  */
 import React from 'react';
 import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration';
@@ -19,8 +23,20 @@ import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
+import { LineGlyph } from '../common/LineGlyph';
+import { TabImageIcon } from '../layout/tabIcons';
 import { GeneratedImage } from '@messages';
+import '../../styles/components/generation-view.css';
 import '../../styles/components/image-generation-view.css';
+
+const TrashIcon: React.FC = () => (
+  <LineGlyph size={16}>
+    <path d="M4 7h16" />
+    <path d="M10 11v6M14 11v6" />
+    <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
+    <path d="M9 7V4h6v3" />
+  </LineGlyph>
+);
 
 export interface ImageGenerationViewProps {
   imageGeneration: UseImageGenerationReturn;
@@ -94,11 +110,11 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   }, [saveImage]);
 
   return (
-    <div className="image-generation-view">
+    <div className="generation-view image-generation-view">
       {/* Input well: Model, Aspect Ratio, Seed, Prompt, Reference Images, Generate button */}
       <div className="well">
-        {/* Header: Model + Aspect Ratio + Seed selectors */}
-        <div className="image-generation-header">
+        {/* Header: Model, Aspect Ratio and Seed, stacked full width */}
+        <div className="generation-header">
           <ModelSelector
             models={OPENROUTER_IMAGE_MODELS}
             selectedModel={model}
@@ -123,7 +139,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         </div>
 
         {/* Prompt input */}
-        <div className="image-generation-prompt-section">
+        <div className="generation-prompt-section">
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -150,12 +166,12 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             </Button>
           </div>
           {referenceSvgText && (
-            <div className="image-generation-svg-note">
+            <div className="generation-note">
               {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
             </div>
           )}
           {referenceImageSizeWarning && (
-            <div className="image-generation-size-warning">
+            <div className="generation-warning" role="status">
               ⚠️ {referenceImageSizeWarning}
             </div>
           )}
@@ -171,14 +187,14 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
         {/* Error display */}
         {error && (
-          <div className="image-generation-error">
+          <div className="generation-error" role="alert">
             {error}
           </div>
         )}
       </div>
 
       {/* Output well: Conversation header and thread */}
-      <div className="well image-generation-output-well">
+      <div className="well generation-output-well">
         {/* Conversation header - only show when we have a conversation */}
         {conversationHistory.length > 0 && (
           <div className="conversation-header">
@@ -193,15 +209,30 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
               className="conversation-header-clear"
               onClick={clearConversation}
               title="Clear conversation"
+              aria-label="Clear conversation"
               disabled={isLoading}
             >
-              <span aria-hidden="true">&#128465;</span>
+              <TrashIcon />
             </button>
           </div>
         )}
 
-        {/* Scrollable conversation area */}
-        <div className="image-generation-scroll-area">
+        {/* Empty state until the first generation */}
+        {conversationHistory.length === 0 && !isLoading && (
+          <div className="generation-empty">
+            <span className="generation-empty-icon" aria-hidden="true">
+              <TabImageIcon size={22} />
+            </span>
+            <p className="generation-empty-title">Your images appear here</p>
+            <p className="generation-empty-hint">
+              Describe one above and press Generate. Follow-up prompts refine it in the same
+              conversation.
+            </p>
+          </div>
+        )}
+
+        {/* Conversation (the tab content is the scroller) */}
+        <div className="generation-output">
           {/* Conversation thread - chat-style display of all turns */}
           <ConversationThread
             turns={conversationHistory}

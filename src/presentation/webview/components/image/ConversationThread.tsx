@@ -66,7 +66,7 @@ export const ConversationThread: React.FC<ConversationThreadProps> = ({
 
           {/* Token usage */}
           {turn.usage && (
-            <div className="conversation-turn-usage">
+            <div className="generation-usage">
               {formatUsage(turn.usage)}
             </div>
           )}

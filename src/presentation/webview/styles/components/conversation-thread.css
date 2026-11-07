@@ -1,73 +1,58 @@
 /**
- * ConversationThread styles - Chat-style conversation display
+ * ConversationThread — Frame's fm-chat.
+ *
+ * Each turn is a column: a right-aligned user bubble with an info-blue LEFT
+ * stripe and a mono "You" label, the generated image card(s), then the
+ * per-turn usage line. Spacing alone separates turns (no divider).
  */
 
 .conversation-thread {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .conversation-turn {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-/* User prompt bubble - right aligned like traditional chat */
 .conversation-prompt {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  max-width: 88%;
+  align-self: flex-end;
   padding: 10px 12px;
-  background: var(--vscode-editor-selectionBackground);
-  border-radius: 8px;
-  border-right: 3px solid var(--vscode-textLink-foreground);
-  border-left: none;
-  margin-left: auto;
-  max-width: 85%;
-  text-align: right;
+  color: var(--px-text);
+  text-align: left;
+  background: var(--px-field);
+  border: 1px solid var(--px-border-soft);
+  border-left: 3px solid var(--px-info);
+  border-radius: var(--px-radius-field);
 }
 
 .conversation-prompt-label {
-  font-size: 11px;
+  display: block;
+  margin-bottom: 4px;
+  color: var(--px-info);
+  font-family: var(--px-mono);
+  font-size: 10.5px;
   font-weight: 600;
-  color: var(--vscode-textLink-foreground);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .conversation-prompt-text {
-  font-size: 13px;
-  color: var(--vscode-foreground);
-  line-height: 1.4;
+  display: block;
+  color: var(--px-text);
+  font-size: 12.5px;
+  line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-  text-align: left;
 }
 
-/* Images grid for the turn */
+/* One image per turn is the norm; the grid handles models that return more. */
 .conversation-images {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: 12px;
-}
-
-/* Token usage display - subtle, right-aligned */
-.conversation-turn-usage {
-  font-size: 11px;
-  color: var(--vscode-descriptionForeground);
-  text-align: right;
-  padding-right: 4px;
-  opacity: 0.8;
-}
-
-/* Divider between turns (optional, subtle) */
-.conversation-turn:not(:last-child)::after {
-  content: '';
-  display: block;
-  height: 1px;
-  background: var(--px-border-soft);
-  margin-top: 8px;
-  opacity: 0.5;
 }

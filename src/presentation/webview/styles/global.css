@@ -434,16 +434,13 @@ body {
   margin: var(--spacing-md) 0;
 }
 
-/* Well - card-like container for grouping form elements (Prose Minion design) */
+/* Well — the family card that groups a view's controls or output. Spacing
+   between wells comes from the parent's gap. */
 .well {
+  padding: 16px;
   background: var(--px-card);
-  border: 1px solid var(--px-border-soft);
-  border-radius: var(--px-radius);
-  padding: var(--spacing-md);
-}
-
-.well + .well {
-  margin-top: var(--spacing-sm);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-card);
 }
 
 /* Settings overlay — Frame's settings view: a full-surface dialog with the
@@ -636,9 +633,9 @@ body {
   background: var(--px-card);
   border: 1px solid var(--px-border-soft);
   border-left: 2px solid var(--px-warn);
-  border-radius: var(--px-radius);
+  border-radius: var(--px-radius-card);
   padding: var(--spacing-md);
-  margin: var(--spacing-md);
+  margin: 0 var(--px-gutter) 16px;
 }
 
 .openrouter-alert-header {

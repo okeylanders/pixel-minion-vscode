@@ -1,50 +1,72 @@
+/**
+ * ContinueChatInput — the refine bar (Frame's fm-refine).
+ *
+ * Sticky to the bottom of the tab scroller, in the same column as the cards
+ * above it: a family field plus a secondary Send button.
+ */
+
 .continue-chat-input {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  background: var(--px-panel);
-  border-top: 1px solid var(--px-border-soft);
   position: sticky;
   bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 0;
+  background: var(--px-bg);
+  border-top: 1px solid var(--px-border);
+}
+
+/* The bar sits flush with the bottom edge, unlike the cards above it. */
+.generation-view > .continue-chat-input:last-child {
+  margin-bottom: 0;
 }
 
 .continue-chat-input-field {
+  min-width: 0; /* let the field shrink instead of pushing Send past the edge */
+  height: var(--px-control-h);
   flex: 1;
-  padding: 10px 14px;
-  background: var(--px-inset);
+  padding: 0 12px;
   color: var(--px-text-input);
+  background: var(--px-field);
   border: 1px solid var(--px-border);
-  border-radius: var(--px-radius);
-  font-size: 13px;
+  border-radius: var(--px-radius-field);
   outline: none;
+  font: inherit;
+  font-size: 12.5px;
+  transition: border-color 100ms, box-shadow 100ms;
 }
 
 .continue-chat-input-field:focus {
-  border-color: var(--px-accent);
-  box-shadow: 0 0 0 2px var(--px-accent-ring);
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
 .continue-chat-input-field:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .continue-chat-input-field::placeholder {
-  color: var(--vscode-input-placeholderForeground);
+  color: var(--vscode-input-placeholderForeground, var(--px-text-dim));
 }
 
 .continue-chat-submit {
-  padding: 10px 18px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: var(--px-radius);
+  min-height: var(--px-control-h);
+  flex-shrink: 0;
+  padding: 0 18px;
+  color: var(--px-btn-text);
+  background: var(--px-btn);
+  border: 1px solid var(--px-border-strong);
+  border-radius: var(--px-radius-field);
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  font: inherit;
+  font-size: 12.5px;
+  transition: background 100ms;
 }
 
 .continue-chat-submit:hover:not(:disabled) {
-  background: var(--vscode-button-hoverBackground);
+  background: var(--px-btn-hover);
 }
 
 .continue-chat-submit:disabled {

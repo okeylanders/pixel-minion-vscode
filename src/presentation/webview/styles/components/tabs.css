@@ -72,15 +72,20 @@
   white-space: nowrap;
 }
 
-/* Tab content container */
+/* Tab content: the ONE scroller for the active view (alert included), so no
+   nested scroll area can crush a view's output. Views lay out as columns. */
 .tab-content {
+  display: flex;
+  min-height: 0;
   flex: 1;
-  overflow: auto;
-  padding: var(--spacing-md);
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .tab-panel {
-  height: 100%;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
 }
 
 .tab-panel[hidden] {
