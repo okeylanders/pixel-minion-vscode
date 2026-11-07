@@ -46,8 +46,7 @@ export function formatWhen(timestamp: number, now: number = Date.now()): string 
 }
 
 /** Short clause explaining why a call failed, e.g. "API key rejected (HTTP 401)". */
-export function describeIssue(issue: OpenRouterAccountIssue | undefined): string {
-  if (!issue) return 'no details';
+export function describeIssue(issue: OpenRouterAccountIssue): string {
   const http = issue.httpStatus !== undefined ? ` (HTTP ${issue.httpStatus})` : '';
   switch (issue.kind) {
     case 'invalid_key':
@@ -73,6 +72,13 @@ export function describeUnavailable(balance: OpenRouterBalancePayload): string {
   if (!issue) return 'Balance unavailable.';
   const hint = issue.kind === 'invalid_key' ? ' Check the key in Settings.' : '';
   return `Balance unavailable: ${describeIssue(issue)}.${hint}`;
+}
+
+/** The note shown when the key limit was read but the account balance was not. */
+export function describeCreditsUnavailable(balance: OpenRouterBalancePayload): string {
+  return balance.creditsIssue
+    ? `Account balance unavailable: ${describeIssue(balance.creditsIssue)}.`
+    : 'Account balance unavailable.';
 }
 
 /** True when the key has a spend cap with known headroom. */

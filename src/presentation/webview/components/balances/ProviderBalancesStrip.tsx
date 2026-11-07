@@ -17,7 +17,7 @@ import { OpenRouterBalancePayload, OpenRouterKeyLimit, TokenUsage } from '@messa
 import { UseOpenRouterBalanceReturn } from '@hooks/domain';
 import {
   RESET_LABELS,
-  describeIssue,
+  describeCreditsUnavailable,
   describeUnavailable,
   formatRequestCost,
   formatUsd,
@@ -128,7 +128,7 @@ const OpenRouterBody: React.FC<{ balance: OpenRouterBalancePayload | null }> = (
     );
   }
 
-  const creditsNote = `Account balance unavailable: ${describeIssue(balance.creditsIssue)}.`;
+  const creditsNote = describeCreditsUnavailable(balance);
   if (hasEnforcedLimit(keyLimit)) {
     return (
       <>

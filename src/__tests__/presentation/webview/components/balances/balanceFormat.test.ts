@@ -1,4 +1,5 @@
 import {
+  describeCreditsUnavailable,
   describeUnavailable,
   formatRequestCost,
   formatUsd,
@@ -40,6 +41,21 @@ describe('balanceFormat', () => {
 
     it('adds the year for an earlier year', () => {
       expect(formatWhen(new Date(2025, 11, 31, 9, 5).getTime(), now)).toMatch(/2025/);
+    });
+  });
+
+  describe('describeCreditsUnavailable', () => {
+    const capOnly = { ...base, status: 'ok', creditsStatus: 'unavailable' } as const;
+
+    it('names the cause when there is one', () => {
+      expect(describeCreditsUnavailable({ ...capOnly, creditsIssue: { kind: 'server_error', httpStatus: 503 } }))
+        .toBe('Account balance unavailable: OpenRouter error (HTTP 503).');
+      expect(describeCreditsUnavailable({ ...capOnly, creditsIssue: { kind: 'malformed' } }))
+        .toBe('Account balance unavailable: unreadable response.');
+    });
+
+    it('stays a plain sentence without one', () => {
+      expect(describeCreditsUnavailable(capOnly)).toBe('Account balance unavailable.');
     });
   });
 
