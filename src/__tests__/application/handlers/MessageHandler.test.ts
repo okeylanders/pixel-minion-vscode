@@ -117,20 +117,8 @@ describe('MessageHandler', () => {
       );
     });
 
-    it('should broadcast initial token usage on construction', () => {
-      expect(postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
-            totals: {
-              promptTokens: 0,
-              completionTokens: 0,
-              totalTokens: 0,
-              costUsd: 0,
-            },
-          },
-        })
-      );
+    it('posts nothing until something happens', () => {
+      expect(postMessage).not.toHaveBeenCalled();
     });
   });
 
@@ -237,96 +225,35 @@ describe('MessageHandler', () => {
   });
 
   describe('applyTokenUsage', () => {
-    it('should accumulate token usage correctly', () => {
-      postMessage.mockClear();
-
-      const usage1: TokenUsage = {
+    it('reports each request\'s usage as the last request, without session totals', () => {
+      const usage: TokenUsage = {
         promptTokens: 100,
         completionTokens: 50,
         totalTokens: 150,
         costUsd: 0.01,
       };
 
-      handler.applyTokenUsage(usage1);
+      handler.applyTokenUsage(usage);
 
-      expect(postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
-            totals: {
-              promptTokens: 100,
-              completionTokens: 50,
-              totalTokens: 150,
-              costUsd: 0.01,
-            },
-            lastRequest: usage1,
-            requestedAt: expect.any(Number),
-          },
-        })
-      );
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage).toHaveBeenCalledWith({
+        type: MessageType.TOKEN_USAGE_UPDATE,
+        source: 'extension.settings',
+        payload: { lastRequest: usage, requestedAt: expect.any(Number) },
+        timestamp: expect.any(Number),
+      });
     });
 
-    it('should accumulate multiple usages', () => {
-      const usage1: TokenUsage = {
-        promptTokens: 100,
-        completionTokens: 50,
-        totalTokens: 150,
-        costUsd: 0.01,
-      };
-
-      const usage2: TokenUsage = {
-        promptTokens: 200,
-        completionTokens: 100,
-        totalTokens: 300,
-        costUsd: 0.02,
-      };
-
-      handler.applyTokenUsage(usage1);
+    it('replaces rather than accumulates across requests', () => {
+      handler.applyTokenUsage({ promptTokens: 100, completionTokens: 50, totalTokens: 150, costUsd: 0.01 });
       postMessage.mockClear();
-      handler.applyTokenUsage(usage2);
+      const second: TokenUsage = { promptTokens: 200, completionTokens: 0, totalTokens: 200 };
 
-      expect(postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: {
-            totals: {
-              promptTokens: 300,
-              completionTokens: 150,
-              totalTokens: 450,
-              costUsd: 0.03,
-            },
-            lastRequest: usage2,
-            requestedAt: expect.any(Number),
-          },
-        })
-      );
-    });
+      handler.applyTokenUsage(second);
 
-    it('should handle partial token usage', () => {
-      postMessage.mockClear();
-
-      const partialUsage: TokenUsage = {
-        promptTokens: 100,
-        completionTokens: 0,
-        totalTokens: 100,
-      };
-
-      handler.applyTokenUsage(partialUsage);
-
-      expect(postMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payload: {
-            totals: expect.objectContaining({
-              promptTokens: 100,
-              completionTokens: 0,
-              totalTokens: 100,
-            }),
-            lastRequest: partialUsage,
-            requestedAt: expect.any(Number),
-          },
-        })
-      );
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        payload: { lastRequest: second, requestedAt: expect.any(Number) },
+      }));
     });
   });
-
 });

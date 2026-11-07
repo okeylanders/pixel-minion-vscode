@@ -82,14 +82,6 @@ export class MessageHandler {
    */
   private readonly postMessage: (message: MessageEnvelope) => void;
 
-  // Token usage accumulator - tracks total usage across the session
-  private tokenTotals: TokenUsage = {
-    promptTokens: 0,
-    completionTokens: 0,
-    totalTokens: 0,
-    costUsd: 0,
-  };
-
   constructor(
     postToWebview: (message: MessageEnvelope) => void,
     secretStorage: SecretStorageService,
@@ -160,49 +152,24 @@ export class MessageHandler {
     // Register routes
     this.registerRoutes();
     this.logger.info('MessageHandler initialized with routes', this.router.getRegisteredTypes());
-
-    // Send initial token usage (zeros) to webview
-    this.broadcastTokenUsage();
   }
 
   /**
-   * Apply token usage from an AI operation - accumulates to session totals
+   * Report a completed AI request's usage to the webview (the balance card's
+   * "Last request" row). The balance refresh is armed separately, by the
+   * terminal response type (TERMINAL_AI_RESPONSE_TYPES).
    */
   applyTokenUsage(usage: TokenUsage): void {
     try {
-      // Add to running totals
-      this.tokenTotals.promptTokens += usage.promptTokens || 0;
-      this.tokenTotals.completionTokens += usage.completionTokens || 0;
-      this.tokenTotals.totalTokens += usage.totalTokens || 0;
-
-      // Accumulate cost if available
-      if (typeof usage.costUsd === 'number') {
-        this.tokenTotals.costUsd = (this.tokenTotals.costUsd || 0) + usage.costUsd;
-      }
-
-      this.logger.debug('Token usage applied', this.tokenTotals);
-      this.broadcastTokenUsage(usage);
+      this.logger.debug('Token usage reported', usage);
+      this.postMessage(createEnvelope<TokenUsageUpdatePayload>(
+        MessageType.TOKEN_USAGE_UPDATE,
+        'extension.settings',
+        { lastRequest: { ...usage }, requestedAt: Date.now() }
+      ));
     } catch (error) {
-      this.logger.error('Failed to apply token usage update', error);
+      this.logger.error('Failed to report token usage', error);
     }
-  }
-
-  /**
-   * Broadcast current token totals to webview
-   */
-  private broadcastTokenUsage(lastRequest?: TokenUsage): void {
-    const message = createEnvelope<TokenUsageUpdatePayload>(
-      MessageType.TOKEN_USAGE_UPDATE,
-      'extension.settings',
-      {
-        totals: { ...this.tokenTotals },
-        ...(lastRequest ? {
-          lastRequest: { ...lastRequest },
-          requestedAt: Date.now(),
-        } : {}),
-      }
-    );
-    this.postMessage(message);
   }
 
   /**
