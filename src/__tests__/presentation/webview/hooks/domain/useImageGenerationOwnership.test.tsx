@@ -251,6 +251,43 @@ describe('useImageGeneration request ownership', () => {
     expect(result.current.error).toBe('Disk full');
   });
 
+  it('settles a save the host failed to handle (router ERROR) and leaves a running refinement alone', () => {
+    const { result } = renderHook(() => useImageGeneration(existing));
+    const other: GeneratedImage = { ...image, id: 'img-other' };
+    act(() => { result.current.saveImage(image); result.current.saveImage(other); });
+    const [save, otherSave] = posted(MessageType.IMAGE_SAVE_REQUEST);
+    act(() => result.current.continueChat('Make it red'));
+    const refinement = last(MessageType.IMAGE_GENERATION_CONTINUE);
+
+    let claimed = false;
+    act(() => {
+      claimed = result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.router',
+        { message: 'The host could not handle this request', code: 'UNHANDLED_ERROR' }, save.correlationId));
+    });
+
+    expect(claimed).toBe(true);
+    expect(result.current.savingImageIds.has(image.id)).toBe(false);
+    expect(result.current.savingImageIds.has(other.id)).toBe(true); // only that save
+    expect(result.current.error).toBe('The host could not handle this request');
+    expect(result.current.isLoading).toBe(true);
+
+    // Settled: the same id again, an unknown save id, or a late result are not ours.
+    act(() => { claimed = result.current.handleError(error('extension.imageGeneration', 'again', save.correlationId)); });
+    expect(claimed).toBe(false);
+    act(() => { claimed = result.current.handleError(error('extension.imageGeneration', 'unknown', 'image-save-unknown')); });
+    expect(claimed).toBe(false);
+    act(() => result.current.handleSaveResult(createEnvelope(MessageType.IMAGE_SAVE_RESULT, 'extension.imageGeneration',
+      { success: true, imageId: image.id }, save.correlationId)));
+    expect(result.current.savedImageIds.has(image.id)).toBe(false);
+
+    // The other save and the refinement still settle on their own answers.
+    act(() => result.current.handleSaveResult(createEnvelope(MessageType.IMAGE_SAVE_RESULT, 'extension.imageGeneration',
+      { success: true, imageId: other.id }, otherSave.correlationId)));
+    expect(result.current.savedImageIds.has(other.id)).toBe(true);
+    act(() => result.current.handleGenerationResponse(response(refinement.correlationId)));
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it('names the saved file after the image format and refuses unknown formats', () => {
     const { result } = renderHook(() => useImageGeneration(existing));
     act(() => result.current.saveImage({ ...image, id: 'webp', mimeType: 'image/webp', data: 'data:image/webp;base64,UklG' }));

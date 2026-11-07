@@ -111,10 +111,11 @@ export function App(): JSX.Element {
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),
 
-    // Error routing. Generation, enhance and clear errors carry the id of
-    // the request that failed, and each hook settles only its own requests,
-    // so both see every error: an Image-tab enhance failure can't stop the
-    // SVG spinner, and a stale error settles nothing.
+    // Error routing. Generation, enhance, save and clear errors carry the id
+    // of the request that failed, and each hook settles only its own
+    // requests, so both see every error: an Image-tab enhance failure can't
+    // stop the SVG spinner, a failed save leaves a running generation alone,
+    // and a stale error settles nothing.
     [MessageType.ERROR]: (msg) => {
       const ownedByImage = imageGeneration.handleError(msg);
       const ownedBySvg = svgGeneration.handleError(msg);

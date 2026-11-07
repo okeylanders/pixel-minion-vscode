@@ -197,6 +197,39 @@ describe('useSVGGeneration request ownership', () => {
     expect(result.current.error).toBe('Read-only folder');
   });
 
+  it('settles a save the host failed to handle (router ERROR) and leaves a running refinement alone', () => {
+    const { result } = renderHook(() => useSVGGeneration(existing));
+    act(() => result.current.saveSVG());
+    const save = last(MessageType.SVG_SAVE_REQUEST);
+    act(() => result.current.continueChat('Add a gradient'));
+    const refinement = last(MessageType.SVG_GENERATION_CONTINUE);
+
+    let claimed = false;
+    act(() => {
+      claimed = result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.router',
+        { message: 'The host could not handle this request', code: 'UNHANDLED_ERROR' }, save.correlationId));
+    });
+
+    expect(claimed).toBe(true);
+    expect(result.current.isSaving).toBe(false);
+    expect(result.current.isSaved).toBe(false);
+    expect(result.current.error).toBe('The host could not handle this request');
+    expect(result.current.isLoading).toBe(true);
+
+    // Settled: the same id again, an unknown save id, or a late result are not ours.
+    const routerError = (id: string) =>
+      createEnvelope(MessageType.ERROR, 'extension.router', { message: 'late' }, id);
+    act(() => { claimed = result.current.handleError(routerError(save.correlationId)); });
+    expect(claimed).toBe(false);
+    act(() => { claimed = result.current.handleError(routerError('svg-save-unknown')); });
+    expect(claimed).toBe(false);
+    act(() => result.current.handleSaveResult(saveResult(save.correlationId, { success: true })));
+    expect(result.current.isSaved).toBe(false);
+
+    act(() => result.current.handleGenerationResponse(response(refinement.correlationId)));
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it('keeps persistedState referentially equal across renders while idle', () => {
     const { result, rerender } = renderHook(() => useSVGGeneration(existing));
     const first = result.current.persistedState;
