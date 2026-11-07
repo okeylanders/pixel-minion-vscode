@@ -134,3 +134,46 @@ describe('ImageOrchestrator request ownership', () => {
     expect(body(0).messages[0].content[0].text).toBe(`Match this logo\n\nReference SVG:\n${svg}`);
   });
 });
+
+describe('ImageOrchestrator rollback after the response was recorded', () => {
+  // A result that breaks the client contract (no `images` array) makes the
+  // manager throw part-way through recording the turn: after it pushed the
+  // assistant message and advanced the turn counter.
+  const malformed = { assistantMessage: assistant, images: undefined, seed: 99 };
+  const good = { assistantMessage: assistant, images: [{ data: image, mimeType: 'image/png' }], seed: 5 };
+
+  function withClient(results: unknown[]): ImageOrchestrator {
+    const orchestrator = new ImageOrchestrator(logger);
+    const queue = [...results];
+    orchestrator.setClient({
+      isConfigured: async () => true,
+      generateImages: async () => queue.shift() as never,
+    } as never);
+    return orchestrator;
+  }
+
+  it('restores the turn number, seed and last images of an existing conversation', async () => {
+    const orchestrator = withClient([good, malformed]);
+    const first = await orchestrator.generateImage('A blue knight', { model, aspectRatio: '1:1', seed: 5 });
+    const before = { ...orchestrator.getConversation(first.conversationId)! };
+
+    await expect(orchestrator.continueConversation(first.conversationId, 'Broken turn')).rejects.toThrow();
+
+    const after = orchestrator.getConversation(first.conversationId)!;
+    expect(after.messages).toHaveLength(2);
+    expect(after.turnNumber).toBe(1);
+    expect(after.lastSeed).toBe(before.lastSeed);
+    expect(after.lastImages).toEqual([image]);
+  });
+
+  it('still releases a first turn that failed after being recorded', async () => {
+    const orchestrator = withClient([malformed]);
+
+    await expect(orchestrator.generateImage('A tree', { model, aspectRatio: '1:1' })).rejects.toThrow();
+
+    const created = (logger.debug as jest.Mock).mock.calls
+      .map(([message]) => String(message))
+      .find((message) => message.startsWith('Created image conversation:'))!;
+    expect(orchestrator.getConversation(created.split(': ')[1])).toBeUndefined();
+  });
+});

@@ -39,17 +39,7 @@ import {
 } from './hooks';
 import { useOverlayDismiss } from './hooks/useOverlayDismiss';
 import { useReducedMotion } from './hooks/useReducedMotion';
-
-/** Hosts whose errors answer a specific generation, enhance or clear request. */
-const REQUEST_SOURCES: readonly string[] = [
-  'extension.imageGeneration',
-  'extension.svgGeneration',
-  'extension.enhance',
-];
-
-function isRequestSource(source: string | undefined): boolean {
-  return source !== undefined && REQUEST_SOURCES.includes(source);
-}
+import { isGenerationTabRequestId } from './utils/requestId';
 
 const TABS: Tab[] = [
   { id: 'image', label: 'Image', icon: <TabImageIcon /> },
@@ -127,9 +117,12 @@ export function App(): JSX.Element {
     [MessageType.ERROR]: (msg) => {
       const ownedByImage = imageGeneration.handleError(msg);
       const ownedBySvg = svgGeneration.handleError(msg);
-      if (ownedByImage || ownedBySvg || isRequestSource(msg.source)) return;
-      // An error from elsewhere (e.g. a settings write) belongs to no
-      // request: show it in the visible tab without touching any spinner.
+      // An error for a tab request neither hook claims answers a request
+      // that is no longer outstanding (late, duplicate or superseded).
+      if (ownedByImage || ownedBySvg || isGenerationTabRequestId(msg.correlationId)) return;
+      // Anything else (a settings write, or a host path that lost the
+      // request's id) belongs to no tab request: show it in the visible tab
+      // without touching any spinner, rather than nowhere.
       const text = (msg.payload as { message?: string } | undefined)?.message;
       if (text) {
         (activeTab === 'svg' ? svgGeneration : imageGeneration).showError(text);

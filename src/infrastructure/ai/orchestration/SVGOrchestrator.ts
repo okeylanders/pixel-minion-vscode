@@ -134,6 +134,7 @@ export class SVGOrchestrator {
     }
     this.inFlight.add(conversation.id);
     const previousMessageCount = conversation.messages.length;
+    const previousTurnNumber = conversation.turnNumber;
 
     try {
       this.logger.debug(`Generating SVG for conversation ${conversation.id}`);
@@ -173,6 +174,7 @@ export class SVGOrchestrator {
       // A failed turn (provider error, or a reply with no SVG in it) must not
       // enter the next refinement's transcript.
       conversation.messages.splice(previousMessageCount);
+      conversation.turnNumber = previousTurnNumber;
       // A conversation whose first turn failed was never shown to the user.
       if (conversation.turnNumber === 0) {
         this.conversationManager.clear(conversation.id);

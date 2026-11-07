@@ -28,6 +28,7 @@ import {
   TokenUsageUpdatePayload,
   createEnvelope,
   SettingsPayload,
+  ErrorPayload,
 } from '@messages';
 import { MessageRouter } from './MessageRouter';
 import {
@@ -300,16 +301,38 @@ export class MessageHandler {
    * Handle an incoming message
    */
   async handleMessage(message: MessageEnvelope): Promise<void> {
+    if (!message || typeof message !== 'object' || typeof message.type !== 'string') {
+      this.logger.warn('Ignoring a webview message that is not a message envelope');
+      return;
+    }
+
     // Ignore messages from extension (echo prevention)
     if (message.source?.startsWith('extension.')) {
       return;
     }
 
     this.logger.debug(`Handling message: ${message.type}`);
-    const handled = await this.router.route(message);
-
-    if (!handled) {
-      this.logger.warn(`No handler registered for message type: ${message.type}`);
+    try {
+      const handled = await this.router.route(message);
+      if (!handled) {
+        this.logger.warn(`No handler registered for message type: ${message.type}`);
+      }
+    } catch (error) {
+      // Domain handlers answer their own failures, but a throw outside their
+      // try (e.g. a malformed payload) would otherwise leave the request's
+      // spinner running forever. Answer it with an error carrying the
+      // request's id; if the handler already answered, the webview treats
+      // this one as stale and drops it.
+      this.logger.error(`Unhandled error while handling ${message.type}`, error);
+      this.postMessage(createEnvelope<ErrorPayload>(
+        MessageType.ERROR,
+        'extension.router',
+        {
+          message: 'Pixel Minion could not handle this request. See the Pixel Minion output log for details.',
+          code: 'UNHANDLED_ERROR',
+        },
+        message.correlationId
+      ));
     }
   }
 

@@ -60,6 +60,16 @@ interface PendingGeneration {
   referenceSvgText?: string;
 }
 
+/**
+ * The outstanding prompt enhancement. Its answer replaces the prompt only
+ * while the box still holds the text that was sent: Generate and Clear drop
+ * it, and an edit made while it ran wins over it.
+ */
+interface PendingEnhance {
+  correlationId: string;
+  prompt: string;
+}
+
 // 1. State Interface (read-only)
 export interface ImageGenerationState {
   prompt: string;
@@ -176,7 +186,8 @@ export function useImageGeneration(
   // Outstanding requests, matched by correlation id. Refs, not state: the
   // App-level message handlers must see the latest value synchronously.
   const pending = useRef<PendingGeneration | null>(null);
-  const pendingEnhance = useRef<string | null>(null);
+  // The outstanding enhance and the prompt text it was asked to improve.
+  const pendingEnhance = useRef<PendingEnhance | null>(null);
   /** Outstanding saves: correlation id → image id. */
   const pendingSaves = useRef(new Map<string, string>());
   const [isLoading, setIsLoading] = useState(false);
@@ -252,10 +263,19 @@ export function useImageGeneration(
   }, []);
 
   const handleEnhanceResponse = useCallback((message: MessageEnvelope) => {
-    if (!pendingEnhance.current || message.correlationId !== pendingEnhance.current) return;
+    const enhance = pendingEnhance.current;
+    if (!enhance || message.correlationId !== enhance.correlationId) return;
     pendingEnhance.current = null;
     const payload = message.payload as EnhancePromptResponsePayload;
-    setPrompt(payload.enhancedPrompt);
+    // Typed over while it ran: the user's edit wins.
+    setPrompt((current) => (current.trim() === enhance.prompt ? payload.enhancedPrompt : current));
+    setIsEnhancing(false);
+  }, []);
+
+  /** Forget the outstanding enhance; its answer, if it still comes, is ignored. */
+  const dropPendingEnhance = useCallback(() => {
+    if (!pendingEnhance.current) return;
+    pendingEnhance.current = null;
     setIsEnhancing(false);
   }, []);
 
@@ -264,7 +284,7 @@ export function useImageGeneration(
     if (pending.current && message.correlationId === pending.current.correlationId) {
       pending.current = null;
       setIsLoading(false);
-    } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current) {
+    } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current.correlationId) {
       pendingEnhance.current = null;
       setIsEnhancing(false);
     } else if (!message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`)) {
@@ -354,6 +374,9 @@ export function useImageGeneration(
       referenceSvgText: referenceSvgText ?? undefined,
     };
 
+    // Generate takes the prompt on screen. An enhance still running is
+    // dropped, so its answer can't rewrite the box under this request.
+    dropPendingEnhance();
     setIsLoading(true);
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
@@ -361,7 +384,7 @@ export function useImageGeneration(
     setGeneratedImages([]);    // Clear previous images
     setConversationHistory([]); // Clear history for new conversation
     vscode.postMessage(message);
-  }, [prompt, model, aspectRatio, referenceImages, referenceSvgText, referenceSvgIndex, seedInput, vscode]);
+  }, [prompt, model, aspectRatio, referenceImages, referenceSvgText, referenceSvgIndex, seedInput, vscode, dropPendingEnhance]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -426,8 +449,10 @@ export function useImageGeneration(
     setGeneratedImages([]);
     setConversationHistory([]);
     setPrompt('');
+    // Clear starts over: an enhance still running must not refill the box.
+    dropPendingEnhance();
     setError(null);
-  }, [conversationId, vscode]);
+  }, [conversationId, dropPendingEnhance, vscode]);
 
   const saveImage = useCallback(
     (image: GeneratedImage) => {
@@ -473,7 +498,7 @@ export function useImageGeneration(
       },
       newRequestId('image-enhance')
     );
-    pendingEnhance.current = message.correlationId!;
+    pendingEnhance.current = { correlationId: message.correlationId!, prompt: prompt.trim() };
     setIsEnhancing(true);
     setError(null);
     vscode.postMessage(message);

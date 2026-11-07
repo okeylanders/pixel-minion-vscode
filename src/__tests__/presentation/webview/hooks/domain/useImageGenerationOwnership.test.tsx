@@ -152,6 +152,53 @@ describe('useImageGeneration request ownership', () => {
     expect(result.current.prompt).toBe('A knight in moonlight');
   });
 
+  describe('a late enhance never rewrites a prompt the user moved on from', () => {
+    const enhanced = (correlationId: string) => createEnvelope(MessageType.ENHANCE_PROMPT_RESPONSE, 'extension.enhance',
+      { enhancedPrompt: 'A knight in moonlight', originalPrompt: 'A knight', type: 'image' }, correlationId);
+
+    it('Generate sends the prompt on screen and drops the running enhance', () => {
+      const { result } = renderHook(() => useImageGeneration({ model }));
+      act(() => result.current.setPrompt('A knight'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.generate());
+      expect(last(MessageType.IMAGE_GENERATION_REQUEST).payload.prompt).toBe('A knight');
+      expect(result.current.isEnhancing).toBe(false);
+
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      let claimed = true;
+      act(() => { claimed = result.current.handleError(error('extension.enhance', 'late', enhance.correlationId)); });
+      expect(result.current.prompt).toBe('A knight');
+      expect(claimed).toBe(false);
+      expect(result.current.isLoading).toBe(true);
+    });
+
+    it('Clear empties the prompt and its late enhance does not refill it', () => {
+      const { result } = renderHook(() => useImageGeneration(existing));
+      act(() => result.current.setPrompt('A knight'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.clearConversation());
+      expect(result.current.isEnhancing).toBe(false);
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      expect(result.current.prompt).toBe('');
+    });
+
+    it('keeps an edit made while the enhance ran', () => {
+      const { result } = renderHook(() => useImageGeneration({ model }));
+      act(() => result.current.setPrompt('A knight'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.setPrompt('A knight on a horse'));
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      expect(result.current.prompt).toBe('A knight on a horse');
+      expect(result.current.isEnhancing).toBe(false);
+    });
+  });
+
   it('clears the host conversation too, and shows a refused clear', () => {
     const { result } = renderHook(() => useImageGeneration(existing));
     act(() => result.current.clearConversation());

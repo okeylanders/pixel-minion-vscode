@@ -73,6 +73,34 @@ it('shows an error that belongs to no request in the visible tab only', () => {
   expect(screen.queryByRole('alert')).toBeNull();
 });
 
+it('shows an uncorrelated error from a generation host instead of dropping it', () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('tab', { name: /SVG/ }));
+  fireEvent.change(screen.getByPlaceholderText('Describe the SVG you want to create...'), { target: { value: 'A star' } });
+  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+
+  // No id: it can't settle the running request, but it must not vanish.
+  deliver(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'Host lost the request id' }));
+  expect(screen.getByRole('alert').textContent).toContain('Host lost the request id');
+  expect(isDisabled(screen.getByRole('button', { name: 'Generating...' }))).toBe(true);
+});
+
+it('settles a request the host failed to handle, and drops a stale one', () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('tab', { name: /SVG/ }));
+  fireEvent.change(screen.getByPlaceholderText('Describe the SVG you want to create...'), { target: { value: 'A star' } });
+  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  const [svgRequest] = sent(MessageType.SVG_GENERATION_REQUEST);
+
+  deliver(createEnvelope(MessageType.ERROR, 'extension.router', { message: 'stale' }, 'svg-generate-old'));
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(isDisabled(screen.getByRole('button', { name: 'Generating...' }))).toBe(true);
+
+  deliver(createEnvelope(MessageType.ERROR, 'extension.router', { message: 'Could not handle this request' }, svgRequest.correlationId));
+  expect(screen.getByRole('alert').textContent).toContain('Could not handle this request');
+  expect(screen.queryByRole('button', { name: 'Generating...' })).toBeNull();
+});
+
 it('does not rewrite webview state when an unrelated message re-renders the app', () => {
   render(<App />);
   const writes = mockSetState.mock.calls.length;

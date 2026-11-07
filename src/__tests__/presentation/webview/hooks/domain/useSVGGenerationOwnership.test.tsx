@@ -104,6 +104,53 @@ describe('useSVGGeneration request ownership', () => {
     expect(result.current.error).toBe('Enhance failed');
   });
 
+  describe('a late enhance never rewrites a prompt the user moved on from', () => {
+    const enhanced = (correlationId: string) => createEnvelope(MessageType.ENHANCE_PROMPT_RESPONSE, 'extension.enhance',
+      { enhancedPrompt: 'A five-pointed gold star', originalPrompt: 'A star', type: 'svg' }, correlationId);
+
+    it('Generate sends the prompt on screen and drops the running enhance', () => {
+      const { result } = renderHook(() => useSVGGeneration({ model }));
+      act(() => result.current.setPrompt('A star'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.generate());
+      expect(last(MessageType.SVG_GENERATION_REQUEST).payload.prompt).toBe('A star');
+      expect(result.current.isEnhancing).toBe(false);
+
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      let claimed = true;
+      act(() => { claimed = result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.enhance', { message: 'late' }, enhance.correlationId)); });
+      expect(result.current.prompt).toBe('A star');
+      expect(claimed).toBe(false);
+      expect(result.current.isLoading).toBe(true);
+    });
+
+    it('Clear empties the prompt and its late enhance does not refill it', () => {
+      const { result } = renderHook(() => useSVGGeneration(existing));
+      act(() => result.current.setPrompt('A star'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.clearConversation());
+      expect(result.current.isEnhancing).toBe(false);
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      expect(result.current.prompt).toBe('');
+    });
+
+    it('keeps an edit made while the enhance ran', () => {
+      const { result } = renderHook(() => useSVGGeneration({ model }));
+      act(() => result.current.setPrompt('A star'));
+      act(() => result.current.enhancePrompt());
+      const enhance = last(MessageType.ENHANCE_PROMPT_REQUEST);
+
+      act(() => result.current.setPrompt('A red star'));
+      act(() => result.current.handleEnhanceResponse(enhanced(enhance.correlationId)));
+      expect(result.current.prompt).toBe('A red star');
+      expect(result.current.isEnhancing).toBe(false);
+    });
+  });
+
   it('clears the host conversation with a correlated request', () => {
     const { result } = renderHook(() => useSVGGeneration(existing));
     act(() => result.current.clearConversation());

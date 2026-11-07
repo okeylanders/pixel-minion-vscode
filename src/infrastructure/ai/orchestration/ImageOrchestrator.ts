@@ -91,8 +91,14 @@ export class ImageOrchestrator {
       throw new Error('This image conversation is already generating. Wait for it to finish.');
     }
     this.inFlight.add(conversation.id);
-    const previousMessageCount = conversation.messages.length;
-    const previousSeed = conversation.lastSeed;
+    // Everything a turn may change, so a failure anywhere in it (including
+    // after the response was recorded) leaves the conversation as it was.
+    const previous = {
+      messageCount: conversation.messages.length,
+      turnNumber: conversation.turnNumber,
+      lastSeed: conversation.lastSeed,
+      lastImages: conversation.lastImages,
+    };
 
     try {
       // Use provided seed or generate new one
@@ -134,8 +140,10 @@ export class ImageOrchestrator {
     } catch (error) {
       // A failed turn must not enter the next request's history
       // (frame-minion@40e7949 ImageOrchestrator.ts:160).
-      conversation.messages.splice(previousMessageCount);
-      conversation.lastSeed = previousSeed;
+      conversation.messages.splice(previous.messageCount);
+      conversation.turnNumber = previous.turnNumber;
+      conversation.lastSeed = previous.lastSeed;
+      conversation.lastImages = previous.lastImages;
       // A conversation whose first turn failed was never shown to the user.
       if (conversation.turnNumber === 0) {
         this.conversationManager.clear(conversation.id);

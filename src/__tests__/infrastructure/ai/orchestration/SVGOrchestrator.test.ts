@@ -306,6 +306,22 @@ describe('SVGOrchestrator', () => {
       expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(5);
     });
 
+    it('restores the turn number when a turn fails after its reply was recorded', async () => {
+      const { client } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      // Fails after addAssistantResponse advanced the turn counter.
+      mockLogger.info.mockImplementationOnce(() => { throw new Error('log sink closed'); });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Make it blue')).rejects.toThrow('log sink closed');
+
+      const conversation = orchestrator.getConversation(first.conversationId)!;
+      expect(conversation.turnNumber).toBe(1);
+      expect(conversation.messages).toHaveLength(3); // system, user, assistant
+      client.createCompletion.mockClear();
+      const retry = await orchestrator.continueSVG(first.conversationId, 'Make it blue');
+      expect(retry.turnNumber).toBe(2);
+    });
+
     it('removes the in-memory conversation when its first turn fails', async () => {
       const { client } = recordingClient();
       client.createCompletion.mockRejectedValueOnce(new Error('offline'));

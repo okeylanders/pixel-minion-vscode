@@ -69,6 +69,7 @@ export type MessageSource =
   | 'extension.svgGeneration'
   | 'extension.enhance'
   | 'extension.account'
+  | 'extension.router'
   | 'webview.helloWorld'
   | 'webview.settings'
   | 'webview.ai'
