@@ -16,7 +16,8 @@
  *   - Pivots are a real tablist (roving Tab stop, arrow keys) controlling the
  *     list panel; group chips are a labelled group of toggle buttons
  *     (`aria-pressed`); cards are toggle buttons named by their title.
- *   - The selected card is scrolled into view when the browser opens.
+ *   - The selected card is scrolled into view when the browser opens; a
+ *     pivot or chip change scrolls the list back to the top.
  *   - `footerLabel` replaces Frame's hard-coded "Curated by Frame Minion".
  *   - The option types live in modelBrowserTypes.ts (re-exported here).
  */
@@ -165,6 +166,17 @@ export const ModelBrowserModal: React.FC<ModelBrowserModalProps> = ({
   React.useEffect(() => {
     setActiveGroup('All');
   }, [pivot]);
+
+  // A new grouping or chip starts at the top of its list, not at the scroll
+  // offset of the previous one (which can hide the first group heading).
+  const firstRender = React.useRef(true);
+  React.useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [pivot, activeGroup]);
 
   React.useEffect(() => {
     if (open) {

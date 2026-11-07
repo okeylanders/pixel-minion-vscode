@@ -10,8 +10,8 @@
  *     on the select chevron's edge. Frame's trigger uses the theme dropdown
  *     colours, which render white beside Pixel's tan fields in Light Modern.
  *   - Cost pills stay on one line in narrow layouts.
- *   - Fields and wells: the search box and the pivot track are Pixel fields
- *     (`--px-field`), and card hover/selected use `--px-field-hover`; the
+ *   - Fields and wells: the search box (with the field focus ring) and the
+ *     pivot track are Pixel fields (`--px-field`), and card hover/selected use `--px-field-hover`; the
  *     selected card's accent stays a border, ring and medallion. Frame uses
  *     its inset well colour there (near-black / grey); Pixel keeps
  *     `--px-inset` for code and preview wells only.
@@ -149,9 +149,10 @@
   border-radius: var(--px-radius-card);
 }
 
+/* The field focus ring (input.css), which high contrast maps to focusBorder. */
 .model-browser-search:focus-within {
-  border-color: var(--mb-accent);
-  box-shadow: 0 0 0 2px var(--mb-accent-soft);
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
 .model-browser-search input {

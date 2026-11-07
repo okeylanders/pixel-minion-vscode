@@ -315,6 +315,20 @@ describe('ModelBrowserModal', () => {
     }
   });
 
+  it('returns the list to the top when the grouping or chip changes', () => {
+    render(<ModelBrowserModal
+      open label="Model" options={groupedOptions} onClose={jest.fn()} onSelect={jest.fn()}
+    />);
+    const list = screen.getByRole('tabpanel');
+    list.scrollTop = 240;
+    fireEvent.click(screen.getByRole('tab', { name: 'By Family' }));
+    expect(list.scrollTop).toBe(0);
+
+    list.scrollTop = 120;
+    fireEvent.click(screen.getByRole('button', { name: 'Gemini 1' }));
+    expect(list.scrollTop).toBe(0);
+  });
+
   it('reopens on the full list: the query and group chip reset on close, the pivot stays', () => {
     const props = {
       label: 'Model', options: groupedOptions, onClose: jest.fn(), onSelect: jest.fn(),
