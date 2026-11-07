@@ -152,3 +152,34 @@ From code review, keep and upstream to Frame:
 ## Resolution Status
 
 _Populated as fixups land (commit sha per item)._
+
+### R4 follow-up
+
+Two independent Round-4 verifications of PR A at `1442c94` (a code review and a rendered audit in the visual harness) found the items below. All are fixed in follow-up commits on the same branch. Tests went from 28 suites / 322 tests to 30 suites / 341; the three `tsc` projects, `npm run build` and lint on every changed file are clean (the 11 pre-existing lint errors are untouched).
+
+| ID | Sev | Finding | Status |
+| --- | --- | --- | --- |
+| R1 | 🟠 regression | Settings opened by the host (`OPEN_SETTINGS_OVERLAY`) over an open model browser was top in `useOverlayDismiss` (focus moved in, picker inert, Escape targeted it) but painted under the picker (z-index 1000 vs 100): a frozen picker | ✅ Fixed in `01a230c` |
+| R2 + V#4 | 🟡 | Balance pill/card coloured meaningful text with `--px-text-dim` (~2.1:1 Light Modern, ~3.4:1 Dark) and used 9–10 px sizes | ✅ Fixed in `e5c37e5` (completes V12) |
+| R3 | 🟡 | A failed refresh hid good figures: the handler's error fallback was stamped `fetchedAt: Date.now()`, so the webview's newest-wins check rejected the later, older cached copy | ✅ Fixed in `d513145` |
+| R4 | ⚪ | Balance spinner and headroom bar ignored the app's `[data-reduced-motion]` switch | ✅ Fixed in `4d21095` |
+| R5 | ⚪ | `disabled={isLoading}` on the refresh button dropped keyboard focus to `<body>` | ✅ Fixed in `4d21095` |
+| R6 | ⚪ | `unavailable` balance results cached for the full 120 s TTL | ✅ Fixed in `b101a82` |
+| R7 | ⚪ | Retired-model migration wrote the default id explicitly, pinning users to today's default | ✅ Fixed in `a31ca15` |
+| R8 | ⚪ | `TabId` still had `'settings'`; a saved `'settings'` or unknown `activeTab` rendered an empty panel | ✅ Fixed in `a1f37c2` |
+| V#1 | 🟡 | At ≤340 px the header query hid the pill's name and left the status dot alone above the amount | ✅ Fixed in `ac00ef1` |
+| V#2 | 🟡 | Light Modern "You" label at 3.16:1, 10.5 px | ✅ Fixed in `c5609e2` |
+| V#5 | 🟡 | Settings header (and Close) scrolled off short viewports | ✅ Fixed in `0782d22` |
+| V#6 | 🟡 | First focus on the quiet Close button made its ember ring look like the primary action | ✅ Fixed in `3e84d99` |
+
+- **R1.** `useOverlayDismiss` now stamps each open overlay root with `z-index: OVERLAY_Z_BASE (100) + stack depth` on every push and remove, so the hook's top overlay is also the top one on screen. `.settings-overlay` and `.model-browser-backdrop` keep only the shared base as the pre-stamp default; the competing 100/1000 layers are gone. jsdom tests cover picker → host opens Settings → Escape returns focus to the picker, and the nested picker-from-Settings order. Checked in real Chromium as well: picker 100 (inert), Settings 101 on top with focus on its heading, and Escape returns focus to the picker's search field.
+- **R2 / V#4.** Failure notes, the pill's muted state ("no key", "invalid key", "offline"), the strip title, the card label and the meta labels moved to `--px-text-muted`. Dim is left only on the chevron and the "…" placeholder. Every balance text is ≥10.5 px; the meta rows became one two-column grid so values still align. The 320 px header stays compact (see V#1).
+- **R3.** `AccountBalanceService.lastKnownBalance()` returns the current key's last payload, however old. On a thrown fetch the handler re-posts it with its own `fetchedAt`, and the `unavailable` fallback only applies when nothing is cached. A new test (`balanceRefreshFailure.test.tsx`) drives the real service and handler into the real `useOpenRouterBalance` hook; it fails without the fix.
+- **R4 / R5.** The refresh button uses `aria-disabled` and ignores clicks while loading. The busy styling dims the glyph rather than the button, so the focus ring keeps full strength. The spinner and bar also follow `.app-container[data-reduced-motion]`.
+- **R6.** `FAILED_BALANCE_CACHE_TTL_MS = 15 s` applies to any payload with a `keyIssue` or `creditsIssue`. Good and `no_key` payloads keep 120 s.
+- **R7.** When the replacement equals what the scope would fall back to, the migration clears the value (`config.update(key, undefined, target)`) and logs "clearing the user/workspace … setting so it falls back to …". For user settings the fallback is the contributed default from `inspect().defaultValue`; for workspace settings it is the migrated user value. A workspace value that would otherwise pick up a different user choice is still written explicitly.
+- **R8.** `TabId` derives from `TAB_IDS = ['image', 'svg']`. `normalizeTabId()` maps legacy, removed or junk saved ids to `'image'` on restore.
+- **V#1.** Inside the `px-header` container query the amount and chevron move onto the dot's row. Verified at 320 px: one line, dot · amount · chevron.
+- **V#2.** The label now uses `color-mix(in oklab, var(--px-info) 60%, var(--px-text))`, still blue. Measured on the prompt field: ~4.9:1 Light Modern, ~5.5:1 Dark Modern, ~6.4:1 Flame Dark. The 75% mix suggested in review only reached 4.1:1 on Light Modern.
+- **V#5.** `.settings-header` is sticky (opaque `--px-bg`, soft rule) inside the scrolling overlay. The overlay's top padding moved into the content box, because a sticky child sticks below its scroller's padding and let cards show through above the header. Under 560 px tall the header compacts.
+- **V#6.** The Settings heading (`tabIndex={-1}`, no ring) receives `useOverlayDismiss`'s initial-focus ref, and Close is the next Tab stop. The focus trap now also wraps Shift+Tab from a focused element outside the Tab order that sits before the first control; otherwise focus would leave the webview.
