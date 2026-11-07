@@ -1,20 +1,21 @@
 # PR #13 review: design pass 02
 
-**Reviewed:** 2026-11-07  
-**PR:** https://github.com/okeylanders/pixel-minion-vscode/pull/13  
-**Code head:** `e946faae8e4a074e7a62ab1166afeca8e024fbf3`  
+**Reviewed:** 2026-11-07
+**PR:** https://github.com/okeylanders/pixel-minion-vscode/pull/13
+**Original code head:** `e946faae8e4a074e7a62ab1166afeca8e024fbf3`
+**Independently re-reviewed code head:** `9b19065eed7631cd1c424d25ec8b290d3cff210a`
 **Stack base:** `57bab8382dad17a32a02bb18cdd23dcb8b8f38c3` (`claude/design-overhaul-review-m5ojwb`, draft PR #12)
 
-**Status (2026-11-07):** both findings addressed in follow-up commits on the same branch. F-01 fixed in `b19a691`; N-01 fixed (same-key retention with an explicit stale marker, not narrowed) in `068bc16`. The review witness is deleted and replaced by an expected-behavior regression. 31 suites / 370 tests pass; see [Resolution status](#resolution-status).
+**Final verdict: approve the scoped changes.** F-01 and N-01 are independently verified closed at `9b19065`. No remaining blocking findings in this review. This approves the stacked fix-up's reviewed scope, not release of the whole stack, merging #12, or the deferred features below.
 
-**Verdict: changes requested for F-01.** One remaining account-switch correctness gap in the C4 fix. The rest of the scoped code review found no further blocking defects. This is a review of the stacked fix-up, not approval to release the entire stack or merge #12.
+The initial review requested changes for F-01. The author fixed the ownership gap in `b19a691` and implemented explicit same-account stale retention in `068bc16`. Independent verification of the combined head passed **31 suites / 370 tests**, all three TypeScript projects, production build, and an additional rapid-account-switch integration probe. Lint remains at the same pre-existing **11 errors / 22 warnings**. Remote CI is not claimed green: GitHub returns no commit statuses or PR-triggered workflow runs for the reviewed head.
 
 ## Status by item
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| F-01 | P2 / medium | Replacing the API key leaves the previous account's figures visible until the new account fetch completes | ✅ Fixed in `b19a691` |
-| N-01 | P3 / low, nonblocking | The claim that failed refreshes retain good figures is broader than the implemented exceptional-throw fallback | ✅ Fixed in `068bc16` (transport failures now retain, marked stale) |
+| F-01 | P2 / medium | Replacing the API key leaves the previous account's figures visible until the new account fetch completes | ✅ Fixed in `b19a691`; independently verified at `9b19065` |
+| N-01 | P3 / low, nonblocking | The claim that failed refreshes retain good figures is broader than the implemented exceptional-throw fallback | ✅ Fixed in `068bc16`; independently verified at `9b19065` |
 
 ## ✅ Fixed - F-01: clear account A's figures when account B becomes active
 
@@ -53,7 +54,7 @@ An independent probe using the actual client/service confirms that a successful 
 - Webview: overlay stacking and paint order, focus trap/return, inert background, Settings integration, tab keyboard/ARIA handling, reduced motion, shared layout styles, and HTML bootstrap globals/CSP. Inspected the committed 320 px conversation and 480 px Settings comparison images as author-supplied visual evidence.
 - Test infrastructure: JSX/jsdom support and the webview/test TypeScript configurations.
 
-## Independent validation
+## Initial independent validation at `e946faa`
 
 | Check | Result at reviewed code head |
 | --- | --- |
@@ -73,7 +74,7 @@ Focused checks of eight account/settings suites (106 tests) and four overlay/mot
 
 - The installed-VSIX 360 px Dark, Light and High Contrast acceptance pass remains owed, as already recorded by the author.
 - Picker internals/pricing, request ownership, generated SVG DOM isolation and dedicated Image API transport remain in their documented later phases. Passing this scoped review will not imply those risks are resolved.
-- No production code changes, provider charges, merge, auto-merge or deployment were performed. Publication adds only this report and its executable review witness.
+- The reviewer made no production code changes, provider charges, merge, auto-merge or deployment. The initial publication added this report and an executable defect witness; the author replaced that witness with expected-behavior tests while fixing the code. This final review publication changes only the report.
 
 ## Resolution status
 
@@ -94,3 +95,16 @@ Follow-up commits on `claude/pixel-minion-design-review-dhbqpd`. Validation afte
   - **Partial-failure scope.** When one call succeeds and the other fails transiently, the fresh figure is shown and the failed one is carried. When the failure is a 401/403, the existing "unavailable" copy is unchanged.
 - **Docs.** `CHANGELOG.md` and `docs/CHANGELOG-DETAILED.md` describe both behaviors. The PR #12 ledger's C4 and R3 rows now point at these commits and say what `d513145` covered. The CLAUDE.md / AGENTS.md "Balance ownership" invariant records the epoch and stale rules.
 - **Not changed:** the PR #13 description still says "a failed refresh keeps the last good figures"; after `068bc16` that is accurate for both thrown and transport failures.
+
+
+## Independent re-review at `9b19065`
+
+The author-side resolution notes above were checked against the actual source and rerun locally.
+
+- **F-01 closed.** The handler posts `OPENROUTER_BALANCE_RESET` synchronously after invalidation and before fetching. App routes it to the hook, which immediately clears the displayed balance and waits for the new account. Data and exceptional fallbacks carry epochs; older epochs cannot restore old figures. Same-account refresh behavior remains separate.
+- **N-01 closed.** Real-client network failures now retain only this account's last good figures with the explicit stale marker and original read time. The service clears remembered values at invalidation/no-key and forgets an individual figure after a 401/403. Successful fresh reads remove staleness.
+- **Additional independent race probe:** start A at $75, switch to B with its response held, then to C with its response held. Both resets immediately remove the previous figures. Complete C at $2 before releasing B at $999; C remains displayed. A late A payload and late B reset do not restore older ownership, loading settles, and a subsequent C network failure retains only C's $2 marked stale. This probe used the real client/service/handler/hook, mocked fetch and secret storage, and no external requests. It passed; the temporary probe was removed afterward.
+- **Full checks:** 31 Jest suites / 370 tests passed; `tsc --noEmit` passed for `tsconfig.json`, `tsconfig.webview.json`, and `tsconfig.test.json`; production build passed with the same three webpack size/performance warnings. Eight focused balance suites / 118 tests also passed and overlap the full suite. The additional race probe is one extra case, not five additional cases (its test run also repeated four existing cases).
+- **Lint:** rerun on both the final code head and stack base `57bab838`; 11 errors / 22 warnings remain, with the same diagnostic messages apart from moved line numbers.
+- **CI:** the GitHub connector returned no statuses and no PR-triggered workflow runs for `9b19065`. This is an absence of reported CI, not a passing CI result.
+- **Limits unchanged:** no independent installed-VSIX or fresh browser-rendered acceptance pass, live provider probe or paid generation. The prior blocked Chromium launch is not treated as successful validation. The later picker, request-ownership and SVG-safety work is outside this verdict.
