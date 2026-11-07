@@ -52,6 +52,8 @@ export class SVGOrchestrator {
   private readonly conversationManager: SVGConversationManager;
   private client: OpenRouterDynamicTextClient | null = null;
   private vectorImageClient: TextClient | null = null;
+  /** Conversations with a provider request outstanding (one at a time each). */
+  private readonly inFlight = new Set<string>();
 
   constructor(private readonly logger: LoggingService) {
     this.conversationManager = new SVGConversationManager(logger);
@@ -125,39 +127,60 @@ export class SVGOrchestrator {
       options.aspectRatio
     );
 
-    this.logger.debug(`Generating SVG for conversation ${conversation.id}`);
+    // One provider request per conversation: an overlapping refinement would
+    // interleave its user message into the request already being built.
+    if (this.inFlight.has(conversation.id)) {
+      throw new Error('This SVG conversation is already generating. Wait for it to finish.');
+    }
+    this.inFlight.add(conversation.id);
+    const previousMessageCount = conversation.messages.length;
 
-    // Add user message (handles multimodal if reference image provided)
-    this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage, options.referenceSvgText);
+    try {
+      this.logger.debug(`Generating SVG for conversation ${conversation.id}`);
 
-    // Call the text client with conversation messages, passing model directly to avoid race conditions
-    const result = await client.createCompletion(conversation.messages, {
-      model: options.model,
-      maxTokens: SVG_MAX_OUTPUT_TOKENS,
-    });
+      // Add user message (handles multimodal if reference image provided)
+      this.conversationManager.addUserMessage(conversation.id, prompt, options.referenceImage, options.referenceSvgText);
 
-    // Extract SVG from the response (throws if no valid SVG found)
-    const svgCode = this.extractSVG(result.content);
+      // Call the text client with conversation messages, passing model directly to avoid race conditions
+      const result = await client.createCompletion(conversation.messages, {
+        model: options.model,
+        maxTokens: SVG_MAX_OUTPUT_TOKENS,
+      });
 
-    // Add assistant response
-    this.conversationManager.addAssistantResponse(conversation.id, svgCode);
+      // Extract SVG from the response (throws if no valid SVG found)
+      const svgCode = this.extractSVG(result.content);
 
-    this.logger.info(`SVG generation complete (turn ${conversation.turnNumber})`);
+      // Add assistant response
+      this.conversationManager.addAssistantResponse(conversation.id, svgCode);
 
-    // Transform client usage to TokenUsage format
-    const usage: TokenUsage | undefined = result.usage ? {
-      promptTokens: result.usage.promptTokens,
-      completionTokens: result.usage.completionTokens,
-      totalTokens: result.usage.totalTokens,
-      costUsd: result.usage.costUsd,
-    } : undefined;
+      this.logger.info(`SVG generation complete (turn ${conversation.turnNumber})`);
 
-    return {
-      conversationId: conversation.id,
-      svgCode,
-      turnNumber: conversation.turnNumber,
-      usage,
-    };
+      // Transform client usage to TokenUsage format
+      const usage: TokenUsage | undefined = result.usage ? {
+        promptTokens: result.usage.promptTokens,
+        completionTokens: result.usage.completionTokens,
+        totalTokens: result.usage.totalTokens,
+        costUsd: result.usage.costUsd,
+      } : undefined;
+
+      return {
+        conversationId: conversation.id,
+        svgCode,
+        turnNumber: conversation.turnNumber,
+        usage,
+      };
+    } catch (error) {
+      // A failed turn (provider error, or a reply with no SVG in it) must not
+      // enter the next refinement's transcript.
+      conversation.messages.splice(previousMessageCount);
+      // A conversation whose first turn failed was never shown to the user.
+      if (conversation.turnNumber === 0) {
+        this.conversationManager.clear(conversation.id);
+      }
+      throw error;
+    } finally {
+      this.inFlight.delete(conversation.id);
+    }
   }
 
   /**
@@ -191,9 +214,13 @@ export class SVGOrchestrator {
   }
 
   /**
-   * Clear a conversation
+   * Clear a conversation. Refused while a turn is generating: the turn would
+   * otherwise complete into a conversation the user already discarded.
    */
   clearConversation(conversationId: string): void {
+    if (this.inFlight.has(conversationId)) {
+      throw new Error('Wait for SVG generation to finish before clearing this conversation.');
+    }
     this.conversationManager.clear(conversationId);
   }
 

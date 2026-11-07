@@ -21,13 +21,24 @@ export interface SVGConversationHistoryTurn {
   usage?: TokenUsage;
 }
 
+/** The settings an SVG conversation was started with; continuations use these. */
+export interface SVGThreadSettings {
+  model: string;
+  aspectRatio: AspectRatio;
+}
+
+/**
+ * A refinement. It carries only the new prompt: attachments belong to the
+ * turn they were sent with (and travel in `history`), so a draft attachment
+ * is never added to a refinement.
+ */
 export interface SVGGenerationContinuePayload {
   prompt: string;
   conversationId: string;
   history?: SVGConversationHistoryTurn[];
+  /** The thread's model and aspect ratio (SVGThreadSettings), for re-hydration. */
   model?: string;
   aspectRatio?: AspectRatio;
-  referenceSvgText?: string;
 }
 
 export interface SVGGenerationResponsePayload {
@@ -45,5 +56,7 @@ export interface SVGSaveRequestPayload {
 export interface SVGSaveResultPayload {
   success: boolean;
   filePath?: string;
+  /** The user dismissed the save dialog: not an error, and not saved. */
+  cancelled?: boolean;
   error?: string;
 }

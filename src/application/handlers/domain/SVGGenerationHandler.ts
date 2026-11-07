@@ -103,7 +103,7 @@ export class SVGGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<SVGGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio, referenceSvgText } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
     this.logger.info(`SVG generation continue: ${prompt.substring(0, 50)}...`);
 
     // Send loading status
@@ -115,14 +115,14 @@ export class SVGGenerationHandler {
     ));
 
     try {
-      // Use orchestrator for continuation
+      // A refinement carries only its prompt; attachments stay with the
+      // turns that sent them (in the transcript or `history`).
       const result = await this.svgOrchestrator.continueSVG(
         conversationId,
         prompt,
         history,
         model,
-        aspectRatio,
-        referenceSvgText
+        aspectRatio
       );
 
       // Apply token usage if available
@@ -172,7 +172,20 @@ export class SVGGenerationHandler {
   handleClearConversation(message: MessageEnvelope<{ conversationId: string }>): void {
     const { conversationId } = message.payload;
     this.logger.info(`Clearing SVG generation conversation: ${conversationId}`);
-    this.svgOrchestrator.clearConversation(conversationId);
+    try {
+      this.svgOrchestrator.clearConversation(conversationId);
+    } catch (error) {
+      this.logger.warn('SVG conversation clear refused', error);
+      this.postMessage(createEnvelope(
+        MessageType.ERROR,
+        'extension.svgGeneration',
+        {
+          message: error instanceof Error ? error.message : 'Could not clear the conversation',
+          code: 'SVG_CLEAR_ERROR',
+        },
+        message.correlationId
+      ));
+    }
   }
 
   /**
@@ -182,21 +195,9 @@ export class SVGGenerationHandler {
     const { svgCode, suggestedFilename } = message.payload;
     this.logger.info(`Saving SVG: ${suggestedFilename}`);
 
+    let fileUri: vscode.Uri | undefined;
     try {
-      const fileUri = await this.saveSVG(svgCode, suggestedFilename);
-
-      this.postMessage(createEnvelope<SVGSaveResultPayload>(
-        MessageType.SVG_SAVE_RESULT,
-        'extension.svgGeneration',
-        {
-          success: true,
-          filePath: fileUri.fsPath,
-        },
-        message.correlationId
-      ));
-
-      await vscode.commands.executeCommand('vscode.open', fileUri);
-      this.logger.info(`SVG saved and opened: ${fileUri.fsPath}`);
+      fileUri = await this.saveSVG(svgCode, suggestedFilename);
     } catch (error) {
       this.logger.error('SVG save failed', error);
       this.postMessage(createEnvelope<SVGSaveResultPayload>(
@@ -208,13 +209,46 @@ export class SVGGenerationHandler {
         },
         message.correlationId
       ));
+      return;
+    }
+
+    if (!fileUri) {
+      this.logger.info('SVG save cancelled');
+      this.postMessage(createEnvelope<SVGSaveResultPayload>(
+        MessageType.SVG_SAVE_RESULT,
+        'extension.svgGeneration',
+        { success: false, cancelled: true },
+        message.correlationId
+      ));
+      return;
+    }
+
+    // Exactly one result per request, sent once the file is written.
+    this.postMessage(createEnvelope<SVGSaveResultPayload>(
+      MessageType.SVG_SAVE_RESULT,
+      'extension.svgGeneration',
+      {
+        success: true,
+        filePath: fileUri.fsPath,
+      },
+      message.correlationId
+    ));
+
+    // Opening the file is a convenience: failing to open it can't undo a
+    // completed write, so it must not turn into a second, failed result.
+    try {
+      await vscode.commands.executeCommand('vscode.open', fileUri);
+      this.logger.info(`SVG saved and opened: ${fileUri.fsPath}`);
+    } catch (error) {
+      this.logger.warn(`SVG saved to ${fileUri.fsPath} but could not be opened`, error);
     }
   }
 
   /**
-   * Save SVG to workspace or user-selected location
+   * Save SVG to workspace or user-selected location. Returns undefined when
+   * the user cancels the save dialog.
    */
-  private async saveSVG(svgCode: string, suggestedFilename: string): Promise<vscode.Uri> {
+  private async saveSVG(svgCode: string, suggestedFilename: string): Promise<vscode.Uri | undefined> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
     // Generate filename if not provided
@@ -243,7 +277,7 @@ export class SVGGenerationHandler {
       });
 
       if (!result) {
-        throw new Error('Save cancelled');
+        return undefined;
       }
       fileUri = result;
     } else {

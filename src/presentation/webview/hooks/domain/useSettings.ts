@@ -4,7 +4,7 @@
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import {
   MessageType,
@@ -155,12 +155,13 @@ export function useSettings(
   }, []);
 
   // Persistence
-  const persistedState: SettingsPersistence = {
+  // Memoized: App writes webview state whenever this identity changes.
+  const persistedState = useMemo<SettingsPersistence>(() => ({
     maxConversationTurns,
     openRouterModel,
     imageModel,
     svgModel,
-  };
+  }), [maxConversationTurns, openRouterModel, imageModel, svgModel]);
 
   return {
     // State

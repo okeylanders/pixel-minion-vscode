@@ -131,8 +131,12 @@ export class ImageConversationManager {
       throw new Error(`Conversation ${conversationId} not found`);
     }
 
+    // Deep copy (frame-minion@40e7949 ImageConversationManager.ts:141): the
+    // stored transcript must not share nested parts with the provider result,
+    // which the handler goes on to read, nor be changed by the Gemini
+    // stripping below.
     const message: ImageConversationMessage = result.assistantMessage
-      ? { ...result.assistantMessage }
+      ? JSON.parse(JSON.stringify(result.assistantMessage)) as ImageConversationMessage
       : {
           role: 'assistant',
           content: result.assistantContent ?? [{ type: 'text', text: 'Generated images' }],
@@ -152,7 +156,7 @@ export class ImageConversationManager {
         delete message.images;
       }
       if (!Array.isArray(message.content)) {
-        message.content = [{ type: 'text', text: 'Generated images' }];
+        message.content = [{ type: 'text', text: typeof message.content === 'string' ? message.content : 'Generated images' }];
       } else {
         message.content = message.content.filter(block => block.type !== 'image_url');
       }

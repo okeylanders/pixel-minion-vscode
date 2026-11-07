@@ -40,6 +40,17 @@ import {
 import { useOverlayDismiss } from './hooks/useOverlayDismiss';
 import { useReducedMotion } from './hooks/useReducedMotion';
 
+/** Hosts whose errors answer a specific generation, enhance or clear request. */
+const REQUEST_SOURCES: readonly string[] = [
+  'extension.imageGeneration',
+  'extension.svgGeneration',
+  'extension.enhance',
+];
+
+function isRequestSource(source: string | undefined): boolean {
+  return source !== undefined && REQUEST_SOURCES.includes(source);
+}
+
 const TABS: Tab[] = [
   { id: 'image', label: 'Image', icon: <TabImageIcon /> },
   { id: 'svg', label: 'SVG', icon: <TabSvgIcon /> },
@@ -87,7 +98,8 @@ export function App(): JSX.Element {
     [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleGenerationResponse,
     [MessageType.SVG_SAVE_RESULT]: svgGeneration.handleSaveResult,
 
-    // Prompt Enhancement messages - route based on type
+    // Prompt Enhancement messages - route based on type (each hook also
+    // checks the correlation id, so a stale answer can't replace a prompt)
     [MessageType.ENHANCE_PROMPT_RESPONSE]: (msg) => {
       const payload = msg.payload as { type?: string };
       if (payload.type === 'image') {
@@ -108,21 +120,19 @@ export function App(): JSX.Element {
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),
 
-    // Error routing - check source to route to correct handler
+    // Error routing. Generation, enhance and clear errors carry the id of
+    // the request that failed, and each hook settles only its own requests,
+    // so both see every error: an Image-tab enhance failure can't stop the
+    // SVG spinner, and a stale error settles nothing.
     [MessageType.ERROR]: (msg) => {
-      const source = msg.source ?? '';
-      if (source.includes('image') || source.includes('Image')) {
-        imageGeneration.handleError(msg);
-      } else if (source.includes('svg') || source.includes('SVG')) {
-        svgGeneration.handleError(msg);
-      } else if (source.includes('enhance')) {
-        // Route enhance errors based on active tab or to both
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
-      } else {
-        // Default: send to both (they'll handle based on their loading state)
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
+      const ownedByImage = imageGeneration.handleError(msg);
+      const ownedBySvg = svgGeneration.handleError(msg);
+      if (ownedByImage || ownedBySvg || isRequestSource(msg.source)) return;
+      // An error from elsewhere (e.g. a settings write) belongs to no
+      // request: show it in the visible tab without touching any spinner.
+      const text = (msg.payload as { message?: string } | undefined)?.message;
+      if (text) {
+        (activeTab === 'svg' ? svgGeneration : imageGeneration).showError(text);
       }
     },
   });

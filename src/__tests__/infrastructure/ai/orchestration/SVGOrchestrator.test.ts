@@ -263,4 +263,88 @@ describe('SVGOrchestrator', () => {
       expect(vectorClient.createCompletion).not.toHaveBeenCalled();
     });
   });
+  describe('request ownership', () => {
+    const RAW_SVG = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
+    /** A text client that records a snapshot of each request's messages. */
+    const recordingClient = () => {
+      const sent: string[] = [];
+      const client: jest.Mocked<TextClient> = {
+        getModel: jest.fn().mockReturnValue('mock'),
+        isConfigured: jest.fn().mockResolvedValue(true),
+        createCompletion: jest.fn().mockImplementation(async (messages) => {
+          sent.push(JSON.stringify(messages));
+          return { content: RAW_SVG, finishReason: 'stop' };
+        }),
+      };
+      orchestrator.setClient(client as unknown as OpenRouterDynamicTextClient);
+      return { client, sent };
+    };
+    const options = { model: 'openai/gpt-5.3-codex', aspectRatio: '1:1' as const };
+
+    it('rolls back a failed refinement so the retry does not replay its prompt', async () => {
+      const { client, sent } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      client.createCompletion.mockRejectedValueOnce(new Error('network unavailable'));
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Failed prompt')).rejects.toThrow('network unavailable');
+      const retry = await orchestrator.continueSVG(first.conversationId, 'Actual retry');
+
+      expect(sent[sent.length - 1]).not.toContain('Failed prompt');
+      expect(JSON.parse(sent[sent.length - 1])).toHaveLength(4); // system, user, assistant, retry
+      expect(retry.turnNumber).toBe(2);
+    });
+
+    it('rolls back a turn whose reply contains no SVG', async () => {
+      const { client, sent } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      client.createCompletion.mockResolvedValueOnce({ content: 'Sorry, I cannot draw that.', finishReason: 'stop' });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Unanswerable')).rejects.toThrow('No valid SVG');
+      await orchestrator.continueSVG(first.conversationId, 'Make it blue');
+
+      expect(sent[sent.length - 1]).not.toContain('Unanswerable');
+      expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(5);
+    });
+
+    it('removes the in-memory conversation when its first turn fails', async () => {
+      const { client } = recordingClient();
+      client.createCompletion.mockRejectedValueOnce(new Error('offline'));
+
+      await expect(orchestrator.generateSVG('A red star', options)).rejects.toThrow('offline');
+
+      const created = mockLogger.debug.mock.calls
+        .map(([message]) => String(message))
+        .find((message) => message.startsWith('Created SVG conversation:'))!;
+      expect(orchestrator.getConversation(created.split(' ')[3])).toBeUndefined();
+    });
+
+    it('allows only one provider request at a time per conversation', async () => {
+      const { client } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => { release = resolve; });
+      client.createCompletion.mockImplementationOnce(async () => {
+        await blocked;
+        return { content: RAW_SVG, finishReason: 'stop' };
+      });
+
+      const next = orchestrator.continueSVG(first.conversationId, 'First refinement');
+      const duplicate = orchestrator.continueSVG(first.conversationId, 'Duplicate refinement');
+
+      await expect(duplicate).rejects.toThrow('already generating');
+      expect(() => orchestrator.clearConversation(first.conversationId)).toThrow('Wait for SVG generation');
+      release();
+      expect((await next).turnNumber).toBe(2);
+      expect(client.createCompletion).toHaveBeenCalledTimes(2);
+      expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(5);
+    });
+
+    it('sends an attached SVG exactly once, on the turn it was attached to', async () => {
+      const { sent } = recordingClient();
+      const first = await orchestrator.generateSVG('Redraw this', { ...options, referenceSvgText: RAW_SVG });
+      await orchestrator.continueSVG(first.conversationId, 'Thicker strokes');
+
+      expect(sent[1].split('Reference SVG:').length - 1).toBe(1);
+    });
+  });
 });

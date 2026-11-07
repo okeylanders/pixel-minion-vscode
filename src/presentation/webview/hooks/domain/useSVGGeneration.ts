@@ -4,19 +4,46 @@
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import {
   MessageType,
   MessageEnvelope,
   createEnvelope,
   AspectRatio,
+  SVGThreadSettings,
+  SVGGenerationRequestPayload,
+  SVGGenerationContinuePayload,
   SVGGenerationResponsePayload,
+  SVGSaveRequestPayload,
   SVGSaveResultPayload,
   SVGConversationHistoryTurn,
+  EnhancePromptRequestPayload,
   EnhancePromptResponsePayload,
 } from '@messages';
 import { DEFAULT_SVG_MODEL } from '@shared/models';
+import { newRequestId } from '../../utils/requestId';
+
+/** Correlation-id prefix of clear requests; their errors are always ours. */
+const CLEAR_REQUEST_PREFIX = 'svg-clear';
+
+/**
+ * What the hook dispatched for the outstanding generate or refine. The
+ * response is matched against `correlationId` and builds its turn from this
+ * snapshot, never from state that may have changed while the request ran.
+ */
+interface PendingGeneration {
+  correlationId: string;
+  prompt: string;
+  settings: SVGThreadSettings;
+  referenceSvgText?: string;
+}
+
+/** The SVG a save was requested for, and how that save is going. */
+interface SaveState {
+  svgCode: string;
+  status: 'saving' | 'saved';
+}
 
 // 1. State Interface (read-only)
 export interface SVGGenerationState {
@@ -28,6 +55,12 @@ export interface SVGGenerationState {
   svgCode: string | null;
   conversationHistory: SVGConversationHistoryTurn[];
   conversationId: string | null;
+  /** Settings the current conversation was created with (null: no conversation). */
+  threadSettings: SVGThreadSettings | null;
+  /** A save of the SVG on screen is outstanding. */
+  isSaving: boolean;
+  /** The host confirmed it wrote the SVG on screen. Never true after a cancel or failure. */
+  isSaved: boolean;
   isLoading: boolean;
   isEnhancing: boolean;
   error: string | null;
@@ -45,6 +78,8 @@ export interface SVGGenerationActions {
   saveSVG: () => void;
   copySVG: () => void;
   enhancePrompt: () => void;
+  /** Show an error that belongs to no request of this tab, without settling any. */
+  showError: (message: string) => void;
 }
 
 // 2b. Message Handlers Interface (for App-level routing)
@@ -52,7 +87,11 @@ export interface SVGGenerationHandlers {
   handleGenerationResponse: (message: MessageEnvelope) => void;
   handleSaveResult: (message: MessageEnvelope) => void;
   handleEnhanceResponse: (message: MessageEnvelope) => void;
-  handleError: (message: MessageEnvelope) => void;
+  /**
+   * Settles the request the error belongs to. Returns false, changing
+   * nothing, when the error answers no request this hook is waiting on.
+   */
+  handleError: (message: MessageEnvelope) => boolean;
 }
 
 // 3. Persistence Interface (what gets saved)
@@ -61,6 +100,8 @@ export interface SVGGenerationPersistence {
   model: string;
   aspectRatio: AspectRatio;
   conversationId: string | null;
+  /** Absent in state saved before thread settings existed. */
+  threadSettings?: SVGThreadSettings | null;
   svgCode: string | null;
   conversationHistory: SVGConversationHistoryTurn[];
   referenceSvgText: string | null;
@@ -98,7 +139,19 @@ export function useSVGGeneration(
   const [conversationId, setConversationId] = useState<string | null>(
     initialState?.conversationId ?? null
   );
-  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  // State saved before thread settings existed: the old code continued with
+  // the persisted controls, so they are the best record of the thread.
+  const [threadSettings, setThreadSettings] = useState<SVGThreadSettings | null>(
+    initialState?.threadSettings ?? (initialState?.conversationId
+      ? { model: initialState.model ?? model, aspectRatio: initialState.aspectRatio ?? '1:1' }
+      : null)
+  );
+  const [saveState, setSaveState] = useState<SaveState | null>(null);
+  // Outstanding requests, matched by correlation id. Refs, not state: the
+  // App-level message handlers must see the latest value synchronously.
+  const pending = useRef<PendingGeneration | null>(null);
+  const pendingEnhance = useRef<string | null>(null);
+  const pendingSave = useRef<{ correlationId: string; svgCode: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,12 +160,13 @@ export function useSVGGeneration(
     sync?.onModelChange?.(newModel);
   }, [sync]);
 
+  // Reset defaults when settings change (only when idle)
+  const selectedModel = sync?.selectedModel;
   useEffect(() => {
-    if (sync?.selectedModel && !isLoading) {
-    setModelState(sync.selectedModel);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [sync?.selectedModel]);
+    if (selectedModel && !pending.current) {
+      setModelState(selectedModel);
+    }
+  }, [selectedModel]);
 
   const setReferenceAttachment = useCallback((attachment: { preview: string | null; svgText: string | null }) => {
     setReferenceImage(attachment.preview);
@@ -121,89 +175,117 @@ export function useSVGGeneration(
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
+    const dispatch = pending.current;
+    // Late or stale: not the request we are waiting on.
+    if (!dispatch || message.correlationId !== dispatch.correlationId) return;
+    pending.current = null;
+
     const payload = message.payload as SVGGenerationResponsePayload;
     setConversationId(payload.conversationId);
+    setThreadSettings(dispatch.settings);
     setSvgCode(payload.svgCode);
-    setPendingPrompt((currentPrompt) => {
-      if (currentPrompt) {
-        const turn: SVGConversationHistoryTurn = {
-          prompt: currentPrompt,
-          svgCode: payload.svgCode,
-          turnNumber: payload.turnNumber,
-          referenceSvgText: referenceSvgText ?? undefined,
-          usage: payload.usage,
-        };
-        setConversationHistory((prev) => [...prev, turn]);
-      }
-      return null;
-    });
+    setConversationHistory((prev) => [...prev, {
+      prompt: dispatch.prompt,
+      svgCode: payload.svgCode,
+      turnNumber: payload.turnNumber,
+      referenceSvgText: dispatch.referenceSvgText,
+      usage: payload.usage,
+    }]);
     setIsLoading(false);
     setError(null);
   }, []);
 
   const handleSaveResult = useCallback((message: MessageEnvelope) => {
+    const save = pendingSave.current;
+    if (!save || message.correlationId !== save.correlationId) return; // Superseded or unknown.
+    pendingSave.current = null;
+
+    // Only the host's confirmation of a written file shows "Saved".
     const payload = message.payload as SVGSaveResultPayload;
-    if (!payload.success) {
+    if (payload.success) {
+      setSaveState({ svgCode: save.svgCode, status: 'saved' });
+      return;
+    }
+    setSaveState(null);
+    if (!payload.cancelled) {
       setError(payload.error ?? 'Failed to save SVG');
     }
   }, []);
 
   const handleEnhanceResponse = useCallback((message: MessageEnvelope) => {
+    if (!pendingEnhance.current || message.correlationId !== pendingEnhance.current) return;
+    pendingEnhance.current = null;
     const payload = message.payload as EnhancePromptResponsePayload;
     setPrompt(payload.enhancedPrompt);
     setIsEnhancing(false);
   }, []);
 
-  const handleError = useCallback((message: MessageEnvelope) => {
-    setIsLoading(false);
-    setIsEnhancing(false);
-    setError((message.payload as { message: string }).message);
+  const handleError = useCallback((message: MessageEnvelope): boolean => {
+    const text = (message.payload as { message?: string } | undefined)?.message ?? 'Something went wrong';
+    if (pending.current && message.correlationId === pending.current.correlationId) {
+      pending.current = null;
+      setIsLoading(false);
+    } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current) {
+      pendingEnhance.current = null;
+      setIsEnhancing(false);
+    } else if (!message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`)) {
+      return false;
+    }
+    setError(text);
+    return true;
   }, []);
+
+  const showError = useCallback((text: string) => setError(text), []);
 
   // Actions
   const generate = useCallback(() => {
+    if (pending.current) return;
     if (!prompt.trim()) {
       setError('Please enter a prompt');
       return;
     }
 
+    const settings: SVGThreadSettings = { model, aspectRatio };
+    const message = createEnvelope<SVGGenerationRequestPayload>(
+      MessageType.SVG_GENERATION_REQUEST,
+      'webview.svgGeneration',
+      {
+        prompt,
+        ...settings,
+        // An SVG attachment travels as text; its preview image is not sent.
+        referenceImage: referenceSvgText ? undefined : (referenceImage ?? undefined),
+        referenceSvgText: referenceSvgText ?? undefined,
+      },
+      newRequestId('svg-generate')
+    );
+    pending.current = {
+      correlationId: message.correlationId!,
+      prompt,
+      settings,
+      referenceSvgText: referenceSvgText ?? undefined,
+    };
+
     setIsLoading(true);
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
+    setThreadSettings(null);
     setSvgCode(null);          // Clear previous SVG
     setConversationHistory([]); // Clear history
-    setPendingPrompt(prompt);
-
-    vscode.postMessage(
-      createEnvelope(
-        MessageType.SVG_GENERATION_REQUEST,
-        'webview.svgGeneration',
-        {
-          prompt,
-          model,
-          aspectRatio,
-          referenceImage: referenceSvgText ? undefined : (referenceImage ?? undefined),
-          referenceSvgText: referenceSvgText ?? undefined,
-        }
-      )
-    );
+    vscode.postMessage(message);
   }, [prompt, model, aspectRatio, referenceImage, referenceSvgText, vscode]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
+      if (pending.current) return;
       if (!chatPrompt.trim()) {
         setError('Please enter a prompt');
         return;
       }
 
-      if (!conversationId) {
+      if (!conversationId || !threadSettings) {
         setError('No active conversation to continue');
         return;
       }
-
-      setIsLoading(true);
-      setError(null);
-      setPendingPrompt(chatPrompt);
 
       const history: SVGConversationHistoryTurn[] = conversationHistory.map((turn) => ({
         prompt: turn.prompt,
@@ -212,30 +294,48 @@ export function useSVGGeneration(
         referenceSvgText: turn.referenceSvgText,
       }));
 
-      vscode.postMessage(
-        createEnvelope(
-          MessageType.SVG_GENERATION_CONTINUE,
-          'webview.svgGeneration',
-          {
-            prompt: chatPrompt,
-            conversationId,
-            history,
-            model,
-            aspectRatio,
-            referenceSvgText: referenceSvgText ?? undefined,
-          }
-        )
+      // The thread's settings, not the draft controls, own a refinement, and
+      // the draft attachment is not part of the thread: it applies to the
+      // next Generate only.
+      const message = createEnvelope<SVGGenerationContinuePayload>(
+        MessageType.SVG_GENERATION_CONTINUE,
+        'webview.svgGeneration',
+        {
+          prompt: chatPrompt,
+          conversationId,
+          history,
+          ...threadSettings,
+        },
+        newRequestId('svg-continue')
       );
+      pending.current = { correlationId: message.correlationId!, prompt: chatPrompt, settings: threadSettings };
+
+      setIsLoading(true);
+      setError(null);
+      vscode.postMessage(message);
     },
-    [conversationHistory, conversationId, model, aspectRatio, referenceSvgText, vscode]
+    [conversationHistory, conversationId, threadSettings, vscode]
   );
 
   const clearConversation = useCallback(() => {
+    if (pending.current) return;
+    if (conversationId) {
+      // Release the host's copy too. Its only possible answer is an error
+      // (e.g. still generating), recognised by the prefix.
+      vscode.postMessage(createEnvelope(
+        MessageType.SVG_GENERATION_CLEAR,
+        'webview.svgGeneration',
+        { conversationId },
+        newRequestId(CLEAR_REQUEST_PREFIX)
+      ));
+    }
     setConversationId(null);
+    setThreadSettings(null);
     setSvgCode(null);
+    setConversationHistory([]);
     setPrompt('');
     setError(null);
-  }, []);
+  }, [conversationId, vscode]);
 
   const saveSVG = useCallback(() => {
     if (!svgCode) {
@@ -246,16 +346,20 @@ export function useSVGGeneration(
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const suggestedFilename = `pixel-minion-${timestamp}.svg`;
 
-    vscode.postMessage(
-      createEnvelope(
-        MessageType.SVG_SAVE_REQUEST,
-        'webview.svgGeneration',
-        {
-          svgCode,
-          suggestedFilename,
-        }
-      )
+    // A newer save supersedes an older one still in flight; the older
+    // result is then ignored.
+    const message = createEnvelope<SVGSaveRequestPayload>(
+      MessageType.SVG_SAVE_REQUEST,
+      'webview.svgGeneration',
+      {
+        svgCode,
+        suggestedFilename,
+      },
+      newRequestId('svg-save')
     );
+    pendingSave.current = { correlationId: message.correlationId!, svgCode };
+    setSaveState({ svgCode, status: 'saving' });
+    vscode.postMessage(message);
   }, [svgCode, vscode]);
 
   const copySVG = useCallback(() => {
@@ -270,37 +374,44 @@ export function useSVGGeneration(
   }, [svgCode]);
 
   const enhancePrompt = useCallback(() => {
+    if (pending.current || pendingEnhance.current) return;
     if (!prompt.trim()) {
       setError('Please enter a prompt to enhance');
       return;
     }
 
+    const message = createEnvelope<EnhancePromptRequestPayload>(
+      MessageType.ENHANCE_PROMPT_REQUEST,
+      'webview.enhance',
+      {
+        prompt: prompt.trim(),
+        type: 'svg',
+      },
+      newRequestId('svg-enhance')
+    );
+    pendingEnhance.current = message.correlationId!;
     setIsEnhancing(true);
     setError(null);
-
-    vscode.postMessage(
-      createEnvelope(
-        MessageType.ENHANCE_PROMPT_REQUEST,
-        'webview.enhance',
-        {
-          prompt: prompt.trim(),
-          type: 'svg',
-        }
-      )
-    );
+    vscode.postMessage(message);
   }, [prompt, vscode]);
 
-  // Persistence object
-  const persistedState: SVGGenerationPersistence = {
+  // The save indicator describes the SVG on screen: a new result resets it.
+  const isSaving = saveState !== null && saveState.status === 'saving' && saveState.svgCode === svgCode;
+  const isSaved = saveState !== null && saveState.status === 'saved' && saveState.svgCode === svgCode;
+
+  // Persistence object. Memoized: App writes webview state whenever this
+  // identity changes.
+  const persistedState = useMemo<SVGGenerationPersistence>(() => ({
     prompt,
     model,
     aspectRatio,
     conversationId,
+    threadSettings,
     svgCode,
     conversationHistory,
     referenceSvgText,
     referenceImage,
-  };
+  }), [prompt, model, aspectRatio, conversationId, threadSettings, svgCode, conversationHistory, referenceSvgText, referenceImage]);
 
   return {
     // State
@@ -312,6 +423,9 @@ export function useSVGGeneration(
     svgCode,
     conversationHistory,
     conversationId,
+    threadSettings,
+    isSaving,
+    isSaved,
     isLoading,
     isEnhancing,
     error,
@@ -326,6 +440,7 @@ export function useSVGGeneration(
     saveSVG,
     copySVG,
     enhancePrompt,
+    showError,
     // Message Handlers (for App-level routing)
     handleGenerationResponse,
     handleSaveResult,

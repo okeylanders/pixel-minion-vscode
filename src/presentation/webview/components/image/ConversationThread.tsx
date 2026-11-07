@@ -12,8 +12,8 @@ import '../../styles/components/conversation-thread.css';
 export interface ConversationThreadProps {
   turns: ConversationTurn[];
   onSaveImage: (image: GeneratedImage) => void;
-  savingImageIds?: Set<string>;
-  savedImageIds?: Set<string>;
+  savingImageIds?: ReadonlySet<string>;
+  savedImageIds?: ReadonlySet<string>;
 }
 
 /**
@@ -31,11 +31,13 @@ function formatUsage(usage: ConversationTurn['usage']): string | null {
   return `${tokens} tokens`;
 }
 
+const NO_IDS: ReadonlySet<string> = new Set();
+
 export const ConversationThread: React.FC<ConversationThreadProps> = ({
   turns,
   onSaveImage,
-  savingImageIds = new Set(),
-  savedImageIds = new Set(),
+  savingImageIds = NO_IDS,
+  savedImageIds = NO_IDS,
 }) => {
   if (turns.length === 0) {
     return null;

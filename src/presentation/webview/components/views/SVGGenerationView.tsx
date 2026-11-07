@@ -5,7 +5,7 @@
  * Responsibilities:
  * - Compose SVGModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
  * - Receive hook instance as prop (prose-minion pattern)
- * - Handle SVG save state tracking
+ * - Show the save state the host reported (via the hook)
  *
  * Layout: generation-view.css (shared with the Image tab).
  */
@@ -47,6 +47,8 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     svgCode,
     conversationHistory,
     conversationId,
+    isSaving,
+    isSaved,
     isLoading,
     error,
     generate,
@@ -59,24 +61,6 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
   const latestUsage = conversationHistory.length > 0
     ? conversationHistory[conversationHistory.length - 1].usage
     : undefined;
-
-  const [saving, setSaving] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
-
-  // Reset save states when a new SVG arrives
-  React.useEffect(() => {
-    setSaving(false);
-    setSaved(false);
-  }, [svgCode, conversationId]);
-
-  const handleSave = React.useCallback(() => {
-    setSaving(true);
-    saveSVG();
-    setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-    }, 1000);
-  }, [saveSVG]);
 
   const renderSizedPreview = React.useCallback((size: number) => (
     <div key={size} className="svg-sized-preview">
@@ -125,6 +109,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             onAttachmentChange={setReferenceAttachment}
             disabled={isLoading}
           />
+          {conversationId && (referenceImage || referenceSvgText) && (
+            <div className="generation-note">
+              The attachment applies to the next Generate. Refine keeps this conversation&apos;s context.
+            </div>
+          )}
 
           <Button
             onClick={generate}
@@ -169,7 +158,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
                   </div>
                 </div>
                 <div className="svg-result-actions">
-                  <SaveButton onClick={handleSave} saving={saving} saved={saved} />
+                  <SaveButton onClick={saveSVG} saving={isSaving} saved={isSaved} />
                 </div>
               </div>
               <div className="svg-preview-grid">
