@@ -119,13 +119,16 @@
 
 /* High contrast: the warm hairlines (~1.3:1) fail the 3:1 boundary contrast
    HC users rely on, so borders, rings and selection fall back to the theme's
-   contrast colours and surfaces lose their warm tint. */
+   contrast colours and surfaces lose their warm tint. Every border tier maps
+   to contrastBorder: contrastActiveBorder means "active/selected" in HC, so
+   it is reserved for the selected states below (buttons use border-strong
+   and would otherwise all read as selected). */
 body.vscode-high-contrast .app-container,
 body.vscode-high-contrast-light .app-container {
   --px-warm: transparent;
   --px-border: var(--vscode-contrastBorder, CanvasText);
   --px-border-soft: var(--vscode-contrastBorder, CanvasText);
-  --px-border-strong: var(--vscode-contrastActiveBorder, var(--vscode-contrastBorder, CanvasText));
+  --px-border-strong: var(--vscode-contrastBorder, CanvasText);
   --px-accent-ring: var(--vscode-focusBorder, Highlight);
   --px-focus-ring: var(--vscode-focusBorder, Highlight);
   --px-shadow: transparent;

@@ -1,5 +1,5 @@
 /**
- * SettingsView - Settings panel with card sections (Prose Minion style)
+ * SettingsView - Settings panel with card sections (Frame Minion settings view)
  *
  * Features:
  * - Card sections for API key, models, general settings
@@ -44,7 +44,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
       {/* API Key Section */}
       <section className="settings-section">
         <div className="settings-section-heading">
-          <span className="settings-section-kicker">PROVIDER</span>
+          <span className="settings-section-kicker">Provider</span>
           <h3 className="settings-section-title">OpenRouter</h3>
         </div>
         <p className="settings-description mb-sm">
@@ -70,7 +70,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
       {/* Models Section */}
       <section className="settings-section">
         <div className="settings-section-heading">
-          <span className="settings-section-kicker">GENERATION</span>
+          <span className="settings-section-kicker">Generation</span>
           <h3 className="settings-section-title">Default models</h3>
         </div>
         <div className="settings-model-grid">
@@ -94,7 +94,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
       {/* General Section */}
       <section className="settings-section">
         <div className="settings-section-heading">
-          <span className="settings-section-kicker">CONVERSATIONS</span>
+          <span className="settings-section-kicker">Conversations</span>
           <h3 className="settings-section-title">Context</h3>
         </div>
 
