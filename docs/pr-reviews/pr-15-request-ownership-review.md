@@ -6,17 +6,19 @@
 **Current stack base:** `3978da9a9d8c763a418e50d3f37a9302ebe1e707` (`claude/pixel-minion-picker-catalog-dhbqpd`)  
 **Diff merge base:** `fa85d0c17d51e6fc9478aef597e3dc8ed3665f95`. The base branch's later commit contains the #14 review only.
 
+**Status (2026-11-07):** N-01 fixed in `fddaf41`; the witness's two expected-behavior assertions now pass (10 / 10). The inherited #13 and #14 findings are resolved on their branches and merged in (`afba2aa`). 42 suites / 646 tests pass; see [Resolution status](#resolution-status).
+
 **Verdict: approve the scoped P2 request-ownership changes, with one nonblocking follow-up.** No new blocking defect was found in the ordinary generation, refinement, enhancement or save flows. This is not approval to release or merge the full stack: the existing #13 and #14 findings remain open.
 
 ## Status by item
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| N-01 | P3 / low, nonblocking | Generic router `ERROR` responses cannot settle pending saves | ⏳ Open |
-| S-13 | Inherited P2 | API-key replacement temporarily leaves the previous account's balance visible | ⏳ Open in [PR #13](https://github.com/okeylanders/pixel-minion-vscode/pull/13); not introduced by #15 |
-| S-14 | Inherited P2 | Text-only Recraft V4.1 Flash still accepts reference-bearing generation and refinement | ⏳ Open in [PR #14's review](https://github.com/okeylanders/pixel-minion-vscode/pull/14#pullrequestreview-5814231476); not introduced by #15 |
+| N-01 | P3 / low, nonblocking | Generic router `ERROR` responses cannot settle pending saves | ✅ Fixed in `fddaf41` |
+| S-13 | Inherited P2 | API-key replacement temporarily leaves the previous account's balance visible | ✅ Fixed in #13 (`b19a691`), merged here in `afba2aa` |
+| S-14 | Inherited P2 | Text-only Recraft V4.1 Flash still accepts reference-bearing generation and refinement | ↪ Deferred in #14 (`8e53acd`: row removed until capability gating, guard test added), merged here in `afba2aa` |
 
-## N-01: include saves in generic-error ownership
+## ✅ Fixed - N-01: include saves in generic-error ownership
 
 **Locations at the reviewed head:**
 - `src/presentation/webview/hooks/domain/useImageGeneration.ts:282–295`
@@ -35,7 +37,7 @@ The ordinary save handlers correctly catch write/validation/dialog failures and 
 npx jest --runInBand --roots docs/pr-reviews/witnesses --testMatch '**/pr-15-request-ownership.test.tsx'
 ```
 
-Current result: **8 passed, 2 failed**. The two failing assertions expect `handleError` to claim its own save; it returns `false`. The file is outside the default `src` test roots and does not make the normal suite red. To run only the passing review checks:
+Result at the reviewed head: **8 passed, 2 failed**. After `fddaf41`: **10 passed**. The two failing assertions expect `handleError` to claim its own save; it returns `false`. The file is outside the default `src` test roots and does not make the normal suite red. To run only the passing review checks:
 
 ```sh
 npx jest --runInBand --roots docs/pr-reviews/witnesses --testMatch '**/pr-15-request-ownership.test.tsx' -t 'independent request-ownership checks'
@@ -70,5 +72,17 @@ npx jest --runInBand --roots docs/pr-reviews/witnesses --testMatch '**/pr-15-req
 
 - No installed VSIX, real VS Code save dialog, real provider requests, charges or live-model outputs were exercised. Host tests use VS Code mocks; hook/component tests use jsdom.
 - Pending requests across webview reload, old host conversations discarded by a new Generate, and raster-reference/transcript rehydration remain in the existing roadmap. This review does not expand the P2 verdict to those deferred areas.
-- Existing #13 account ownership and #14 text-only-model blockers must be addressed before treating the stack as ready.
+- Existing #13 account ownership and #14 text-only-model blockers must be addressed before treating the stack as ready. (Since addressed: #13 fixed, #14's row deferred; both merged in `afba2aa`.)
 - Publication adds this report and its review-only witness. No production code change, merge, auto-merge or deployment was performed.
+
+## Resolution status
+
+- **N-01 ✅ `fddaf41`.**
+  - `useImageGeneration.handleError`: an error whose id is in `pendingSaves` deletes that entry, recomputes `savingImageIds` (another image's pending save stays pending), shows the error and returns `true`.
+  - `useSVGGeneration.handleError`: an error matching `pendingSave` clears it and `saveState`, shows the error and returns `true`.
+  - Neither touches the generation or enhance refs, so a running refinement or new generation continues and settles on its own answer. A repeat of the settled id or an unknown `*-save-` id still returns `false` and App drops it; a late `*_SAVE_RESULT` for the settled save is ignored.
+  - Tests: one hook case per tab (`useImageGenerationOwnership` / `useSVGGenerationOwnership`), each with a refinement running and, for images, a second save pending. Two `AppErrorRouting.test.tsx` cases go through App's real router: Image tab with a refinement running, and SVG tab with a new generation running (the same SVG returns, and its button is no longer stuck on "Saving…"). Both App cases fail with the hook change reverted.
+  - The witness file is kept. `npx jest --runInBand --roots docs/pr-reviews/witnesses --testMatch '**/pr-15-request-ownership.test.tsx'` now reports **10 passed**. Its second `describe` is still titled "expected to fail until fixed", as written by the reviewer.
+  - Docs: the `CHANGELOG.md` save bullet, `docs/CHANGELOG-DETAILED.md` (the `handleError` description and a review follow-up section), and the CLAUDE.md / AGENTS.md request-ownership invariant now include saves.
+- **Stack:** `afba2aa` merges #14, including #13's fixes, with no conflicts. `2252c30` adds the now-required `accountEpoch` to `AppErrorRouting.test.tsx`'s balance push.
+- **Validation:** `npx jest` 42 suites / 646 tests; the three `tsc --noEmit` projects clean; `npm run build` passes with the three usual webpack size warnings; `npm run lint` unchanged at 9 errors / 20 warnings.
