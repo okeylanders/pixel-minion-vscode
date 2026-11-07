@@ -38,10 +38,14 @@ export function TabBar({
   disabled = false,
 }: TabBarProps): JSX.Element {
   const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  // The tab that holds the single Tab stop: the active one, or the first if
+  // the active id matches no tab (e.g. stale persisted state).
+  const activeIndex = tabs.findIndex(tab => tab.id === activeTab);
+  const tabStopIndex = activeIndex >= 0 ? activeIndex : 0;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const focused = tabRefs.current.findIndex(tab => tab === event.target);
-    const current = focused >= 0 ? focused : tabs.findIndex(tab => tab.id === activeTab);
+    const current = focused >= 0 ? focused : tabStopIndex;
     const next = nextTabIndex(event.key, current, tabs.length);
     if (next === null || disabled) {
       return;
@@ -66,7 +70,7 @@ export function TabBar({
             role="tab"
             aria-selected={selected}
             aria-controls={panelDomId(tab.id)}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={index === tabStopIndex ? 0 : -1}
             className={`tab-button${selected ? ' active' : ''}`}
             onClick={() => onTabChange(tab.id)}
             disabled={disabled}
