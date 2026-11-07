@@ -154,6 +154,61 @@ Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.
 - New: modal overlay/ARIA/scroll/reset/footer cases; select label, `aria-expanded` and helper cases; `SVGModelSelector.test.tsx` (kind grouping, custom cards); `shared/models/catalog.test.ts` (defaults shipped, no retired id listed, every retired id moves to a shipped model, coherent capabilities, SVG pricing shape per kind, native vector ⇔ `recraft/` while routing keys on it); refresh-specific label, rate, date and retiring-badge cases; the modality snapshot gained the 9 new image ids; `SVGOrchestrator` pins `maxTokens: 32000`.
 - `modelBrowserOptions.test.ts` moved to `__tests__/presentation/webview/components/shared/` to mirror the source.
 
+### P2: request ownership hardening (`claude/pixel-minion-request-ownership-dhbqpd`)
+
+Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [parity plan §5](plans/frame-image-parity-plan.md)). Fixes the pre-existing ownership defects confirmed in the PR #12 review (ledger S2, S3). Commit `a2d5115`.
+
+#### User-facing
+
+- Stale, late or duplicated responses, errors and save results can't settle a newer request; an enhance error in one tab no longer clears the other tab's spinner.
+- A failed turn is never replayed in the next request; a second concurrent refinement of one conversation is refused.
+- The Image tab sends an attached SVG once (it was sent twice) and records it with its turn, so re-hydration replays it.
+- Refinements use the conversation's thread settings and carry no draft attachments. New note under each tab's attachments while a conversation is active.
+- "Saved" reflects the host's save result; cancel is a distinct, silent outcome; WebP/GIF save as `.webp`/`.gif`; unidentified data is refused.
+
+#### Webview
+
+- **Correlation ids** (`src/presentation/webview/utils/requestId.ts`, `newRequestId(prefix)`): `image-` / `svg-` + `generate`, `continue`, `enhance`, `save`, `clear`. The host already echoed `correlationId` on responses, statuses and errors; no host routing change was needed.
+- **Dispatch snapshots** (`useImageGeneration.ts`, `useSVGGeneration.ts`): a `pending` ref holds `{ correlationId, prompt, settings, referenceSvgText }`. The response handler ignores any other correlation id and builds the turn from the snapshot. This replaces `pendingPrompt` state plus a `useCallback(..., [])` that always read the first render's `referenceSvgText` (null), so attached SVG text was never recorded with a turn.
+- **Ownership-aware errors**: `handleError` now returns `boolean` (owned or not). It settles the pending generation or enhance it matches, or shows an error for its own `*-clear-` request; anything else returns `false` and changes nothing. `App.tsx` gives every `ERROR` to both hooks. An error from a non-request host (`extension.settings`, …) that neither hook owns is shown in the active tab through the new `showError(text)` action, without touching any spinner. Previously enhance and settings errors went to both hooks and cleared both spinners.
+- **SVG text once**: `generate()` sends the raw prompt plus `referenceSvgText`; only `ImageConversationManager.addUserMessage` appends `Reference SVG:` (it was appended in the hook and again in the manager). The SVG tab already sent it once on generate, but re-sent the draft attachment on every refinement.
+- **Thread settings**: new `ImageThreadSettings` / `SVGThreadSettings` (`{ model, aspectRatio }`) in `@messages`, set from the dispatch snapshot on success, persisted as optional `threadSettings`. `continueChat` sends them instead of the draft controls. In memory the host already ignored the draft values, but re-hydration after a host restart used them, so the effective model depended on whether the host had restarted. Persisted state without `threadSettings` falls back to its saved `model`/`aspectRatio`, which is exactly what the old code sent. Frame's P3 `ImageThreadSettings` (mode, resolution) extends this shape.
+- **No draft attachments on refine**: `referenceSvgText` was removed from `ImageGenerationContinuePayload` and `SVGGenerationContinuePayload`; `continueChat` sends only prompt, id, history and thread settings. The Image host already dropped draft raster references (the payload had no field for them).
+- **Truthful save state**: the 1 s "Saved" timers in `ImageGenerationView` / `SVGGenerationView` are gone. The image hook tracks `pendingSaves` (correlation id → image id) and exposes `savingImageIds` / `savedImageIds`; the SVG hook exposes `isSaving` / `isSaved` for the SVG on screen, and a newer save supersedes an older one. `ImageSaveResultPayload` / `SVGSaveResultPayload` gained `cancelled?: boolean`.
+- **Save extension**: the suggested file name uses `imageExtensionForMime` (`src/shared/media/imageFormats.ts`); an unsupported MIME is refused in the webview without posting.
+- **Memoized persistence**: `persistedState` is a `useMemo` in `useImageGeneration`, `useSVGGeneration`, `useSettings` and `useTokenTracking`. All four were new objects on every render, so App's save effect called `vscode.setState` (with every base64 image) on every render.
+- `clearConversation` now also posts `*_GENERATION_CLEAR` (with a `*-clear-` id), so the host frees the conversation; it was never told before.
+
+#### Host
+
+- **Rollback, in-flight guard, first-turn release** (`ImageOrchestrator.ts`, ported from frame-minion@40e7949 `ImageOrchestrator.ts:102-166`; same pattern in `SVGOrchestrator.ts`): a turn records the message count (and image seed) before adding the user message; any failure, including an SVG reply with no `<svg>`, splices back to it, and a conversation whose first turn failed is removed. A per-conversation `inFlight` set rejects an overlapping request (`already generating`) and a clear while a turn runs (`Wait for … to finish`). Without it, a second continuation could push its user message into the array the first request was about to serialize.
+- **Deep copy** (`ImageConversationManager.addAssistantResponse`, Frame `:141`): the provider's assistant message is copied with JSON round-trip, so the transcript shares no nested parts with the result the handler reads. A non-array `content` keeps its string text (Frame `:162`).
+- **Clear errors**: `handleClearConversation` in both handlers catches a refused clear and posts `ERROR` with the request's correlation id.
+- **Save outcomes** (`ImageGenerationHandler`, `SVGGenerationHandler`): exactly one `*_SAVE_RESULT` per request. A dismissed dialog returns `cancelled: true` (it threw `Save cancelled` before). Opening the written file is in its own `try`; a failure there is a `warn` and no longer posts a second, failed result after the success.
+- **Image extension from the bytes**: `saveImage` decodes the data URL, identifies PNG/JPEG/GIF/WebP by signature (`sniffImageMime`) and names the file after it, replacing any suggested extension. A label that disagrees with the bytes is logged; unidentified data is refused.
+
+#### Intentionally not in P2
+
+- Generate does not release the previous host conversation, and there are no archived threads (P4).
+- Typing in the prompt still re-serializes the whole history, because the draft and history share one persisted object; bounded persistence with a separate draft reserve is P3 (Frame R-3).
+- Reloading the webview mid-generation still loses the pending request (Frame F-10); pending refs are not persisted by design.
+- Host-side save-filename validation is P5a (ledger S4).
+- Upstream to Frame: the open-after-save second result and the "Saved" timer exist in Frame's Image tab too.
+
+#### Test coverage
+
+322 → 375 tests (28 → 34 suites).
+
+- `ImageOrchestrator.test.ts` (new; adapted from Frame `ImageConversationModes.test.ts:120,163,203`, without modes and store): rollback of prompt and seed, first-turn release, a re-hydrated thread keeps its history on failure, one provider request under concurrency, clear refused mid-turn, SVG sent once (fresh and after re-hydration). Drives the real `OpenRouterImageClient` against a mocked `fetch`, so assertions are on request bodies.
+- `SVGOrchestrator.test.ts`: rollback after a provider error and after a reply with no SVG, first-turn release, concurrency, SVG text once.
+- `ImageConversationManager.test.ts`: the stored message is isolated from the provider result; Gemini stripping leaves the result intact.
+- `useImageGenerationOwnership.test.tsx` / `useSVGGenerationOwnership.test.tsx` (jsdom): stale and duplicate responses and errors ignored (adapted from Frame `useImageGenerationModes.test.tsx:41`), turn recorded from the snapshot, refine payload has thread settings and no attachments, legacy state continues with saved controls, enhance and clear correlation, Saved only on success (not on cancel, failure, unknown or superseded result), `.webp`/`.gif` names, unsupported MIME refused, `persistedState` referentially stable while idle.
+- `AppErrorRouting.test.tsx` (jsdom, renders `App`): an Image enhance error leaves the SVG generation running and error-free; only its own error settles it; a settings error shows in the visible tab only; an unrelated re-render doesn't call `setState`.
+- `GenerationSaveHandlers.test.ts`: `.webp` from WebP bytes, bytes beat a wrong label, unidentified data refused, cancel reported as `cancelled`, open failure keeps the single success result, refused clear correlated.
+- `imageFormats.test.ts`: extension map and signature sniffing.
+
+Lint: 11 → 9 errors (two invalid `react-hooks` disable comments removed with the effects they annotated), 22 → 20 warnings (unused `pendingPrompt`).
+
 ---
 
 ## [1.3.0] - 2026-05-20

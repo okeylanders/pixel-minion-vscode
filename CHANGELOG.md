@@ -48,6 +48,14 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
 - **Long SVGs from code models could come back cut off** - Most code models reason before they answer, and that reasoning counts against the response limit. SVG requests now allow up to 32,000 tokens (was 16,384).
 - The SVG model browser grouped Gemini text models with the image models.
+- **Answers land where they belong.** Every generation, refinement, prompt enhancement and save now carries its own request id. A late or repeated answer can no longer replace a newer result, and an Enhance Prompt error in one tab no longer stops the other tab's spinner or appears in both tabs.
+- **A failed turn is not sent again.** When a generation or refinement fails, its prompt is dropped instead of being resent with your next refinement. Starting a second refinement of the same conversation while one is running is refused instead of mixing the two.
+- **An attached SVG reaches the model once.** On the Image tab, an attached SVG's markup was sent twice with the first prompt. It is now sent once and stays with the turn it was attached to, including after VS Code restarts.
+- **Refine keeps the conversation's own settings.** A refinement always uses the model and aspect ratio the conversation started with, also after a restart, and no longer picks up attachments added afterwards: those apply to your next Generate, and a note says so.
+- **"Saved" means saved.** The checkmark now waits until the file is written. Cancelling the save dialog or a failed write no longer shows "Saved", and a cancel is no longer reported as an error.
+- **WebP and GIF images keep their format when saved.** Files are named after the image's real format (`.png`, `.jpg`, `.webp`, `.gif`) instead of always `.jpg`. Data that isn't a supported image is refused instead of being saved under the wrong name.
+- A failed settings change now shows its error in the tab you are looking at, without stopping a generation in progress.
+- The panel no longer re-saves all of its state, including every generated image, each time it redraws.
 
 ## [1.3.0] - 2026-05-20
 

@@ -78,7 +78,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | D7 / C8 | 🟠 | Model browser a11y: no focus trap or return, background not inert, Escape not scoped, chips/selection unannounced, trigger label unassociated, no `aria-expanded` | D, C — **consensus** | A (overlay hook) · B (picker port) | ✅ Overlay hook + paint order in `7294c29`, `01a230c`; picker internals in `5d8bb2d` |
 | C4 | 🟠 | Balance survives API key clear/replace (shows account A's balance beside the no-key alert) | C | A | ✅ Fixed in `25a6f55` |
 | C5 | 🟠 | When `/credits` 403s, the key spend cap is labelled "Account balance" | C | A | ✅ Fixed in `609da39` |
-| S2 | 🟠 **pre** | Request ownership: no correlation ids; stale `referenceSvgText` (SVG text never recorded, but sent twice); a failed turn is resent with the next request; Refine eligibility uses the draft model, not the thread's; an enhance error clears the other tab's spinner; `persistedState` serialized every render | S | P2 (+ P5a for SVG refine) | ⏳ Open |
+| S2 | 🟠 **pre** | Request ownership: no correlation ids; stale `referenceSvgText` (SVG text never recorded, but sent twice); a failed turn is resent with the next request; Refine eligibility uses the draft model, not the thread's; an enhance error clears the other tab's spinner; `persistedState` serialized every render | S | P2 (+ P5a for SVG refine) | ◐ Partial in `a2d5115` (everything except SVG refine eligibility, which is P5a) |
 | U5 | 🟠 | `openai/gpt-5-image-mini` expires 2026-12-01 | U | B | ✅ Fixed in 7038e87 (labelled "retiring Dec 1, 2026") |
 | C6 | 🟡 | Frame PR-12 review fixes lost: zero-cap reads "depleted"; "$-1.50"; invalid key vs offline identical (status dropped); per-handler debounce timer never disposed | C | A | ✅ Fixed in `25a6f55` (d), `609da39` (a–c) |
 | C7 | 🟡 | No balance cache or dedupe; `forceRefresh` ignored; every load sends 2 requests (4 HTTP calls) | C | A | ✅ Fixed in `25a6f55` |
@@ -99,7 +99,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | V14 | 🟡 **pre** | SVG code: per-line background bands, mid-token wraps | V | A | ✅ Fixed in `0d39415` |
 | U6 | 🟡 | GPT-5.6 Sol / Sol Pro stored at $5/$30; live $4/$20 | U, C — **consensus** | B | ✅ Fixed in 7038e87 (superseded by GPT-6.1 Sol) |
 | M1 | 🟡 **pre** | SVG text client sends `max_tokens: 16384` (CLAUDE.md says 48 000). Reasoning models can truncate long SVGs | U | B | ✅ Fixed in a679286 (32,000) |
-| S3 | 🟡 **pre** | "Saved" shown by a 1 s timer even on cancel/error (Image and SVG); WebP/GIF saved as `.jpg` | S | P2 | ⏳ Open |
+| S3 | 🟡 **pre** | "Saved" shown by a 1 s timer even on cancel/error (Image and SVG); WebP/GIF saved as `.jpg` | S | P2 | ✅ Fixed in `a2d5115` |
 | S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ⏳ Open |
 | C11 | ⚪ | Post-generation balance refresh depends on `usage` being present | C | A | ✅ Fixed in `25a6f55` |
 | C12 | ⚪ | Session token totals now a dead pipeline; "Last request" persists across reloads and shows only a time of day | C | A | ✅ Fixed in `47f364e` |
@@ -200,3 +200,10 @@ Branch `claude/pixel-minion-picker-catalog-dhbqpd`: `5d8bb2d` picker port and sh
 - **C1 / U4** — B makes no wire changes, so the catalog-driven half moves to **P3** (with the Image API transport). B extends the modality snapshot test to the 9 new image ids; the prefix routing sends each of them only the modalities it declares.
 - **C13** (stale `svgModel` description in `package.json`): `7038e87` rewrites the `imageModel` and `svgModel` descriptions for the current catalog; the row's other parts are PR A's.
 - Also from PR A's visual review (not ledger rows): picker text no longer uses `--px-text-dim` for meaningful text, badges are 10.5 px, and accent badges use foreground text on the tint. One residual: the modal eyebrow in Light Modern measures 3.78:1 because the family `--px-accent-text` token does; that belongs to the token, not the picker.
+
+### P2 — request ownership
+
+Branch `claude/pixel-minion-request-ownership-dhbqpd`, stacked on PR B.
+
+- **S2 (P2 part), `a2d5115`** (`claude/pixel-minion-request-ownership-dhbqpd`): correlation ids on generate, refine, enhance, clear and save in `useImageGeneration` / `useSVGGeneration`; responses and errors settle only their own request, and App gives every error to both hooks, which claim only their own (`handleError(): boolean`). Turns are built from a dispatch snapshot, so attached SVG text is recorded with its turn and sent to the model once. Refinements send the thread's settings and no draft attachments. `ImageOrchestrator` / `SVGOrchestrator` roll back failed turns, release a failed first turn and allow one provider request per conversation. `persistedState` is memoized in all four persisted hooks. Remaining: SVG Refine eligibility from the thread's model (P5a).
+- **S3, `a2d5115`**: "Saved" comes from the host's `*_SAVE_RESULT` (cancel is a distinct `cancelled` outcome, and a failure to open the written file no longer posts a second result). Saved images are named after their sniffed format (`.png` / `.jpg` / `.webp` / `.gif`); anything else is refused.
