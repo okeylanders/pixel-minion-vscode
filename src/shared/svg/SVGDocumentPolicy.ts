@@ -360,6 +360,18 @@ interface Attribute {
 }
 
 /**
+ * An element left open on the scanner's stack. Its classification is worked
+ * out once, when it is pushed: the scanner asks "am I inside <style>?" at
+ * every text run and start tag, and re-deriving that from a long open name
+ * for each of many children was quadratic (PR #16 review R16-1).
+ */
+interface OpenElement {
+  /** Lower-cased qualified name, for matching the end tag. */
+  name: string;
+  isStyle: boolean;
+}
+
+/**
  * A single forward pass over the markup: prolog, elements, attributes, text,
  * comments and CDATA. It tracks element nesting so it can require exactly one
  * <svg> root, and collects <style> text for the CSS check. Sticky regexes
@@ -371,6 +383,10 @@ interface Attribute {
  * for an attribute). XML allows more letters in names; a name the scanner
  * would otherwise read only part of (and then misread the rest) is a
  * rejection instead.
+ *
+ * Per-token work is proportional to that token alone: nothing re-reads an
+ * open ancestor's name or walks the stack, so neither deep nesting nor a
+ * long element name with many children costs more than its own bytes.
  */
 class Scanner {
   private static readonly ELEMENT_NAME = /[A-Za-z_][A-Za-z0-9_.:-]*/y;
@@ -380,7 +396,7 @@ class Scanner {
   private static readonly WHITESPACE = /\s*/y;
 
   private position = 0;
-  private readonly open: string[] = [];
+  private readonly open: OpenElement[] = [];
   private rootSeen = false;
   private rootClosed = false;
   private styleText = '';
@@ -400,7 +416,7 @@ class Scanner {
       this.markup();
     }
     if (!this.rootSeen) throw new Rejection("doesn't have an <svg> root element");
-    if (this.open.length > 0) throw new Rejection(`isn't well-formed (<${this.open[this.open.length - 1]}> is never closed)`);
+    if (this.open.length > 0) throw new Rejection(`isn't well-formed (<${this.open[this.open.length - 1].name}> is never closed)`);
   }
 
   /** Match a sticky regex at the current position, advancing past it. */
@@ -499,10 +515,10 @@ class Scanner {
     if (!match) throw new Rejection("isn't well-formed (a malformed closing tag)");
     const name = match[1].toLowerCase();
     const expected = this.open.pop();
-    if (expected !== name) {
-      throw new Rejection(`isn't well-formed (</${match[1]}> doesn't close <${expected ?? 'nothing'}>)`);
+    if (expected?.name !== name) {
+      throw new Rejection(`isn't well-formed (</${match[1]}> doesn't close <${expected?.name ?? 'nothing'}>)`);
     }
-    if (localName(name) === 'style' && this.styleText) {
+    if (expected.isStyle && this.styleText) {
       checkCss(this.styleText);
       this.styleText = '';
     }
@@ -528,7 +544,7 @@ class Scanner {
 
     const { attributes, selfClosing } = this.attributes();
     this.checkAttributes(name, attributes);
-    if (!selfClosing) this.open.push(qualifiedName.toLowerCase());
+    if (!selfClosing) this.open.push({ name: qualifiedName.toLowerCase(), isStyle: name === 'style' });
     else if (this.open.length === 0) this.rootClosed = true;
   }
 
@@ -542,9 +558,9 @@ class Scanner {
     if (!ends) throw new Rejection(`isn't well-formed (${what} it can't read)`);
   }
 
+  /** Constant time: the classification was stored when the element was opened. */
   private inStyle(): boolean {
-    const current = this.open[this.open.length - 1];
-    return current !== undefined && localName(current) === 'style';
+    return this.open[this.open.length - 1]?.isStyle === true;
   }
 
   private attributes(): { attributes: Attribute[]; selfClosing: boolean } {

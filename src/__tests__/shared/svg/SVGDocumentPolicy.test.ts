@@ -95,4 +95,72 @@ describe('SVGDocumentPolicy', () => {
       expect(timed(cases['url( openers in <style>']).verdict).toMatchObject({ accepted: false });
     });
   });
+
+  describe('long names and deep nesting stay linear (R16-1)', () => {
+    const NS = 'xmlns="http://www.w3.org/2000/svg"';
+    const root = (body: string) => `<svg ${NS}>${body}</svg>`;
+    const overhead = root('').length;
+    /** Largest n whose document, `n` bytes per unit, stays under the 2 MB cap. */
+    const units = (bytesPerUnit: number, extra = 0) => Math.floor((MAX_SVG_DOCUMENT_BYTES - overhead - extra) / bytesPerUnit);
+    const timed = (svg: string) => {
+      const started = Date.now();
+      const verdict = inspectSvgDocument(svg);
+      return { verdict, ms: Date.now() - started };
+    };
+
+    // Each document is valid and accepted, so the scanner reads all of it.
+    // Before R16-1 the first took 5.7 s at 384 KB (O(n²): the open parent's
+    // name was re-read for every child); at 2 MB it would take minutes.
+    const cases: Record<string, () => string> = {
+      'a long open element name with many children': () => {
+        const n = units(6, 5); // <n> + n × <g/> + </n>
+        const tag = 'g'.repeat(n);
+        return root(`<${tag}>${'<g/>'.repeat(n)}</${tag}>`);
+      },
+      'a long prefixed open element name with many children': () => {
+        const n = units(6, 64); // also the xmlns:svg declaration and two "svg:" prefixes
+        const tag = `svg:${'g'.repeat(n)}`;
+        return `<svg ${NS} xmlns:svg="http://www.w3.org/2000/svg"><${tag}>${'<g/>'.repeat(n)}</${tag}></svg>`;
+      },
+      'a long open element name with many text runs': () => {
+        const n = units(7, 5); // <n> + n × "x<g/>" (5) + </n>
+        const tag = 'g'.repeat(n);
+        return root(`<${tag}>${'x<g/>'.repeat(n)}</${tag}>`);
+      },
+      'balanced deep nesting': () => {
+        const n = units(7);
+        return root('<g>'.repeat(n) + '</g>'.repeat(n));
+      },
+      'deep nesting of long names': () => {
+        const tag = 'g'.repeat(1000);
+        const depth = units(2 * tag.length + 5);
+        return root(`<${tag}>`.repeat(depth) + `</${tag}>`.repeat(depth));
+      },
+      'a long open name around a <style> with many CDATA runs': () => {
+        const n = units(18, 20);
+        const tag = 'g'.repeat(n);
+        return root(`<${tag}><style>${'<![CDATA[a{}]]>'.repeat(n)}</style></${tag}>`);
+      },
+    };
+
+    it.each(Object.entries(cases))('%s: about 2 MB, accepted in well under a second', (_name, build) => {
+      const svg = build();
+      expect(svg.length).toBeLessThanOrEqual(MAX_SVG_DOCUMENT_BYTES);
+      expect(svg.length).toBeGreaterThan(MAX_SVG_DOCUMENT_BYTES * 0.9);
+      const { verdict, ms } = timed(svg);
+      expect(verdict).toEqual({ accepted: true });
+      expect(ms).toBeLessThan(1000);
+    });
+
+    it('still matches end tags exactly, case-insensitively, and finds <style> by local name', () => {
+      expect(inspectSvgDocument(root('<G><g/></g>'))).toEqual({ accepted: true });
+      expect(inspectSvgDocument(root('<gg><g/></g>'))).toMatchObject({ accepted: false, reason: expect.stringContaining("doesn't close <gg>") });
+      // A prefixed <style> is still a <style>: its CSS is checked when it closes.
+      expect(inspectSvgDocument(`<svg ${NS} xmlns:s="http://www.w3.org/2000/svg"><s:style>@import "x.css";</s:style></svg>`))
+        .toMatchObject({ accepted: false, reason: expect.stringContaining('@import') });
+      // A sibling element named like style (stylex) is not one.
+      expect(inspectSvgDocument(root('<stylex>@import "x.css";</stylex>'))).toEqual({ accepted: true });
+      expect(inspectSvgDocument(root('<style><g/></style>'))).toMatchObject({ accepted: false, reason: expect.stringContaining('inside <style>') });
+    });
+  });
 });
