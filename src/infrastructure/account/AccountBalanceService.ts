@@ -5,7 +5,9 @@
  * re-resolved webview shares the same cache and timer. Responsibilities:
  * - Combine `/key` and `/credits` so one call's failure never hides the
  *   other's data, and record why each failed.
- * - Cache the sanitized payload for 120 s and share one in-flight fetch.
+ * - Cache the sanitized payload for 120 s (15 s when a call failed, so an
+ *   outage or a 5xx isn't pinned for two minutes) and share one in-flight
+ *   fetch.
  * - Honor `forceRefresh`, but never more than once a second.
  * - Own the trailing post-request refresh. OpenRouter's billing figures lag
  *   spend by roughly 5-10 s, so the refresh waits 10 s after the last
@@ -17,6 +19,11 @@ import { LoggingService } from '@logging';
 import { OpenRouterAccountClient } from '../ai/clients/OpenRouterAccountClient';
 
 export const BALANCE_CACHE_TTL_MS = 120_000;
+/**
+ * TTL for a payload missing a figure because a call failed (offline, 5xx,
+ * 429, invalid key…). Short, so the next view or request retries soon.
+ */
+export const FAILED_BALANCE_CACHE_TTL_MS = 15_000;
 /** Floor between forced fetches, so a chatty webview can't hammer billing endpoints. */
 export const MIN_FORCED_REFRESH_INTERVAL_MS = 1_000;
 export const POST_REQUEST_REFRESH_DELAY_MS = 10_000;
@@ -39,8 +46,9 @@ export class AccountBalanceService {
   ) {}
 
   /**
-   * Current balance. A cached value is served while younger than the TTL, or,
-   * for a forced call, younger than the forced-refresh floor. Concurrent calls
+   * Current balance. A cached value is served while younger than its TTL
+   * (see {@link cacheTtl}), or, for a forced call, younger than the
+   * forced-refresh floor. Concurrent calls
    * share one fetch, except that a forced call never accepts a non-forced
    * fetch that was already running: that result may predate the spend the
    * caller wants to see.
@@ -48,7 +56,7 @@ export class AccountBalanceService {
   async getBalance(forceRefresh = false): Promise<OpenRouterBalancePayload> {
     if (this.cache) {
       const age = Date.now() - this.cache.fetchedAt;
-      const maxAge = forceRefresh ? MIN_FORCED_REFRESH_INTERVAL_MS : BALANCE_CACHE_TTL_MS;
+      const maxAge = forceRefresh ? MIN_FORCED_REFRESH_INTERVAL_MS : cacheTtl(this.cache);
       if (age < maxAge) return this.cache;
     }
 
@@ -179,4 +187,9 @@ export class AccountBalanceService {
       fetchedAt,
     };
   }
+}
+
+/** How long a payload may be served from the cache to a non-forced caller. */
+function cacheTtl(payload: OpenRouterBalancePayload): number {
+  return payload.keyIssue || payload.creditsIssue ? FAILED_BALANCE_CACHE_TTL_MS : BALANCE_CACHE_TTL_MS;
 }

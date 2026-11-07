@@ -1,6 +1,7 @@
 import {
   AccountBalanceService,
   BALANCE_CACHE_TTL_MS,
+  FAILED_BALANCE_CACHE_TTL_MS,
   MIN_FORCED_REFRESH_INTERVAL_MS,
   POST_REQUEST_REFRESH_DELAY_MS,
 } from '../../../infrastructure/account';
@@ -112,6 +113,42 @@ describe('AccountBalanceService', () => {
       jest.advanceTimersByTime(1);
       await service.getBalance();
       expect(fetchCount()).toBe(2);
+    });
+
+    it('serves a failed result for only 15 s', async () => {
+      client.fetchKeyLimit.mockResolvedValue({ status: 'unavailable', issue: { kind: 'network' } });
+      client.fetchCredits.mockResolvedValue({ status: 'unavailable', issue: { kind: 'network' } });
+      await expect(service.getBalance()).resolves.toMatchObject({ status: 'unavailable' });
+
+      jest.advanceTimersByTime(FAILED_BALANCE_CACHE_TTL_MS - 1);
+      await service.getBalance();
+      expect(fetchCount()).toBe(1);
+
+      // Back online: the next caller after 15 s gets fresh figures, not the outage.
+      client.fetchKeyLimit.mockResolvedValue(KEY_OK);
+      client.fetchCredits.mockResolvedValue(creditsOk(72.5));
+      jest.advanceTimersByTime(1);
+      await expect(service.getBalance()).resolves.toMatchObject({ status: 'ok', creditsStatus: 'ok' });
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('uses the short TTL when only one of the two calls failed', async () => {
+      client.fetchCredits.mockResolvedValue({ status: 'unavailable', issue: { kind: 'server_error', httpStatus: 502 } });
+      await service.getBalance();
+
+      jest.advanceTimersByTime(FAILED_BALANCE_CACHE_TTL_MS);
+      await service.getBalance();
+      expect(fetchCount()).toBe(2);
+    });
+
+    it('keeps the full TTL for no_key (nothing failed)', async () => {
+      client.fetchKeyLimit.mockResolvedValue({ status: 'no_key' });
+      client.fetchCredits.mockResolvedValue({ status: 'no_key' });
+      await service.getBalance();
+
+      jest.advanceTimersByTime(FAILED_BALANCE_CACHE_TTL_MS);
+      await service.getBalance();
+      expect(fetchCount()).toBe(1);
     });
 
     it('shares one fetch between concurrent callers', async () => {
