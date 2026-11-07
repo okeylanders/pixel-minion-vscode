@@ -1,5 +1,6 @@
 import {
   describeCreditsUnavailable,
+  describeStale,
   describeUnavailable,
   formatRequestCost,
   formatUsd,
@@ -8,7 +9,7 @@ import {
 } from '../../../../../presentation/webview/components/balances/balanceFormat';
 import type { OpenRouterBalancePayload } from '@messages';
 
-const base = { fetchedAt: 1 } as const;
+const base = { fetchedAt: 1, accountEpoch: 0 } as const;
 
 describe('balanceFormat', () => {
   describe('currency', () => {
@@ -143,6 +144,42 @@ describe('balanceFormat', () => {
         creditsStatus: 'unavailable',
         keyLimit: { limit: null, limitRemaining: null, resetWindow: 'unknown' },
       })).toEqual(expect.objectContaining({ text: '—', tone: 'muted' }));
+    });
+
+    it('flags a carried-over balance as last known and says why it could not refresh', () => {
+      const headline = openRouterHeadline({
+        ...base,
+        status: 'ok',
+        creditsStatus: 'unavailable',
+        credits: { totalCredits: 100, totalUsage: 25, remaining: 75 },
+        creditsIssue: { kind: 'network' },
+        stale: { figuresFetchedAt: 0, issue: { kind: 'network' } },
+      });
+
+      expect(headline).toEqual({
+        text: '$75.00',
+        tone: 'normal',
+        caption: "Account balance. Last known figures: couldn't reach OpenRouter",
+        stale: true,
+      });
+    });
+
+    it('leaves a fresh headline unflagged', () => {
+      expect(openRouterHeadline({
+        ...base,
+        status: 'ok',
+        creditsStatus: 'ok',
+        credits: { totalCredits: 100, totalUsage: 25, remaining: 75 },
+      }).stale).toBeUndefined();
+    });
+  });
+
+  describe('describeStale', () => {
+    it('names the transient cause', () => {
+      expect(describeStale({ figuresFetchedAt: 0, issue: { kind: 'server_error', httpStatus: 502 } }))
+        .toBe('Showing last known figures: OpenRouter error (HTTP 502).');
+      expect(describeStale({ figuresFetchedAt: 0, issue: { kind: 'rate_limited', httpStatus: 429 } }))
+        .toBe('Showing last known figures: rate-limited (HTTP 429).');
     });
   });
 });

@@ -18,6 +18,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **OpenRouter balance in the header.**
   - See your remaining credit at a glance and expand it for details.
   - It refreshes automatically after each generation and whenever you change your API key.
+  - Switching to a different API key clears the old account's balance straight away while the new one loads.
+  - If a refresh can't reach OpenRouter, the last known balance stays on screen, marked as last known.
   - It tells you clearly when the balance can't be read, the key is invalid, or you're offline.
 - **Accessibility**
   - Full keyboard support for tabs and dialogs: arrow keys move between tabs, focus stays inside an open dialog and returns when it closes, and Escape closes only the top dialog.

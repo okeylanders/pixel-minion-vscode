@@ -11,6 +11,7 @@ import {
   MessageEnvelope,
   MessageType,
   OpenRouterBalancePayload,
+  OpenRouterBalanceResetPayload,
   RequestOpenRouterBalancePayload,
   createEnvelope,
 } from '@messages';
@@ -34,11 +35,17 @@ export class AccountBalanceHandler {
 
   /**
    * The stored key was saved, replaced or cleared. Drop the previous key's
-   * figures and push the new state (a cleared key resolves to `no_key`
-   * without a network call).
+   * figures, tell the webview to stop showing them right away (the new key's
+   * fetch can take up to the client's timeout), then push the new state (a
+   * cleared key resolves to `no_key` without a network call).
    */
   async handleApiKeyChanged(): Promise<void> {
     this.service.invalidate();
+    this.postMessage(createEnvelope<OpenRouterBalanceResetPayload>(
+      MessageType.OPENROUTER_BALANCE_RESET,
+      'extension.account',
+      { accountEpoch: this.service.accountEpoch() }
+    ));
     await this.respond(() => this.service.getBalance(true));
   }
 
@@ -55,6 +62,9 @@ export class AccountBalanceHandler {
     load: () => Promise<OpenRouterBalancePayload>,
     correlationId?: string
   ): Promise<void> {
+    // The key this load is for. If the key changes before it fails, the
+    // fallback below is labelled with the old epoch and the webview drops it.
+    const accountEpoch = this.service.accountEpoch();
     let payload: OpenRouterBalancePayload;
     try {
       payload = await load();
@@ -64,7 +74,7 @@ export class AccountBalanceHandler {
          stamped "now" would hide them, and the webview's newest-wins check
          would then also reject the next (older) cached copy of them. */
       payload = this.service.lastKnownBalance()
-        ?? { status: 'unavailable', creditsStatus: 'unavailable', fetchedAt: Date.now() };
+        ?? { status: 'unavailable', creditsStatus: 'unavailable', accountEpoch, fetchedAt: Date.now() };
     }
     this.postBalance(payload, correlationId);
   }
