@@ -184,7 +184,7 @@ export function AppHeader({
               <div className="pm-balance-status">Add an OpenRouter key in Settings</div>
             ) : balances.balance?.status === 'unavailable' ? (
               <div className="pm-balance-status">
-                {balances.balance.reason ?? 'Balance unavailable'}
+                Balance unavailable
               </div>
             ) : (
               <>
@@ -232,7 +232,6 @@ export function AppHeader({
                       minute: '2-digit',
                     })
                   : '—'}
-                {balances.balance?.reason ? ` · ${balances.balance.reason}` : ''}
               </span>
             </div>
           </div>

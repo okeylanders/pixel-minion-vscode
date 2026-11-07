@@ -23,6 +23,7 @@ import {
   SVGGenerationContinuePayload,
   SVGSaveRequestPayload,
   EnhancePromptRequestPayload,
+  RequestOpenRouterBalancePayload,
   TokenUsage,
   TokenUsageUpdatePayload,
   createEnvelope,
@@ -46,8 +47,23 @@ import {
   OpenRouterDynamicTextClient,
   OpenRouterImageSVGClient,
   SVGOrchestrator,
-  OpenRouterAccountClient,
 } from '@ai';
+import { AccountBalanceService } from '../../infrastructure/account';
+
+/**
+ * Outgoing message types that end an OpenRouter request that may have spent
+ * credits. Posting one arms the shared service's trailing balance refresh, so
+ * any handler that answers a generation participates without extra wiring.
+ * Deliberately excluded: ERROR (failed requests are normally not billed; the
+ * cache TTL or a manual refresh covers the exception), STATUS progress
+ * updates, and file-save results (no spend).
+ */
+const TERMINAL_AI_RESPONSE_TYPES: ReadonlySet<MessageType> = new Set([
+  MessageType.IMAGE_GENERATION_RESPONSE,
+  MessageType.SVG_GENERATION_RESPONSE,
+  MessageType.ENHANCE_PROMPT_RESPONSE,
+  MessageType.AI_CONVERSATION_RESPONSE,
+]);
 
 export class MessageHandler {
   private readonly router: MessageRouter;
@@ -58,6 +74,13 @@ export class MessageHandler {
   private readonly svgGenerationHandler: SVGGenerationHandler;
   private readonly enhanceHandler: EnhanceHandler;
   private readonly accountBalanceHandler: AccountBalanceHandler;
+  private readonly unsubscribeBalanceRefresh: () => void;
+
+  /**
+   * Posts to this handler's webview and, for terminal AI responses, schedules
+   * the balance refresh. Every domain handler receives this wrapped function.
+   */
+  private readonly postMessage: (message: MessageEnvelope) => void;
 
   // Token usage accumulator - tracks total usage across the session
   private tokenTotals: TokenUsage = {
@@ -68,10 +91,18 @@ export class MessageHandler {
   };
 
   constructor(
-    private readonly postMessage: (message: MessageEnvelope) => void,
+    postToWebview: (message: MessageEnvelope) => void,
     secretStorage: SecretStorageService,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly accountBalanceService: AccountBalanceService
   ) {
+    const postMessage = (message: MessageEnvelope): void => {
+      postToWebview(message);
+      if (TERMINAL_AI_RESPONSE_TYPES.has(message.type)) {
+        this.accountBalanceService.scheduleRefresh();
+      }
+    };
+    this.postMessage = postMessage;
     this.router = new MessageRouter();
 
     // Initialize domain handlers with token usage callback
@@ -119,8 +150,11 @@ export class MessageHandler {
     );
     this.accountBalanceHandler = new AccountBalanceHandler(
       postMessage,
-      new OpenRouterAccountClient(secretStorage, logger),
+      accountBalanceService,
       logger
+    );
+    this.unsubscribeBalanceRefresh = accountBalanceService.addRefreshListener(
+      (balance) => this.accountBalanceHandler.postBalance(balance)
     );
 
     // Register routes
@@ -148,7 +182,6 @@ export class MessageHandler {
 
       this.logger.debug('Token usage applied', this.tokenTotals);
       this.broadcastTokenUsage(usage);
-      this.accountBalanceHandler.schedulePostRequestRefresh();
     } catch (error) {
       this.logger.error('Failed to apply token usage update', error);
     }
@@ -229,7 +262,9 @@ export class MessageHandler {
     // OpenRouter account balance
     this.router.register(
       MessageType.REQUEST_OPENROUTER_BALANCE,
-      () => this.accountBalanceHandler.handleRequest()
+      (msg) => this.accountBalanceHandler.handleRequest(
+        msg as MessageEnvelope<RequestOpenRouterBalancePayload | undefined>
+      )
     );
 
     // Image Generation domain
@@ -330,7 +365,14 @@ export class MessageHandler {
     // Forward selected models to orchestrators if needed in future
   }
 
+  /** Called when the API key is saved, replaced or cleared. */
   private resetClients(): void {
     this.textHandler.resetClient();
+    void this.accountBalanceHandler.handleApiKeyChanged();
+  }
+
+  /** The webview went away: stop receiving scheduled balance refreshes. */
+  dispose(): void {
+    this.unsubscribeBalanceRefresh();
   }
 }

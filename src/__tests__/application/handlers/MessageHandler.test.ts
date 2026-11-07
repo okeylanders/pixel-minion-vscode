@@ -4,7 +4,15 @@
  * Tests the main message dispatcher and token accumulation
  */
 import { MessageHandler } from '../../../application/handlers/MessageHandler';
-import { MessageType, createEnvelope, TokenUsage } from '@messages';
+import { SettingsHandler } from '../../../application/handlers/domain/SettingsHandler';
+import { ImageGenerationHandler } from '../../../application/handlers/domain/ImageGenerationHandler';
+import {
+  MessageEnvelope,
+  MessageType,
+  OpenRouterBalancePayload,
+  createEnvelope,
+  TokenUsage,
+} from '@messages';
 
 // Mock dependencies
 const mockLogger = {
@@ -43,20 +51,61 @@ jest.mock('../../../application/handlers/domain/TextHandler', () => ({
   TextHandler: jest.fn().mockImplementation(() => ({
     handleConversationRequest: jest.fn(),
     handleClearConversation: jest.fn(),
+    resetClient: jest.fn(),
   })),
 }));
+
+jest.mock('../../../application/handlers/domain/ImageGenerationHandler', () => ({
+  ImageGenerationHandler: jest.fn().mockImplementation(() => ({})),
+}));
+
+const BALANCE: OpenRouterBalancePayload = {
+  status: 'ok',
+  credits: { totalCredits: 20, totalUsage: 7.66, remaining: 12.34 },
+  creditsStatus: 'ok',
+  fetchedAt: 1_700_000_000_000,
+};
 
 describe('MessageHandler', () => {
   let postMessage: jest.Mock;
   let handler: MessageHandler;
+  let unsubscribe: jest.Mock;
+  let balanceService: {
+    getBalance: jest.Mock;
+    invalidate: jest.Mock;
+    scheduleRefresh: jest.Mock;
+    addRefreshListener: jest.Mock;
+  };
+
+  /** The (wrapped) postMessage MessageHandler hands to its domain handlers. */
+  const domainPostMessage = (): ((message: MessageEnvelope) => void) =>
+    (ImageGenerationHandler as unknown as jest.Mock).mock.calls[0][0];
+
+  /** SettingsHandler's onSecretsChanged callback (runs after key save/clear). */
+  const onSecretsChanged = (): (() => void) =>
+    (SettingsHandler as unknown as jest.Mock).mock.calls[0][4];
+
+  const balancePosts = () => postMessage.mock.calls
+    .map(([message]) => message as MessageEnvelope)
+    .filter((message) => message.type === MessageType.OPENROUTER_BALANCE_DATA);
+
+  const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
   beforeEach(() => {
     jest.clearAllMocks();
     postMessage = jest.fn();
+    unsubscribe = jest.fn();
+    balanceService = {
+      getBalance: jest.fn().mockResolvedValue(BALANCE),
+      invalidate: jest.fn(),
+      scheduleRefresh: jest.fn(),
+      addRefreshListener: jest.fn(() => unsubscribe),
+    };
     handler = new MessageHandler(
       postMessage,
       mockSecretStorage as never,
-      mockLogger as never
+      mockLogger as never,
+      balanceService as never
     );
   });
 
@@ -64,7 +113,7 @@ describe('MessageHandler', () => {
     it('should initialize and register routes', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         'MessageHandler initialized with routes',
-        expect.any(Array)
+        expect.arrayContaining([MessageType.REQUEST_OPENROUTER_BALANCE])
       );
     });
 
@@ -72,16 +121,85 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: expect.objectContaining({
+          payload: {
             totals: {
               promptTokens: 0,
               completionTokens: 0,
               totalTokens: 0,
               costUsd: 0,
             },
-          }),
+          },
         })
       );
+    });
+  });
+
+  describe('OpenRouter balance', () => {
+    it('routes REQUEST_OPENROUTER_BALANCE to the shared service, honoring forceRefresh', async () => {
+      await handler.handleMessage(createEnvelope(
+        MessageType.REQUEST_OPENROUTER_BALANCE,
+        'webview.account',
+        { forceRefresh: true },
+        'corr-9'
+      ));
+
+      expect(balanceService.getBalance).toHaveBeenCalledWith(true);
+      expect(balancePosts()).toEqual([expect.objectContaining({
+        source: 'extension.account',
+        payload: BALANCE,
+        correlationId: 'corr-9',
+      })]);
+    });
+
+    it.each([
+      MessageType.IMAGE_GENERATION_RESPONSE,
+      MessageType.SVG_GENERATION_RESPONSE,
+      MessageType.ENHANCE_PROMPT_RESPONSE,
+      MessageType.AI_CONVERSATION_RESPONSE,
+    ])('arms the post-request refresh when a handler posts %s', (type) => {
+      const message = createEnvelope(type, 'extension.imageGeneration', {});
+
+      domainPostMessage()(message);
+
+      expect(postMessage).toHaveBeenCalledWith(message);
+      expect(balanceService.scheduleRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      MessageType.STATUS,
+      MessageType.ERROR,
+      MessageType.IMAGE_SAVE_RESULT,
+      MessageType.TOKEN_USAGE_UPDATE,
+    ])('does not arm a refresh for non-terminal %s', (type) => {
+      domainPostMessage()(createEnvelope(type, 'extension.imageGeneration', {}));
+
+      expect(balanceService.scheduleRefresh).not.toHaveBeenCalled();
+    });
+
+    it('does not depend on usage being reported to refresh', () => {
+      handler.applyTokenUsage({ promptTokens: 1, completionTokens: 1, totalTokens: 2 });
+
+      expect(balanceService.scheduleRefresh).not.toHaveBeenCalled();
+    });
+
+    it('re-fetches for the new key after the API key is saved, replaced or cleared', async () => {
+      onSecretsChanged()();
+      await flushPromises();
+
+      expect(balanceService.invalidate).toHaveBeenCalledTimes(1);
+      expect(balanceService.getBalance).toHaveBeenCalledWith(true);
+      expect(balancePosts()).toEqual([expect.objectContaining({ payload: BALANCE })]);
+    });
+
+    it('posts scheduled refreshes to its webview until disposed', () => {
+      const listener = balanceService.addRefreshListener.mock.calls[0][0] as
+        (payload: OpenRouterBalancePayload) => void;
+
+      listener(BALANCE);
+      expect(balancePosts()).toEqual([expect.objectContaining({ payload: BALANCE })]);
+
+      handler.dispose();
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -134,14 +252,16 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: expect.objectContaining({
+          payload: {
             totals: {
               promptTokens: 100,
               completionTokens: 50,
               totalTokens: 150,
               costUsd: 0.01,
             },
-          }),
+            lastRequest: usage1,
+            requestedAt: expect.any(Number),
+          },
         })
       );
     });
@@ -168,14 +288,16 @@ describe('MessageHandler', () => {
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           type: MessageType.TOKEN_USAGE_UPDATE,
-          payload: expect.objectContaining({
+          payload: {
             totals: {
               promptTokens: 300,
               completionTokens: 150,
               totalTokens: 450,
               costUsd: 0.03,
             },
-          }),
+            lastRequest: usage2,
+            requestedAt: expect.any(Number),
+          },
         })
       );
     });
@@ -193,13 +315,15 @@ describe('MessageHandler', () => {
 
       expect(postMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          payload: expect.objectContaining({
+          payload: {
             totals: expect.objectContaining({
               promptTokens: 100,
               completionTokens: 0,
               totalTokens: 100,
             }),
-          }),
+            lastRequest: partialUsage,
+            requestedAt: expect.any(Number),
+          },
         })
       );
     });

@@ -14,6 +14,7 @@ import { MessageHandler } from '../handlers/MessageHandler';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import { MessageType, createEnvelope } from '@messages';
+import { AccountBalanceService } from '../../infrastructure/account';
 
 export class WebviewViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'pixelMinion.mainView';
@@ -24,7 +25,8 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly secretStorage: SecretStorageService,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly accountBalanceService: AccountBalanceService
   ) {}
 
   public resolveWebviewView(
@@ -48,7 +50,8 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     this.messageHandler = new MessageHandler(
       (message) => webviewView.webview.postMessage(message),
       this.secretStorage,
-      this.logger
+      this.logger,
+      this.accountBalanceService
     );
 
     // Handle messages from webview
@@ -67,6 +70,7 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     // Handle disposal
     webviewView.onDidDispose(() => {
       this.logger.info('Webview disposed');
+      this.messageHandler?.dispose();
       this._view = undefined;
       this.messageHandler = undefined;
     });
