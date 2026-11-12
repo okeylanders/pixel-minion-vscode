@@ -72,6 +72,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     setSeedInput,
     referenceImages,
     referenceSvgText,
+    referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
     referenceIssue,
@@ -184,6 +185,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           <div className="image-generation-actions-row">
             <ImageUploader
               images={referenceImages}
+              svgIndex={referenceSvgIndex}
               onAddImage={addReferenceImage}
               onRemoveImage={removeReferenceImage}
               onClear={clearReferenceImages}

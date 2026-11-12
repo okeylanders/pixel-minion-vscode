@@ -205,6 +205,8 @@ export interface ImageGenerationState {
   resolution: ImageResolution;
   referenceImages: string[];  // base64 data URLs
   referenceSvgText: string | null; // raw SVG text attachment
+  /** Index in `referenceImages` of the SVG attachment's preview (sent as text, not as an image), or null. */
+  referenceSvgIndex: number | null;
   referenceSvgWarning: string | null;
   referenceImageSizeWarning: string | null; // Warning for Sourceful 4.5MB limit
   /** Why the attached references can't go to the selected model (Generate is blocked), or null. */
@@ -796,6 +798,7 @@ export function useImageGeneration(
     resolution,
     referenceImages,
     referenceSvgText,
+    referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
     referenceIssue,
