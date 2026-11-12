@@ -40,3 +40,138 @@
   font-size: 11px;
   overflow-wrap: anywhere;
 }
+
+/* Conversation | Single Shot: native radios styled as a compact pill that
+   sits centred on the input card's top border (Frame's .image-mode-selector,
+   on --px-* tokens). The negative bottom margin pulls the card up under the
+   pill: the view's gap plus half the pill, so the border runs through its
+   middle; the card's top padding makes room for it. */
+.image-generation-view {
+  --image-view-gap: 16px;
+  --image-mode-height: 32px;
+}
+
+.image-mode-selector {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 220px;
+  max-width: calc(100% - 36px);
+  height: var(--image-mode-height);
+  flex-shrink: 0;
+  align-self: center;
+  overflow: hidden;
+  margin: 0 18px calc(0px - var(--image-view-gap) - var(--image-mode-height) / 2 - 0.5px);
+  padding: 0;
+  background: var(--px-card);
+  border: 1px solid var(--px-border-strong);
+  border-radius: 999px;
+}
+
+.image-mode-selector label {
+  position: relative;
+  flex: 1;
+  cursor: pointer;
+}
+
+.image-mode-selector input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.image-mode-selector span {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  color: var(--px-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.image-mode-selector input:checked + span {
+  color: var(--px-text);
+  background: color-mix(in oklab, var(--px-accent) 16%, var(--px-card));
+}
+
+.image-mode-selector input:focus-visible + span {
+  outline: 2px solid var(--px-focus-ring);
+  outline-offset: -3px;
+}
+
+.image-mode-selector:disabled {
+  opacity: 0.6;
+}
+
+.image-mode-selector:disabled label {
+  cursor: default;
+}
+
+.image-mode-selector + .well {
+  padding-top: 28px;
+}
+
+/* Model + Aspect Ratio, then Resolution + Seed, in two columns from 480 px
+   (Frame's fm-row-2). A last control alone on its row spans both columns, so
+   no row is left with an orphan; below 480 px everything stacks. */
+@media (min-width: 480px) {
+  .image-generation-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(142px, 180px);
+    gap: 12px;
+  }
+
+  .image-generation-header > * {
+    min-width: 0;
+  }
+
+  .image-generation-header > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+.image-mode-description {
+  margin: 0;
+}
+
+/* Earlier threads (Frame's .image-archived-threads). */
+.image-archived-threads {
+  display: flex;
+  flex-direction: column;
+}
+
+.image-archived-threads-title {
+  margin: 0 0 8px;
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.image-archived-thread {
+  padding: 8px 0;
+  border-top: 1px solid var(--px-border-soft);
+}
+
+.image-archived-thread summary {
+  min-height: 44px;
+  padding: 10px 0;
+  color: var(--px-text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.image-archived-thread[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-archived-thread[open] > .btn {
+  align-self: flex-start;
+}

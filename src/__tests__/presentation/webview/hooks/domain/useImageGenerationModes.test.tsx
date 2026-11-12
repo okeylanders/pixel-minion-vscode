@@ -1,16 +1,21 @@
 /** @jest-environment jsdom */
 /**
- * Thread-owned settings, the automatic mode for a new thread, legacy
- * migration and the bounded snapshot, through the real hook and Image tab.
+ * Modes, thread-owned settings, Earlier threads, start-from-image, custom
+ * ids, legacy migration and the bounded snapshot, through the real hook and
+ * Image tab.
  *
- * Adapted from frame-minion@40e7949 useImageGenerationModes.test.tsx (the
- * cases that don't need the mode toggle, which arrives with roadmap P4).
+ * Ported from frame-minion@40e7949 useImageGenerationModes.test.tsx. Pixel
+ * deltas: Muse cases use a custom id or a Single-Shot-only model (Muse has no
+ * route), no desktop budget, and archiving also releases the thread on the
+ * host (one IMAGE_GENERATION_CLEAR), which Frame does only on Delete.
  */
 import React from 'react';
-import { act, renderHook, render, screen, fireEvent } from '@testing-library/react';
+import { act, renderHook, render, screen, fireEvent, within } from '@testing-library/react';
 import { useImageGeneration, ImageGenerationPersistence } from '../../../../../presentation/webview/hooks/domain/useImageGeneration';
 import { ImageGenerationView } from '../../../../../presentation/webview/components/views/ImageGenerationView';
 import { MessageType, createEnvelope, ImageThreadSettings, ConversationTurn, GeneratedImage, MessageEnvelope } from '@messages';
+import { OPENROUTER_IMAGE_MODELS, imageRouteCapabilities } from '../../../../../shared/models';
+import { __resetOverlayStateForTests } from '../../../../../presentation/webview/hooks/useOverlayDismiss';
 
 const mockPost = jest.fn();
 jest.mock('../../../../../presentation/webview/hooks/useVSCodeApi', () => ({ useVSCodeApi: () => ({ postMessage: mockPost }) }));
@@ -18,49 +23,123 @@ const model = 'google/gemini-3-pro-image';
 const image: GeneratedImage = { id: 'image-1', data: 'data:image/png;base64,QUJD', mimeType: 'image/png', prompt: 'Blue knight', seed: 12, timestamp: 1 };
 const settings: ImageThreadSettings = { mode: 'conversation', model, aspectRatio: '16:9', resolution: '4K' };
 const turn: ConversationTurn = { id: 'turn-1', prompt: 'Keep the knight blue', images: [image], timestamp: 1, turnNumber: 1 };
-const existing: Partial<ImageGenerationPersistence> = { model, aspectRatio: '16:9', resolution: '4K', threadSettings: settings, conversationId: 'img-existing', conversationHistory: [turn] };
-const messages = (): MessageEnvelope[] => mockPost.mock.calls.map(([message]) => message);
+const existing: Partial<ImageGenerationPersistence> = { ...settings, threadSettings: settings, conversationId: 'img-existing', conversationHistory: [turn] };
+const messages = (): MessageEnvelope<any>[] => mockPost.mock.calls.map(([message]) => message); // eslint-disable-line @typescript-eslint/no-explicit-any
 const posted = () => messages()[messages().length - 1];
 const ofType = (type: MessageType) => messages().filter(message => message.type === type);
+const fail = (correlationId: string | undefined) =>
+  createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'offline' }, correlationId);
 
 beforeEach(() => mockPost.mockClear());
+afterEach(() => __resetOverlayStateForTests());
 
 function View({ initial }: { initial: Partial<ImageGenerationPersistence> }) {
   const state = useImageGeneration(initial);
   return <ImageGenerationView imageGeneration={state} />;
 }
 
-describe('the mode a new thread gets (no toggle until P4)', () => {
-  it('starts a Conversation where the model has a verified route, otherwise Single Shot', () => {
-    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A knight' }));
-    expect(result.current.mode).toBe('conversation');
-    act(() => result.current.generate());
-    expect(posted().payload).toMatchObject({ mode: 'conversation', model });
-
-    act(() => { result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'x' }, posted().correlationId)); });
-    act(() => result.current.setModel('recraft/recraft-v4.1'));
-    expect(result.current.mode).toBe('edit');
-    act(() => result.current.generate());
-    expect(posted().payload).toMatchObject({ mode: 'edit', model: 'recraft/recraft-v4.1' });
+describe('modes and Earlier threads', () => {
+  it('preserves earlier threads and their mode when switching, including after webview reload', () => {
+    const hook = renderHook(() => useImageGeneration(existing));
+    act(() => hook.result.current.setMode('edit'));
+    expect(hook.result.current.conversationId).toBeNull();
+    expect(hook.result.current.archivedThreads).toEqual([{ id: 'img-existing', settings, turns: [turn], recoveryWarning: undefined }]);
+    // Earlier threads don't continue, so the host lets go of it (Pixel delta).
+    expect(messages()).toEqual([expect.objectContaining({ type: MessageType.IMAGE_GENERATION_CLEAR, payload: { conversationId: 'img-existing' } })]);
+    const saved = hook.result.current.persistedState;
+    hook.unmount();
+    const restored = renderHook(() => useImageGeneration(saved));
+    expect(restored.result.current.mode).toBe('edit');
+    expect(restored.result.current.archivedThreads[0].settings.mode).toBe('conversation');
+    expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
-  it('runs a custom id as Single Shot with automatic dimensions, keeping the id', () => {
-    const { result } = renderHook(() => useImageGeneration({ model: 'vendor/unknown', aspectRatio: '16:9', resolution: '2K', prompt: 'A tree' }));
-    expect(result.current.mode).toBe('edit');
-    expect(result.current.aspectRatio).toBe('auto');
-    expect(result.current.resolution).toBe('auto');
+  it('keeps the current thread under Earlier threads when Generate starts a new one, and deletes one on request', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
     act(() => result.current.generate());
-    expect(posted().payload).toMatchObject({ mode: 'edit', model: 'vendor/unknown', aspectRatio: 'auto', resolution: 'auto' });
+    // Shown under Earlier threads while the new one runs, but not released yet.
+    expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+    // Deleting it is refused while it still belongs to the running Generate.
+    act(() => result.current.removeArchivedThread('img-existing'));
+    expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId: 'img-new', images: [image], turnNumber: 1, settings }, ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
+    expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)[0].payload).toEqual({ conversationId: 'img-existing' });
+
+    mockPost.mockClear();
+    act(() => result.current.removeArchivedThread('img-existing'));
+    expect(result.current.archivedThreads).toEqual([]);
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CLEAR, payload: { conversationId: 'img-existing' } });
+    expect(posted().correlationId).toMatch(/^image-clear-/);
+  });
+
+  it('captures prompt/context once, refuses a mode switch while generating, and ignores stale responses and errors', () => {
+    const { result } = renderHook(() => useImageGeneration({ model }));
+    act(() => { result.current.setPrompt('A knight'); result.current.addReferenceImage(image.data, '<svg />'); });
+    act(() => result.current.generate());
+    const request = posted();
+    expect(request.payload).toMatchObject({ mode: 'conversation', prompt: 'A knight', referenceSvgText: '<svg />' });
+    expect(request.payload.referenceImages).toBeUndefined();
+    act(() => result.current.setMode('edit'));
+    expect(result.current.mode).toBe('conversation');
+    act(() => result.current.startFromImage(image));
+    expect(result.current.referenceImages).toEqual([image.data]); // unchanged: the SVG attachment's preview
+    act(() => { result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'stale' })); });
+    expect(result.current.isLoading).toBe(true);
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration', { conversationId: 'img-new', images: [image], turnNumber: 1 }, request.correlationId)));
+    expect(result.current.conversationHistory[0].prompt).toBe('A knight');
+    expect(result.current.conversationHistory[0].referenceSvgText).toBe('<svg />');
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('migrates untagged persisted history to Single Shot and can start a fresh conversation from an existing image', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, conversationId: 'img-old', conversationHistory: [turn] }));
+    expect(result.current.mode).toBe('edit');
+    expect(result.current.threadSettings?.mode).toBe('edit');
+    act(() => result.current.setMode('conversation'));
+    act(() => result.current.startFromImage(image));
+    expect(result.current.referenceImages).toEqual([image.data]);
+    expect(result.current.archivedThreads[0].settings.mode).toBe('edit');
+    expect(result.current.conversationHistory).toEqual([]);
+    expect(result.current.mode).toBe('conversation');
+  });
+
+  it('starts a new installation in Conversation when the model has a route, otherwise Single Shot', () => {
+    expect(renderHook(() => useImageGeneration({ model })).result.current.mode).toBe('conversation');
+    expect(renderHook(() => useImageGeneration({ model: 'recraft/recraft-v4.1' })).result.current.mode).toBe('edit');
+    // A tagged thread from before the toggle keeps its mode.
+    expect(renderHook(() => useImageGeneration({ ...existing, mode: undefined })).result.current.mode).toBe('conversation');
+  });
+
+  it('keeps the model on a mode switch, normalizing only what the new route drops', () => {
+    const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', mode: 'edit', resolution: '512' }));
+    act(() => result.current.setMode('conversation'));
+    expect(result.current.model).toBe('google/gemini-3.1-flash-image');
+    expect(result.current.resolution).toBe('auto');
   });
 });
 
 describe('thread-owned settings', () => {
   it('continues with immutable thread settings despite changing the controls for a new generation', () => {
     const { result } = renderHook(() => useImageGeneration(existing));
-    act(() => { result.current.setModel('recraft/recraft-v4.1'); result.current.setAspectRatio('auto'); result.current.setResolution('auto'); });
+    act(() => { result.current.setModel('openai/gpt-5-image'); result.current.setAspectRatio('3:2'); result.current.setResolution('auto'); });
     act(() => result.current.continueChat('Add a tree'));
     expect(posted().payload).toMatchObject({ ...settings, prompt: 'Add a tree', conversationId: 'img-existing' });
     expect(posted().payload).not.toHaveProperty('referenceImages');
+  });
+
+  it('clears optimistic settings after a failed new thread but preserves settings after a failed continuation', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A tree' }));
+    act(() => result.current.generate());
+    act(() => { result.current.handleError(fail(posted().correlationId)); });
+    expect(result.current.threadSettings).toBeNull();
+    expect(result.current.conversationId).toBeNull();
+    const active = renderHook(() => useImageGeneration(existing));
+    act(() => active.result.current.continueChat('Continue'));
+    act(() => { active.result.current.handleError(fail(posted().correlationId)); });
+    expect(active.result.current.threadSettings).toEqual(settings);
   });
 
   it('takes the settings the host reports and its recovery warning', () => {
@@ -71,22 +150,8 @@ describe('thread-owned settings', () => {
       recoveryWarning: 'The image was generated, but conversation recovery could not be saved.',
     }, posted().correlationId)));
     expect(result.current.threadSettings).toEqual({ ...settings, resolution: 'auto' });
-    expect(result.current.recoveryWarning).toContain('could not be saved');
     expect(result.current.persistedState.recoveryWarning).toContain('could not be saved');
   });
-
-  it('clears optimistic settings after a failed new thread but preserves settings after a failed continuation', () => {
-    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A tree' }));
-    act(() => result.current.generate());
-    act(() => { result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'offline' }, posted().correlationId)); });
-    expect(result.current.threadSettings).toBeNull();
-    expect(result.current.conversationId).toBeNull();
-    const active = renderHook(() => useImageGeneration(existing));
-    act(() => active.result.current.continueChat('Continue'));
-    act(() => { active.result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'offline' }, posted().correlationId)); });
-    expect(active.result.current.threadSettings).toEqual(settings);
-  });
-
 
   it('normalizes the ratio and resolution when a model change removes them', () => {
     const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', aspectRatio: '21:9', resolution: '4K' }));
@@ -116,6 +181,9 @@ describe('Generate replacing a thread', () => {
     expect(clear.correlationId).toMatch(/^image-clear-/);
     expect(result.current.conversationId).toBe('img-new');
     expect(result.current.persistedState.conversationId).toBe('img-new');
+    // ...and it stays under Earlier threads for good.
+    expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
+    expect(result.current.persistedState.archivedThreads?.map(thread => thread.id)).toEqual(['img-existing']);
   });
 
   it('puts the replaced thread back, unreleased, when the new one fails', () => {
@@ -130,6 +198,9 @@ describe('Generate replacing a thread', () => {
     expect(result.current.threadSettings).toEqual(settings);
     expect(result.current.conversationHistory).toEqual([turn]);
     expect(result.current.generatedImages).toEqual([image]);
+    // It is the current thread again, not an Earlier thread...
+    expect(result.current.archivedThreads).toEqual([]);
+    expect(result.current.persistedState.archivedThreads).toEqual([]);
     // ...and it can still be continued.
     act(() => result.current.continueChat('Add a tree'));
     expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CONTINUE, payload: { conversationId: 'img-existing' } });
@@ -140,10 +211,13 @@ describe('Generate replacing a thread', () => {
     act(() => result.current.generate());
     const saved = result.current.persistedState;
     expect(saved).toMatchObject({ conversationId: 'img-existing', threadSettings: settings, conversationHistory: [turn] });
+    // Not saved as an Earlier thread too: it isn't one until the new thread exists.
+    expect(saved.archivedThreads).toEqual([]);
 
     const restored = renderHook(() => useImageGeneration(saved));
     expect(restored.result.current.conversationId).toBe('img-existing');
     expect(restored.result.current.conversationHistory).toEqual([turn]);
+    expect(restored.result.current.archivedThreads).toEqual([]);
   });
 
   it('shows the release error after the response instead of letting the response hide it', () => {
@@ -218,18 +292,117 @@ describe('migration of history saved before modes', () => {
   });
 
   it('opens P2-shaped thread settings (no mode) as Single Shot on a ratio the model lists', () => {
-    // The old picker offered 3:2 to every model; Recraft V4.1 doesn't list it.
     const legacy = { model: 'recraft/recraft-v4.1', conversationId: 'img-old', conversationHistory: [turn],
       threadSettings: { model: 'recraft/recraft-v4.1', aspectRatio: '3:2' } } as unknown as Partial<ImageGenerationPersistence>;
     const { result } = renderHook(() => useImageGeneration(legacy));
     expect(result.current.threadSettings).toEqual({ mode: 'edit', model: 'recraft/recraft-v4.1', aspectRatio: '1:1', resolution: 'auto' });
+    expect(result.current.mode).toBe('edit');
+  });
+});
+
+describe('the Image tab', () => {
+  it('renders accessible mode radios, archive labels and the latest-image explanation', () => {
+    render(<View initial={existing} />);
+    const edit = screen.getByRole('radio', { name: 'Single Shot' });
+    expect((screen.getByRole('radio', { name: 'Conversation' }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole('group', { name: 'Image generation mode' })).toBeTruthy();
+    fireEvent.click(edit);
+    expect((edit as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    expect(screen.getByText(/Conversation · Keep the knight blue · 1 turn/)).toBeTruthy();
+    expect(screen.getAllByText(/Earlier messages are not included/).length).toBeGreaterThan(0);
+    expect(screen.queryByPlaceholderText('Continue the conversation...')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete thread' })).toBeTruthy();
+  });
+
+  it('disables mode switching while a request runs', () => {
+    render(<View initial={{ ...existing, prompt: 'A knight' }} />);
+    fireEvent.click(screen.getByRole('button', { name: /Start Conversation/ }));
+    expect((screen.getByRole('group', { name: 'Image generation mode' }) as HTMLFieldSetElement).disabled).toBe(true);
+  });
+
+  it('lists only the models the selected mode supports', () => {
+    render(<View initial={{ model, mode: 'conversation' }} />);
+    const conversational = OPENROUTER_IMAGE_MODELS.filter(entry => imageRouteCapabilities(entry.id, 'conversation'));
+    fireEvent.click(screen.getByRole('button', { name: /Current model:/ }));
+    const browser = screen.getByRole('dialog', { name: /browser/ });
+    expect(conversational).toHaveLength(10);
+    expect(browser.querySelectorAll('.model-browser-card')).toHaveLength(conversational.length);
+    expect(within(browser).queryByRole('button', { name: 'Recraft V4.1' })).toBeNull();
+    expect(within(browser).getByRole('button', { name: 'GPT-5 Image' })).toBeTruthy();
+    fireEvent.click(within(browser).getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    fireEvent.click(screen.getByRole('button', { name: /Current model:/ }));
+    const singleShot = screen.getByRole('dialog', { name: /browser/ });
+    expect(within(singleShot).getByRole('button', { name: 'Recraft V4.1' })).toBeTruthy();
+    expect(singleShot.querySelectorAll('.model-browser-card')).toHaveLength(OPENROUTER_IMAGE_MODELS.length);
+  });
+
+  it('keeps a curated model the mode doesn’t support visible by name and blocks it without replacing the choice', () => {
+    render(<View initial={{ model: 'recraft/recraft-v4.1', mode: 'conversation', prompt: 'A knight' }} />);
+    expect(screen.getByRole('button', { name: /Current model: Recraft V4\.1$/ })).toBeTruthy();
+    expect(screen.getByText(/no verified Conversation route/)).toBeTruthy();
+    expect(screen.getAllByRole('status').map(node => node.textContent)).toContain('The selected model is unavailable in Conversation. Choose a supported model above.');
+    expect((screen.getByRole('button', { name: /Start Conversation/ }) as HTMLButtonElement).disabled).toBe(true);
+    // No seed/ratio/resolution for a route that doesn't exist.
+    expect(screen.queryByLabelText('Seed')).toBeNull();
+  });
+
+  it('shows only chat-supported resolution tiers and mode-specific endpoint and follow-up wording', () => {
+    const { unmount } = render(<View initial={{ ...existing, model: 'google/gemini-3.1-flash-image' }} />);
+    const resolutions = screen.getByLabelText('Resolution') as HTMLSelectElement;
+    expect(Array.from(resolutions.options).map(option => option.value)).toEqual(['auto', '1K', '2K', '4K']);
+    expect(screen.getByText(/Conversation uses OpenRouter’s \/chat\/completions endpoint/)).toBeTruthy();
+    expect(screen.getByText(/Longer conversations may cost more/)).toBeTruthy();
+    expect(screen.getByPlaceholderText('Continue the conversation...')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy();
+    unmount();
+    render(<View initial={{ ...existing, mode: 'edit', threadSettings: { ...settings, mode: 'edit' } }} />);
+    expect(screen.getByRole('button', { name: '⚡ Generate' })).toBeTruthy();
+    expect(screen.getByText('Single Shot history')).toBeTruthy();
+    expect(screen.getByText(/Single Shot uses OpenRouter’s \/images endpoint instead of \/chat\/completions/)).toBeTruthy();
+    expect(screen.getByPlaceholderText('Write a prompt using the latest image...')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Generate' })).toBeTruthy();
+  });
+
+  it('offers start-from-image on every image, but not while busy or for a model that takes no reference', () => {
+    const { unmount } = render(<View initial={existing} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Start a conversation from this image' }));
+    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    expect(screen.getAllByAltText('Reference 1').length).toBe(1);
+    expect(mockPost).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.IMAGE_GENERATION_CLEAR }));
+    unmount();
+    render(<View initial={{ ...existing, mode: 'edit', model: 'recraft/recraft-v4.1-flash' }} />);
+    expect(screen.queryByRole('button', { name: /from this image/ })).toBeNull();
+  });
+
+  it('keeps custom ids visible and usable in Single Shot while Conversation stays strict', () => {
+    const { unmount } = render(<View initial={{ mode: 'edit', model: 'vendor/unknown', prompt: 'A tree' }} />);
+    expect(screen.getByRole('button', { name: /Current model: Custom: vendor\/unknown/ })).toBeTruthy();
+    expect(screen.getByText(/runs as Single Shot through \/images with automatic dimensions/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: /⚡ Generate/ }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: /⚡ Generate/ }));
+    expect(posted().payload).toMatchObject({ mode: 'edit', model: 'vendor/unknown', aspectRatio: 'auto' });
+    unmount();
+    render(<View initial={{ mode: 'conversation', model: 'vendor/unknown', prompt: 'A tree' }} />);
+    expect(screen.getByRole('button', { name: /Current model: Custom: vendor\/unknown/ })).toBeTruthy();
+    expect(screen.getByText(/A custom model id runs in Single Shot only/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: /Start Conversation/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('names the thread’s settings and says when the controls only apply to a new thread', () => {
+    render(<View initial={existing} />);
+    expect(screen.getByText(/Nano Banana Pro \(Google: Gemini 3 Pro Image\) · 16:9 · 4K/)).toBeTruthy();
+    expect(screen.queryByText(/Controls above apply to a new thread/)).toBeNull();
+    fireEvent.change(screen.getByLabelText('Resolution'), { target: { value: '2K' } });
+    expect(screen.getByText(/Controls above apply to a new thread/)).toBeTruthy();
   });
 });
 
 describe('bounded webview history', () => {
   it('retains a large Single Shot image across a reload and reuses the bounded history while typing', () => {
     const largeTurn = { ...turn, images: [{ ...image, data: `data:image/png;base64,${'A'.repeat(4 * 1024 * 1024)}` }] };
-    const live = renderHook(() => useImageGeneration({ ...existing, threadSettings: { ...settings, mode: 'edit' }, conversationHistory: [largeTurn] }));
+    const live = renderHook(() => useImageGeneration({ ...existing, mode: 'edit', threadSettings: { ...settings, mode: 'edit' }, conversationHistory: [largeTurn] }));
     const history = live.result.current.persistedState.conversationHistory;
     expect(history[0].images).toEqual(largeTurn.images);
     expect(live.result.current.persistenceWarning).toBeUndefined();
@@ -247,10 +420,10 @@ describe('bounded webview history', () => {
 
   it('explains omitted previews and blocks an image-less Single Shot follow-up locally', () => {
     const omitted: Partial<ImageGenerationPersistence> = {
-      ...existing, threadSettings: { ...settings, mode: 'edit' },
+      ...existing, mode: 'edit', threadSettings: { ...settings, mode: 'edit' },
       conversationHistory: [{ ...turn, images: [], imagesOmitted: true }],
       // An earlier snapshot's warning is never restored; the flagged turn is what counts.
-      persistenceWarning: 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.',
+      persistenceWarning: 'Local history keeps up to five earlier threads and a limited amount of image data. Some images or older threads will not survive reload. Save images you want to keep.',
     };
     const restored = renderHook(() => useImageGeneration(omitted));
     expect(restored.result.current.persistenceWarning).toMatch(/previews from an earlier session were not kept/);
@@ -260,7 +433,7 @@ describe('bounded webview history', () => {
     render(<View initial={omitted} />);
     expect(screen.getByText(/Image previews were not retained/)).toBeTruthy();
     expect(screen.getByText(/previews from an earlier session were not kept/)).toBeTruthy();
-    expect(screen.queryByText(/Some images will not survive reload/)).toBeNull();
+    expect(screen.queryByText(/will not survive reload/)).toBeNull();
   });
 
   it('lets a Conversation continue without previews: the host keeps the transcript', () => {
@@ -306,24 +479,12 @@ describe('request-size warnings (from the catalog’s maxRequestBytes)', () => {
     const conversation = renderHook(() => useImageGeneration({ ...existing, conversationHistory: [big] }));
     expect(conversation.result.current.followUpSizeWarning).toBeNull();
   });
-});
 
-describe('thread description in the output card', () => {
-  it('names the thread’s mode and settings, and says when the controls only apply to a new thread', () => {
-    render(<View initial={existing} />);
-    expect(screen.getByText('Conversation')).toBeTruthy();
-    expect(screen.getByText('Uses previous messages and images as context.')).toBeTruthy();
-    expect(screen.getByText(/Nano Banana Pro \(Google: Gemini 3 Pro Image\) · 16:9 · 4K/)).toBeTruthy();
-    expect(screen.queryByText(/Controls above apply to a new thread/)).toBeNull();
-    fireEvent.change(screen.getByLabelText('Resolution'), { target: { value: '2K' } });
-    expect(screen.getByText(/Controls above apply to a new thread/)).toBeTruthy();
-    expect(screen.getByPlaceholderText('Continue the conversation...')).toBeTruthy();
-  });
-
-  it('words a Single Shot thread’s follow-up as using the latest image', () => {
-    render(<View initial={{ ...existing, threadSettings: { ...settings, mode: 'edit' } }} />);
-    expect(screen.getByText('Single Shot history')).toBeTruthy();
-    expect(screen.getByText(/Earlier messages are not included/)).toBeTruthy();
-    expect(screen.getByPlaceholderText('Write a prompt using the latest image...')).toBeTruthy();
+  it('saves only the newest five earlier threads, with a note, while the session keeps all of them', () => {
+    const archives = Array.from({ length: 6 }, (_, index) => ({ id: `img-${index}`, settings, turns: [{ ...turn, id: `turn-${index}` }] }));
+    const { result } = renderHook(() => useImageGeneration({ ...existing, archivedThreads: archives }));
+    expect(result.current.archivedThreads).toHaveLength(6);
+    expect(result.current.persistedState.archivedThreads?.map(thread => thread.id)).toEqual(['img-1', 'img-2', 'img-3', 'img-4', 'img-5']);
+    expect(result.current.persistenceWarning).toContain('up to five earlier threads');
   });
 });

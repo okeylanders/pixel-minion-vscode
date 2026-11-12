@@ -114,19 +114,21 @@ afterEach(() => {
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
 const promptBox = () => screen.getByPlaceholderText('Describe the image you want to generate...');
-const generateButton = () => screen.getByRole('button', { name: /Generate/ }) as HTMLButtonElement;
+const generateButton = () => screen.getByRole('button', { name: /⚡ (Generate|Start Conversation)/ }) as HTMLButtonElement;
 const addReferenceButton = () => screen.getByRole('button', { name: /Add Reference Image/ }) as HTMLButtonElement;
 const warnings = () => screen.queryAllByRole('status').map(element => element.textContent);
 /** What assistive tech reads as the button's description (its aria-describedby targets). */
 const description = (element: HTMLElement) => (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
   .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim();
 
-async function renderImageTab(model: string) {
+/** The tab with `model` selected from Settings, in the given mode (a fresh install starts in Conversation). */
+async function renderImageTab(model: string, mode: 'conversation' | 'edit' = 'conversation') {
   settingsValues.imageModel = model;
   const view = render(<App />);
   // Settings arrive from the host and select the model.
   await waitFor(() => expect(toWebview.some(message =>
     message.type === MessageType.SETTINGS_DATA && (message.payload as { imageModel?: string }).imageModel === model)).toBe(true));
+  if (mode === 'edit') fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
   return view;
 }
 
@@ -171,7 +173,7 @@ async function sendRaw(type: MessageType, payload: object) {
 
 describe('capability gating (PR #14 F-01)', () => {
   it('prompt-only first turn: a text-only model generates with no references; a reference-only model waits for one', async () => {
-    const { container } = await renderImageTab('recraft/recraft-v4.1-flash');
+    const { container } = await renderImageTab('recraft/recraft-v4.1-flash', 'edit');
     // No raster reference slot: the button offers SVG text context only.
     expect(screen.queryByRole('button', { name: /Add Reference Image/ })).toBeNull();
     expect((screen.getByRole('button', { name: /Add SVG Context/ }) as HTMLButtonElement).disabled).toBe(false);
@@ -238,7 +240,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('attached references: the host refuses references to a text-only model even when the UI is bypassed', async () => {
-    await renderImageTab('recraft/recraft-v4.1-flash');
+    await renderImageTab('recraft/recraft-v4.1-flash', 'edit');
     const before = providerCalls().length;
     const replies = await sendRaw(MessageType.IMAGE_GENERATION_REQUEST, {
       mode: 'edit', model: 'recraft/recraft-v4.1-flash', aspectRatio: '1:1', prompt: 'A poster',
@@ -251,7 +253,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('model switch with references attached: Generate is blocked until the attachments fit the new model', async () => {
-    const { container } = await renderImageTab('google/gemini-3.1-flash-image');
+    const { container } = await renderImageTab('google/gemini-3.1-flash-image', 'edit');
     await attachPng(container, 2);
     fireEvent.change(promptBox(), { target: { value: 'A knight' } });
     expect(generateButton().disabled).toBe(false);
@@ -273,7 +275,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('first turn to refinement: a text-only thread offers no Refine, and the host refuses a forced follow-up', async () => {
-    await renderImageTab('recraft/recraft-v4.1-flash');
+    await renderImageTab('recraft/recraft-v4.1-flash', 'edit');
     await generate('A poster');
     expect(screen.getByText('This model generates from text only. Start a new generation above to make another image.')).toBeTruthy();
     expect(screen.queryByPlaceholderText(/latest image|Continue the conversation/)).toBeNull();
@@ -291,7 +293,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('a Single Shot refinement sends only the latest image and the new prompt', async () => {
-    await renderImageTab('recraft/recraft-v4.1');
+    await renderImageTab('recraft/recraft-v4.1', 'edit');
     await generate('A blue knight');
     const refine = screen.getByPlaceholderText('Write a prompt using the latest image...');
     fireEvent.change(refine, { target: { value: 'Make it red' } });
@@ -346,6 +348,11 @@ describe('controls follow the selected model', () => {
     expect(screen.getByLabelText('Seed')).toBeTruthy();
     const resolution = screen.getByLabelText('Resolution') as HTMLSelectElement;
     expect(Array.from(resolution.options).map(option => option.value)).toEqual(['auto', '1K', '2K', '4K']);
+    // Its Single Shot route lists no seed but adds the 512 tier.
+    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    expect(screen.queryByLabelText('Seed')).toBeNull();
+    expect(Array.from((screen.getByLabelText('Resolution') as HTMLSelectElement).options).map(option => option.value))
+      .toEqual(['auto', '512', '1K', '2K', '4K']);
 
     await pickModel('Recraft V4.1');
     expect(screen.queryByLabelText('Seed')).toBeNull();
@@ -361,7 +368,7 @@ describe('controls follow the selected model', () => {
   });
 
   it('sends the chosen ratio, tier and seed, and hides the seed chip where none was sent', async () => {
-    await renderImageTab('black-forest-labs/flux-3-image-klein');
+    await renderImageTab('black-forest-labs/flux-3-image-klein', 'edit');
     fireEvent.change(screen.getByLabelText('Aspect Ratio'), { target: { value: '7:5' } });
     fireEvent.change(screen.getByLabelText('Resolution'), { target: { value: '768' } });
     fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '42' } });
@@ -372,7 +379,9 @@ describe('controls follow the selected model', () => {
     await pickModel('Recraft V4.1');
     await generate('A poster');
     expect(lastBody()).not.toHaveProperty('seed');
-    expect(screen.queryByTitle(/Seed:/)).toBeNull();
+    // The new result's card has no seed chip (the first thread, now under Earlier threads, keeps its 42).
+    const card = screen.getAllByRole('img', { name: 'A poster' })[0].closest('.image-card') as HTMLElement;
+    expect(card.querySelector('.image-card-seed')).toBeNull();
   });
 });
 
@@ -414,5 +423,18 @@ describe('Conversation restart recovery', () => {
     const [file] = [...storage.files.keys()];
     await generate('A different knight');
     await waitFor(() => expect(JSON.parse(Buffer.from(storage.files.get(file)!).toString('utf8'))).toEqual({ version: 1, deleted: true }));
+  });
+});
+
+describe('empty state', () => {
+  it('names the next step for each mode and for a text-only model', async () => {
+    const { unmount } = await renderImageTab('google/gemini-3-pro-image');
+    expect(screen.getByText('Your images appear here')).toBeTruthy();
+    expect(screen.getByText(/start a conversation, then refine it/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    expect(screen.getByText(/A follow-up prompt works from the latest image/)).toBeTruthy();
+    unmount();
+    await renderImageTab('recraft/recraft-v4.1-flash', 'edit');
+    expect(screen.getByText(/This model works from text only/)).toBeTruthy();
   });
 });

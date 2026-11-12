@@ -8,10 +8,18 @@
  * snapshot follow frame-minion@40e7949
  * packages/core/src/presentation/webview/hooks/domain/useImageGeneration.ts.
  * Pixel keeps its own request ownership (P2: correlation ids per request
- * kind, save tracking, enhance answers dropped by Generate and Clear). Until
- * the mode toggle lands (roadmap P4), each new thread's mode is chosen by
- * Frame's default rule: Conversation when the model has a verified route,
- * otherwise Single Shot.
+ * kind, save tracking, enhance answers dropped by Generate and Clear).
+ *
+ * The mode (Conversation | Single Shot) is the user's choice for the next
+ * thread; a new installation starts with Frame's default rule (Conversation
+ * when the model has a verified route, otherwise Single Shot). Switching
+ * modes, Generate and "start from this image" keep the current thread under
+ * Earlier threads, which are for browsing, saving and starting again; they
+ * don't continue. Pixel delta: archiving also releases the thread on the
+ * host (memory and any saved transcript), since nothing can continue it.
+ * Generate's archive is provisional: the replaced thread is released (and
+ * stays archived) only once the new thread exists; if the request fails it
+ * comes back as the current, continuable thread.
  *
  * Pixel fixes not yet upstream (flag them when syncing): snapshot warnings
  * are recomputed from live state, never restored; thread settings are saved
@@ -252,13 +260,36 @@ function restoredThreadSettings(
   };
 }
 
+/** A thread kept for browsing after a new one started. It doesn't continue. */
+export interface ArchivedImageThread {
+  id: string;
+  settings: ImageThreadSettings;
+  turns: ConversationTurn[];
+  recoveryWarning?: string;
+  persistenceWarning?: string;
+}
+
+/** A thread as Earlier threads keep it, or null when it has nothing to show. */
+function toArchivedThread(
+  id: string,
+  settings: ImageThreadSettings | null,
+  turns: ConversationTurn[],
+  recoveryWarning?: string
+): ArchivedImageThread | null {
+  return settings && turns.length ? { id, settings, turns, recoveryWarning } : null;
+}
+
+/** Earlier threads (oldest first) with `thread` as the newest, never twice. */
+function withArchivedThread(threads: ArchivedImageThread[], thread: ArchivedImageThread): ArchivedImageThread[] {
+  return [...threads.filter(entry => entry.id !== thread.id), thread];
+}
+
 // 1. State Interface (read-only)
 export interface ImageGenerationState {
-  /**
-   * The mode a new thread starts in for the selected model. Until the mode
-   * toggle (roadmap P4) it is chosen for the model, never by the user.
-   */
+  /** The mode the next new thread starts in (the Conversation | Single Shot toggle). */
   mode: ImageGenerationMode;
+  /** Earlier threads, oldest first. */
+  archivedThreads: ArchivedImageThread[];
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
@@ -301,6 +332,12 @@ export interface ImageGenerationState {
 
 // 2. Actions Interface (write operations)
 export interface ImageGenerationActions {
+  /** Switch the mode for the next thread; keeps the current thread under Earlier threads. Ignored while a request runs. */
+  setMode: (mode: ImageGenerationMode) => void;
+  /** Keep the current thread and start a new one with this image as its reference. */
+  startFromImage: (image: GeneratedImage) => void;
+  /** Delete an earlier thread (and the host's saved transcript, if any). */
+  removeArchivedThread: (id: string) => void;
   setPrompt: (prompt: string) => void;
   setModel: (model: string) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
@@ -334,6 +371,10 @@ export interface ImageGenerationHandlers {
 // Note: referenceSvgText and referenceImages are NOT persisted - they're per-request context
 // The conversation history stores referenceSvgText per turn for context
 export interface ImageGenerationPersistence {
+  /** Absent in state saved before the mode toggle. */
+  mode?: ImageGenerationMode;
+  /** Absent in state saved before Earlier threads. */
+  archivedThreads?: ArchivedImageThread[];
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
@@ -371,14 +412,25 @@ export function useImageGeneration(
   // State
   const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
   const [model, setModelState] = useState(initialState?.model ?? (sync?.selectedModel ?? DEFAULT_IMAGE_MODEL));
-  // Until the P4 toggle, a new thread's mode follows the selected model.
-  const mode = defaultImageMode(model);
+  const [threadSettings, setThreadSettings] = useState<ImageThreadSettings | null>(
+    () => restoredThreadSettings(initialState, model)
+  );
+  // The saved toggle wins. State from before the toggle keeps the restored
+  // thread's mode; an untagged history opens as Single Shot (no transcript to
+  // continue a conversation from); a new installation follows the model.
+  const [mode, setModeState] = useState<ImageGenerationMode>(() =>
+    initialState?.mode
+    ?? threadSettings?.mode
+    ?? (initialState?.conversationHistory?.length ? 'edit' : defaultImageMode(model)));
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    () => normalizeAspectRatioForModel(model, initialState?.aspectRatio ?? '1:1', defaultImageMode(model))
+    () => normalizeAspectRatioForModel(model, initialState?.aspectRatio ?? '1:1', mode)
   );
   const [resolution, setResolution] = useState<ImageResolution>(
-    () => normalizeResolutionForModel(model, initialState?.resolution ?? 'auto', defaultImageMode(model))
+    () => normalizeResolutionForModel(model, initialState?.resolution ?? 'auto', mode)
   );
+  const [archivedThreads, setArchivedThreads] = useState<ArchivedImageThread[]>(initialState?.archivedThreads ?? []);
   // Reference images are NOT persisted - they're per-request context
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
@@ -394,9 +446,6 @@ export function useImageGeneration(
   );
   const [conversationId, setConversationId] = useState<string | null>(
     initialState?.conversationId ?? null
-  );
-  const [threadSettings, setThreadSettings] = useState<ImageThreadSettings | null>(
-    () => restoredThreadSettings(initialState, model)
   );
   const [recoveryWarning, setRecoveryWarning] = useState<string | undefined>(initialState?.recoveryWarning);
   const [savingImageIds, setSavingImageIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -418,12 +467,12 @@ export function useImageGeneration(
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Select a model and keep only the ratio and resolution its route lists. */
+  /** Select a model and keep only the ratio and resolution its route lists in the current mode. */
   const applyModel = useCallback((newModel: string) => {
-    const newMode = defaultImageMode(newModel);
+    const currentMode = modeRef.current;
     setModelState(newModel);
-    setAspectRatio(current => normalizeAspectRatioForModel(newModel, current, newMode));
-    setResolution(current => normalizeResolutionForModel(newModel, current, newMode));
+    setAspectRatio(current => normalizeAspectRatioForModel(newModel, current, currentMode));
+    setResolution(current => normalizeResolutionForModel(newModel, current, currentMode));
   }, []);
   const setModel = useCallback((newModel: string) => {
     applyModel(newModel);
@@ -516,11 +565,15 @@ export function useImageGeneration(
       referenceSvgText: dispatch.referenceSvgText,
     }]);
     setIsLoading(false);
-    // The new thread exists, so the one it replaced can go: it can't be
-    // reached again (earlier-thread archives arrive with P4). A failed
-    // release reports an error after this response, which stays shown.
-    if (dispatch.replaces && dispatch.replaces.conversationId !== payload.conversationId) {
-      releaseThread(dispatch.replaces.conversationId);
+    // The new thread exists, so the one it replaced becomes an Earlier
+    // thread for good, and the host can let go of it: an Earlier thread
+    // never continues. A failed release reports an error after this
+    // response, which stays shown.
+    const replaced = dispatch.replaces;
+    if (replaced && replaced.conversationId !== payload.conversationId) {
+      const archived = toArchivedThread(replaced.conversationId, replaced.threadSettings, replaced.conversationHistory, replaced.recoveryWarning);
+      if (archived) setArchivedThreads(prev => withArchivedThread(prev, archived));
+      releaseThread(replaced.conversationId);
     }
     setReplacedThread(null);
     setError(takeHeldReleaseError());
@@ -636,6 +689,50 @@ export function useImageGeneration(
     setReferenceSvgIndex(null);
   }, []);
 
+  /**
+   * Keep the current thread under Earlier threads and start with an empty
+   * one. Earlier threads don't continue, so the host releases it too. For a
+   * path that sends no generation (mode switch, start from an image), so
+   * nothing can fail and bring the thread back. Generate archives
+   * provisionally instead (see `generate`).
+   */
+  const archiveCurrentThread = useCallback(() => {
+    const archived = conversationId ? toArchivedThread(conversationId, threadSettings, conversationHistory, recoveryWarning) : null;
+    if (archived) setArchivedThreads(prev => withArchivedThread(prev, archived));
+    if (conversationId) releaseThread(conversationId);
+    setConversationId(null);
+    setThreadSettings(null);
+    setGeneratedImages([]);
+    setConversationHistory([]);
+    setRecoveryWarning(undefined);
+  }, [conversationId, conversationHistory, threadSettings, recoveryWarning, releaseThread]);
+
+  const setMode = useCallback((nextMode: ImageGenerationMode) => {
+    if (pending.current || pendingEnhance.current || nextMode === mode) return;
+    archiveCurrentThread();
+    setModeState(nextMode);
+    setAspectRatio(current => normalizeAspectRatioForModel(model, current, nextMode));
+    setResolution(current => normalizeResolutionForModel(model, current, nextMode));
+    setError(null);
+  }, [mode, model, archiveCurrentThread]);
+
+  const startFromImage = useCallback((image: GeneratedImage) => {
+    if (pending.current || pendingEnhance.current) return;
+    archiveCurrentThread();
+    clearReferenceImages();
+    setReferenceImages([image.data]);
+    setPrompt('');
+    setError(null);
+  }, [archiveCurrentThread, clearReferenceImages]);
+
+  const removeArchivedThread = useCallback((id: string) => {
+    // While a Generate runs, the thread it replaces is shown under Earlier
+    // threads but still belongs to that request (it comes back on failure).
+    if (pending.current) return;
+    setArchivedThreads(prev => prev.filter(thread => thread.id !== id));
+    releaseThread(id);
+  }, [releaseThread]);
+
   const generate = useCallback(() => {
     if (pending.current) return;
     if (!prompt.trim()) {
@@ -683,6 +780,9 @@ export function useImageGeneration(
     };
     setReplacedThread(replaces ?? null);
 
+    // The replaced thread shows under Earlier threads while this runs (see
+    // `visibleArchivedThreads`), but it is archived and released only once
+    // the new thread exists.
     // Generate takes the prompt on screen. An enhance still running is
     // dropped, so its answer can't rewrite the box under this request.
     dropPendingEnhance();
@@ -827,22 +927,33 @@ export function useImageGeneration(
   // thread, the snapshot keeps the replaced one: the host still holds it, so
   // a reload meanwhile brings it back instead of leaving it unreachable.
   const persistedHistory = useMemo(() => boundedImageHistory({
-    model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
+    mode: 'edit', model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
+    archivedThreads,
     ...(replacedThread ?? {
       threadSettings: conversationId ? threadSettings : null, recoveryWarning, conversationId,
       generatedImages, conversationHistory,
     }),
   }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
-  [replacedThread, threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
+  [replacedThread, archivedThreads, threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
   const persistedState = useMemo<ImageGenerationPersistence>(() => mergeImageHistoryDraft(persistedHistory, {
-    model, prompt, aspectRatio, resolution,
-  }), [persistedHistory, model, prompt, aspectRatio, resolution]);
+    mode, model, prompt, aspectRatio, resolution,
+  }), [persistedHistory, mode, model, prompt, aspectRatio, resolution]);
+  // What Earlier threads show: the kept ones, plus, while a Generate runs,
+  // the thread it replaces (provisionally: it comes back if that fails).
+  const visibleArchivedThreads = useMemo(() => {
+    const provisional = replacedThread && toArchivedThread(
+      replacedThread.conversationId, replacedThread.threadSettings,
+      replacedThread.conversationHistory, replacedThread.recoveryWarning
+    );
+    return provisional ? withArchivedThread(archivedThreads, provisional) : archivedThreads;
+  }, [archivedThreads, replacedThread]);
   // Live turns never carry `imagesOmitted` (only snapshot copies do), so a
-  // flagged turn is one restored from an earlier session. The note goes when
-  // Clear or Generate replaces those turns.
+  // flagged turn is one restored from an earlier session, on screen or under
+  // Earlier threads. The note goes once those turns are gone.
   const restoredPreviewsOmitted = useMemo(
-    () => conversationHistory.some(turn => turn.imagesOmitted),
-    [conversationHistory]
+    () => [conversationHistory, replacedThread?.conversationHistory ?? [], ...archivedThreads.map(thread => thread.turns)]
+      .some(turns => turns.some(turn => turn.imagesOmitted)),
+    [conversationHistory, replacedThread, archivedThreads]
   );
   const persistenceWarning = persistedHistory.persistenceWarning
     ?? (restoredPreviewsOmitted ? IMAGE_HISTORY_RESTORED_WARNING : undefined);
@@ -850,6 +961,7 @@ export function useImageGeneration(
   return {
     // State
     mode,
+    archivedThreads: visibleArchivedThreads,
     prompt,
     model,
     aspectRatio,
@@ -875,6 +987,9 @@ export function useImageGeneration(
     isEnhancing,
     error,
     // Actions
+    setMode,
+    startFromImage,
+    removeArchivedThread,
     setPrompt,
     setModel,
     setAspectRatio,

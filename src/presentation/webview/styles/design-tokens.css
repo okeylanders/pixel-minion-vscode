@@ -127,3 +127,13 @@ body.vscode-high-contrast .app-container :is(.tab-button.active, .model-browser-
 body.vscode-high-contrast-light .app-container :is(.tab-button.active, .model-browser-card.selected, .model-browser-chips button.active) {
   border-color: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
 }
+
+/* The Image tab's mode pill: its checked half is a soft tint, so HC marks it
+   with the active-contrast colour as an inset outline (a span has no border),
+   rounded so it follows the pill rather than cutting a rectangle into it. */
+body.vscode-high-contrast .app-container .image-mode-selector input:checked + span,
+body.vscode-high-contrast-light .app-container .image-mode-selector input:checked + span {
+  outline: 1px solid var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
+  outline-offset: -3px;
+  border-radius: 999px;
+}

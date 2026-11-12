@@ -8,6 +8,8 @@
  * - Submit on Enter key
  * - Loading state handling
  * - Auto-clear on submit
+ * - `submitLabel` names what Enter does (after frame-minion@40e7949
+ *   ContinueChatInput: the Image tab says Generate for a Single Shot thread)
  */
 import React, { useState, useCallback, KeyboardEvent } from 'react';
 import './../../styles/components/continue-chat-input.css';
@@ -17,6 +19,7 @@ interface ContinueChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   isLoading?: boolean;
+  submitLabel?: string;
 }
 
 export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
@@ -24,6 +27,7 @@ export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
   disabled = false,
   placeholder = 'Refine: describe changes...',
   isLoading = false,
+  submitLabel = 'Send',
 }) => {
   const [value, setValue] = useState('');
 
@@ -50,6 +54,7 @@ export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
+        aria-label={placeholder}
         disabled={disabled || isLoading}
         className="continue-chat-input-field"
       />
@@ -59,7 +64,7 @@ export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
         disabled={disabled || isLoading || !value.trim()}
         className="continue-chat-submit"
       >
-        {isLoading ? '...' : 'Send'}
+        {isLoading ? '...' : submitLabel}
       </button>
     </div>
   );
