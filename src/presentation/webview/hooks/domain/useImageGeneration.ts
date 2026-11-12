@@ -261,23 +261,24 @@ function restoredThreadSettings(
   };
 }
 
-/** A thread kept for browsing after a new one started. It doesn't continue. */
+/**
+ * A thread kept for browsing after a new one started. It doesn't continue,
+ * and the host has released it, so it carries no recovery note: that note
+ * is about continuing after a restart.
+ */
 export interface ArchivedImageThread {
   id: string;
   settings: ImageThreadSettings;
   turns: ConversationTurn[];
-  recoveryWarning?: string;
-  persistenceWarning?: string;
 }
 
 /** A thread as Earlier threads keep it, or null when it has nothing to show. */
 function toArchivedThread(
   id: string,
   settings: ImageThreadSettings | null,
-  turns: ConversationTurn[],
-  recoveryWarning?: string
+  turns: ConversationTurn[]
 ): ArchivedImageThread | null {
-  return settings && turns.length ? { id, settings, turns, recoveryWarning } : null;
+  return settings && turns.length ? { id, settings, turns } : null;
 }
 
 /** Earlier threads (oldest first) with `thread` as the newest, never twice. */
@@ -603,7 +604,7 @@ export function useImageGeneration(
     // response, which stays shown.
     const replaced = dispatch.replaces;
     if (replaced && replaced.conversationId !== payload.conversationId) {
-      const archived = toArchivedThread(replaced.conversationId, replaced.threadSettings, replaced.conversationHistory, replaced.recoveryWarning);
+      const archived = toArchivedThread(replaced.conversationId, replaced.threadSettings, replaced.conversationHistory);
       if (archived) setArchivedThreads(prev => withArchivedThread(prev, archived));
       releaseThread(replaced.conversationId);
     }
@@ -729,7 +730,7 @@ export function useImageGeneration(
    * provisionally instead (see `generate`).
    */
   const archiveCurrentThread = useCallback(() => {
-    const archived = conversationId ? toArchivedThread(conversationId, threadSettings, conversationHistory, recoveryWarning) : null;
+    const archived = conversationId ? toArchivedThread(conversationId, threadSettings, conversationHistory) : null;
     if (archived) setArchivedThreads(prev => withArchivedThread(prev, archived));
     if (conversationId) releaseThread(conversationId);
     setConversationId(null);
@@ -976,8 +977,7 @@ export function useImageGeneration(
   // the thread it replaces (provisionally: it comes back if that fails).
   const visibleArchivedThreads = useMemo(() => {
     const provisional = replacedThread && toArchivedThread(
-      replacedThread.conversationId, replacedThread.threadSettings,
-      replacedThread.conversationHistory, replacedThread.recoveryWarning
+      replacedThread.conversationId, replacedThread.threadSettings, replacedThread.conversationHistory
     );
     return provisional ? withArchivedThread(archivedThreads, provisional) : archivedThreads;
   }, [archivedThreads, replacedThread]);

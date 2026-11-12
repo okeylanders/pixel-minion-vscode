@@ -43,7 +43,7 @@ describe('modes and Earlier threads', () => {
     const hook = renderHook(() => useImageGeneration(existing));
     act(() => hook.result.current.setMode('edit'));
     expect(hook.result.current.conversationId).toBeNull();
-    expect(hook.result.current.archivedThreads).toEqual([{ id: 'img-existing', settings, turns: [turn], recoveryWarning: undefined }]);
+    expect(hook.result.current.archivedThreads).toEqual([{ id: 'img-existing', settings, turns: [turn] }]);
     // Earlier threads don't continue, so the host lets go of it (Pixel delta).
     expect(messages()).toEqual([expect.objectContaining({ type: MessageType.IMAGE_GENERATION_CLEAR, payload: { conversationId: 'img-existing' } })]);
     const saved = hook.result.current.persistedState;
@@ -132,6 +132,21 @@ describe('modes and Earlier threads', () => {
     expect(result.current.archivedThreads[0].settings.mode).toBe('edit');
     expect(result.current.conversationHistory).toEqual([]);
     expect(result.current.mode).toBe('conversation');
+  });
+
+  it('keeps no recovery note on an Earlier thread, but brings it back with a thread a failed Generate restores', () => {
+    const note = 'The image was generated, but its transcript could not be saved for restart recovery.';
+    const switched = renderHook(() => useImageGeneration({ ...existing, recoveryWarning: note }));
+    act(() => switched.result.current.setMode('edit'));
+    expect(switched.result.current.archivedThreads[0]).toEqual({ id: 'img-existing', settings, turns: [turn] });
+    expect(switched.result.current.persistedState.archivedThreads?.[0]).not.toHaveProperty('recoveryWarning');
+    expect(switched.result.current.recoveryWarning).toBeUndefined();
+
+    const failed = renderHook(() => useImageGeneration({ ...existing, recoveryWarning: note, prompt: 'A new knight' }));
+    act(() => failed.result.current.generate());
+    expect(failed.result.current.archivedThreads[0]).not.toHaveProperty('recoveryWarning');
+    act(() => { failed.result.current.handleError(fail(ofType(MessageType.IMAGE_GENERATION_REQUEST).pop()!.correlationId)); });
+    expect(failed.result.current.recoveryWarning).toBe(note);
   });
 
   it('starts a new installation in Conversation when the model has a route, otherwise Single Shot', () => {

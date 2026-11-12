@@ -49,6 +49,11 @@ describe('restoredImageState', () => {
     expect(restoredImageState({ archivedThreads: { 0: archive('img-1') } }).state.archivedThreads).toEqual([]);
   });
 
+  it('restores an Earlier thread without the notes an earlier build saved on it', () => {
+    const { state } = restoredImageState({ archivedThreads: [{ ...archive('img-1'), recoveryWarning: 'r', persistenceWarning: 'p' }] });
+    expect(state.archivedThreads).toEqual([archive('img-1')]);
+  });
+
   it('drops an unknown mode, and opens a thread whose settings have one as Single Shot', () => {
     const { state } = restoredImageState({ mode: 'chat', conversationId: 'img-1', conversationHistory: [turn], threadSettings: { ...settings, mode: 'chat' } });
     expect(state).not.toHaveProperty('mode');
