@@ -85,7 +85,8 @@ describe('the Image tab with malformed saved state', () => {
   it('renders the well-formed Earlier threads among malformed ones', () => {
     render(<View saved={{ archivedThreads: [archive('img-1'), { id: 'img-2', settings, turns: [{ ...turn, images: 7 }] }, 3] }} />);
     expect(screen.getAllByRole('button', { name: 'Delete thread' })).toHaveLength(1);
-    expect(screen.getByText(/Conversation · Thread img-1 · 1 turn/)).toBeTruthy();
+    expect(screen.getByText('Thread img-1', { selector: '.conversation-header-title' })).toBeTruthy();
+    expect(screen.getByText('Thread 1 of 1, earlier thread')).toBeTruthy();
   });
 
   it('falls back to the default rule for an unknown mode: one mode is pressed', () => {

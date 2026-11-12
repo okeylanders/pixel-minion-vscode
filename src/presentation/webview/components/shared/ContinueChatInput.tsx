@@ -20,6 +20,8 @@ interface ContinueChatInputProps {
   placeholder?: string;
   isLoading?: boolean;
   submitLabel?: string;
+  /** Keep the draft mounted while another thread is being viewed. */
+  hidden?: boolean;
 }
 
 export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
@@ -28,16 +30,17 @@ export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
   placeholder = 'Refine: describe changes...',
   isLoading = false,
   submitLabel = 'Send',
+  hidden = false,
 }) => {
   const [value, setValue] = useState('');
 
   const handleSubmit = useCallback(() => {
     const trimmed = value.trim();
-    if (trimmed && !disabled && !isLoading) {
+    if (trimmed && !hidden && !disabled && !isLoading) {
       onSubmit(trimmed);
       setValue('');
     }
-  }, [value, disabled, isLoading, onSubmit]);
+  }, [value, hidden, disabled, isLoading, onSubmit]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -47,7 +50,7 @@ export const ContinueChatInput: React.FC<ContinueChatInputProps> = ({
   }, [handleSubmit]);
 
   return (
-    <div className="continue-chat-input">
+    <div className="continue-chat-input" hidden={hidden}>
       <input
         type="text"
         value={value}

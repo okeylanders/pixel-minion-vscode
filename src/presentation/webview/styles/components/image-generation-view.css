@@ -24,10 +24,67 @@
   gap: 4px;
 }
 
-.image-thread-description strong {
+.image-results-heading {
+  margin: 0;
   color: var(--px-text);
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/* One result at a time. Navigation keeps its corner even in a narrow sidebar. */
+.image-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.image-results-heading {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.image-results-heading:focus-visible {
+  outline: 2px solid var(--px-focus-ring);
+  outline-offset: 2px;
+}
+
+.image-thread-navigation {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.image-thread-position {
+  min-width: 36px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--px-text-muted);
+  font: 11px var(--px-mono);
+}
+
+.image-thread-arrow {
+  display: grid;
+  place-items: center;
+  width: var(--px-control-h);
+  height: var(--px-control-h);
+  padding: 0;
+  color: var(--px-text);
+  background: transparent;
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-field);
+  cursor: pointer;
+}
+
+.image-thread-arrow:hover:not(:disabled) {
+  background: var(--px-field-hover);
+  border-color: var(--px-border-strong);
+}
+
+.image-thread-arrow:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .image-thread-description p {
@@ -144,50 +201,4 @@
 
 .image-mode-description {
   margin: 0;
-}
-
-/* Earlier threads (Frame's .image-archived-threads). */
-.image-archived-threads {
-  display: flex;
-  flex-direction: column;
-}
-
-.image-archived-threads-title {
-  margin: 0 0 8px;
-  color: var(--px-text-muted);
-  font-family: var(--px-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* Focus lands here after deleting the last Earlier thread in the list
-   (tabindex -1: reachable by script only). Same ring as every control. */
-.image-archived-threads-title:focus-visible {
-  outline: 2px solid var(--px-focus-ring);
-  outline-offset: 2px;
-}
-
-.image-archived-thread {
-  padding: 8px 0;
-  border-top: 1px solid var(--px-border-soft);
-}
-
-.image-archived-thread summary {
-  min-height: 44px;
-  padding: 10px 0;
-  color: var(--px-text);
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
-
-.image-archived-thread[open] {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.image-archived-thread[open] > .btn {
-  align-self: flex-start;
 }

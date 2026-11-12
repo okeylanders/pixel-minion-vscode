@@ -17,6 +17,10 @@
   border-top: 1px solid var(--px-border);
 }
 
+.continue-chat-input[hidden] {
+  display: none;
+}
+
 /* The bar sits flush with the bottom edge, unlike the cards above it. */
 .generation-view > .continue-chat-input:last-child {
   margin-bottom: 0;

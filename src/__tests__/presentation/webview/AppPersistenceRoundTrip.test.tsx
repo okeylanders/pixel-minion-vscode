@@ -162,7 +162,7 @@ describe('Earlier threads in the saved snapshot', () => {
     const first = render(<App />);
     for (let index = 1; index <= 7; index++) startThread(`Thread ${index}`, `img-${index}`);
     // Six Earlier threads live; the snapshot keeps five, and says so.
-    expect(deleteButtons()).toHaveLength(6);
+    expect(screen.getByText('Thread 7 of 7, current thread')).toBeTruthy();
     expect(savedImage().archivedThreads?.map(thread => thread.id)).toEqual(['img-2', 'img-3', 'img-4', 'img-5', 'img-6']);
     expect(savedImage().persistenceWarning).toBe(IMAGE_HISTORY_ARCHIVE_WARNING);
     expect(screen.getByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeTruthy();
@@ -170,14 +170,17 @@ describe('Earlier threads in the saved snapshot', () => {
 
     // Reload: the five come back, nothing more is being left out, so no note.
     const second = render(<App />);
-    expect(deleteButtons()).toHaveLength(5);
+    expect(screen.getByText('Thread 6 of 6, current thread')).toBeTruthy();
     expect(screen.queryByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeNull();
     expect(savedImage().persistenceWarning).toBeUndefined();
     // A sixth again: the note is recomputed, not remembered.
     startThread('Thread 8', 'img-8');
     expect(screen.getByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeTruthy();
     // Delete them all and clear: the note goes, and stays gone after a reload.
-    while (deleteButtons().length) fireEvent.click(deleteButtons()[0]);
+    while (!(screen.getByRole('button', { name: 'Previous thread' }) as HTMLButtonElement).disabled) {
+      fireEvent.click(screen.getByRole('button', { name: 'Previous thread' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    }
     fireEvent.click(screen.getByRole('button', { name: 'Clear thread' }));
     expect(screen.queryByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeNull();
     expect(savedImage()).toMatchObject({ archivedThreads: [], conversationHistory: [] });
@@ -194,8 +197,9 @@ describe('Earlier threads in the saved snapshot', () => {
     startThread('A knight', 'img-1');
     fireEvent.change(promptBox(), { target: { value: 'A castle' } });
     fireEvent.click(generateButton());
-    // While it runs, the old thread shows under Earlier threads...
-    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    // The pending result is selected, with the old thread counted in history.
+    expect(screen.getByText('Thread 2 of 2, current thread')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Previous thread' }) as HTMLButtonElement).disabled).toBe(true);
     // ...but the snapshot still has it as the current thread, and nothing was released.
     expect(savedImage()).toMatchObject({ conversationId: 'img-1', archivedThreads: [] });
     expect(sent(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
