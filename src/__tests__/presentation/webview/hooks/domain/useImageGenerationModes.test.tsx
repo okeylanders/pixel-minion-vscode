@@ -107,6 +107,38 @@ describe('thread-owned settings', () => {
   });
 });
 
+describe('a reload during a first Generate', () => {
+  it('saves no thread until the host names one, so the reload restores none', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A knight' }));
+    act(() => result.current.generate());
+    // On screen the thread's settings are shown while it runs...
+    expect(result.current.threadSettings).toMatchObject({ mode: 'conversation', model });
+    // ...but what App writes meanwhile holds no thread.
+    const saved = result.current.persistedState;
+    expect(saved.conversationId).toBeNull();
+    expect(saved.threadSettings).toBeNull();
+
+    render(<View initial={saved} />);
+    expect(screen.getByText('Your images appear here')).toBeTruthy();
+    expect(screen.queryByText('Uses previous messages and images as context.')).toBeNull();
+  });
+
+  it('ignores thread settings saved without a conversation id (written by an earlier build)', () => {
+    const ghost = { model, prompt: 'A knight', conversationId: null, threadSettings: settings, conversationHistory: [] };
+    const { result } = renderHook(() => useImageGeneration(ghost));
+    expect(result.current.threadSettings).toBeNull();
+    expect(result.current.persistedState.threadSettings).toBeNull();
+  });
+
+  it('saves the thread once the host answers', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A knight' }));
+    act(() => result.current.generate());
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId: 'img-new', images: [image], turnNumber: 1, settings }, posted().correlationId)));
+    expect(result.current.persistedState).toMatchObject({ conversationId: 'img-new', threadSettings: settings });
+  });
+});
+
 describe('migration of history saved before modes', () => {
   it('opens untagged persisted history as Single Shot', () => {
     const { result } = renderHook(() => useImageGeneration({ model, aspectRatio: '16:9', conversationId: 'img-old', conversationHistory: [turn] }));

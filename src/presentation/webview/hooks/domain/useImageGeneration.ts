@@ -150,21 +150,24 @@ interface PendingEnhance {
 }
 
 /**
- * The saved thread's settings. State saved before modes existed has no `mode`
- * (or no thread settings at all): it opens as Single Shot, because there is
- * no host transcript to continue a conversation from. Its ratio is moved onto
- * one the model's Single Shot route lists (the old picker offered seven fixed
- * ratios to every model; providers clamped the ones they didn't support).
+ * The saved thread's settings. A thread exists only once the host has named
+ * it: settings saved without a conversation id belong to a first Generate
+ * that never answered (the webview reloaded while it ran), so they restore
+ * nothing. State saved before modes existed has no `mode` (or no thread
+ * settings at all): it opens as Single Shot, because there is no host
+ * transcript to continue a conversation from. Its ratio is moved onto one the
+ * model's Single Shot route lists (the old picker offered seven fixed ratios
+ * to every model; providers clamped the ones they didn't support).
  */
 function restoredThreadSettings(
   initialState: Partial<ImageGenerationPersistence> | undefined,
   fallbackModel: string
 ): ImageThreadSettings | null {
-  const saved = initialState?.threadSettings as Partial<ImageThreadSettings> | null | undefined;
+  if (!initialState?.conversationId) return null;
+  const saved = initialState.threadSettings as Partial<ImageThreadSettings> | null | undefined;
   if (saved?.mode && saved.model && saved.aspectRatio) {
     return { mode: saved.mode, model: saved.model, aspectRatio: saved.aspectRatio, resolution: saved.resolution ?? 'auto' };
   }
-  if (!initialState?.conversationId) return null;
   const model = saved?.model ?? initialState.model ?? fallbackModel;
   return {
     mode: 'edit',
@@ -700,10 +703,12 @@ export function useImageGeneration(
   // every generated image as base64, so the bounded history is memoized on
   // its own and the cheap draft controls are merged afterwards: typing never
   // re-serializes image history. Nothing read from `initialState` takes part:
-  // its warnings described an older snapshot.
+  // its warnings described an older snapshot. A first Generate's optimistic
+  // settings stay out until the host names the thread: a reload while it runs
+  // must not restore a thread that doesn't exist.
   const persistedHistory = useMemo(() => boundedImageHistory({
     model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
-    threadSettings, recoveryWarning, conversationId,
+    threadSettings: conversationId ? threadSettings : null, recoveryWarning, conversationId,
     generatedImages, conversationHistory,
   }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
   [threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
