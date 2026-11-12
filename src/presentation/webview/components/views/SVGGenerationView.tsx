@@ -3,7 +3,7 @@
  *
  * Pattern: Composition of existing SVG generation components
  * Responsibilities:
- * - Compose SVGModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
+ * - Compose SVGModelSelector, SVGAspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
  * - Receive hook instance as prop (prose-minion pattern)
  * - Show the save state the host reported (via the hook)
  *
@@ -12,7 +12,7 @@
 import React from 'react';
 import { UseSVGGenerationReturn } from '../../hooks/domain/useSVGGeneration';
 import { SVGModelSelector } from '../svg/SVGModelSelector';
-import { AspectRatioSelector } from '../image/AspectRatioSelector';
+import { SVGAspectRatioSelector } from '../svg/SVGAspectRatioSelector';
 import { SingleImageUploader } from '../svg/SingleImageUploader';
 import { SVGPreview } from '../svg/SVGPreview';
 import { SVGCodeView } from '../svg/SVGCodeView';
@@ -102,7 +102,7 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             unavailableLabel={OFF_LIST_MODEL_HELP}
             disabled={isLoading}
           />
-          <AspectRatioSelector
+          <SVGAspectRatioSelector
             selectedRatio={aspectRatio}
             onRatioChange={setAspectRatio}
             disabled={isLoading}

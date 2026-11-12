@@ -6,26 +6,13 @@
  *
  * The image-pricing and image-model types below are ported from
  * frame-minion@40e7949 packages/core/src/shared/types/providers.ts; keep in
- * sync. Pixel-only additions (`ImageApiAspectRatio`, `TextPricing`,
- * `SvgModelDefinition`) are marked as such.
+ * sync. Pixel-only additions (`TextPricing`, `SvgModelDefinition`) are
+ * marked as such.
  */
+
+import type { AspectRatio } from './messages/imageGeneration';
 
 export type GenerationType = 'image' | 'svg';
-
-/**
- * Normalized aspect ratios published by OpenRouter's Image API.
- *
- * Frame calls this `AspectRatio`. Pixel keeps that name for the seven ratios
- * the Image and SVG tabs send today (`messages/imageGeneration.ts`); the
- * catalog records the wider set each endpoint advertises so the Image API
- * transport (roadmap P3) can drive its controls from it.
- */
-export type ImageApiAspectRatio =
-  | 'auto'
-  | '1:1' | '1:2' | '2:1' | '1:4' | '4:1' | '1:8' | '8:1'
-  | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '7:5' | '5:7'
-  | '9:16' | '16:9' | '21:9'
-  | '9:19.5' | '19.5:9' | '9:20' | '20:9' | '9:21';
 
 /**
  * How an OpenRouter image model bills output. These are the three units the
@@ -101,7 +88,7 @@ export interface ImageModelDefinition {
   /** Normalized output tiers published by OpenRouter's Image API. Absent means auto/default only. */
   supportedResolutions?: readonly ('512' | '768' | '1K' | '1.5K' | '2K' | '4K')[];
   /** Exact normalized aspect ratios accepted by the live OpenRouter Image API. */
-  supportedAspectRatios?: readonly ImageApiAspectRatio[];
+  supportedAspectRatios?: readonly AspectRatio[];
 }
 
 /**

@@ -4,7 +4,7 @@
  * Pattern: Reusable UI component with VSCode theme integration
  */
 import React from 'react';
-import { AspectRatio, ASPECT_RATIO_DIMENSIONS } from '../../../../shared/types/messages/imageGeneration';
+import { AspectRatio, ASPECT_RATIO_DIMENSIONS, SVG_ASPECT_RATIOS } from '@messages';
 import '../../styles/components/aspect-ratio-selector.css';
 
 export interface AspectRatioSelectorProps {
@@ -13,7 +13,9 @@ export interface AspectRatioSelectorProps {
   disabled?: boolean;
 }
 
-const ASPECT_RATIOS: AspectRatio[] = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3'];
+// Until the selector lists each model's own ratios (roadmap P3), the Image
+// tab keeps offering the seven fixed ratios it always has.
+const ASPECT_RATIOS = SVG_ASPECT_RATIOS;
 
 export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
   selectedRatio,

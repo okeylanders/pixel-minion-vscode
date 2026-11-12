@@ -10,7 +10,7 @@ import {
   MessageType,
   MessageEnvelope,
   createEnvelope,
-  AspectRatio,
+  SVGAspectRatio,
   SVGThreadSettings,
   SVGGenerationRequestPayload,
   SVGGenerationContinuePayload,
@@ -62,7 +62,7 @@ interface SaveState {
 export interface SVGGenerationState {
   prompt: string;
   model: string;
-  aspectRatio: AspectRatio;
+  aspectRatio: SVGAspectRatio;
   referenceImage: string | null;  // Single image preview (data URL)
   referenceSvgText: string | null; // Raw SVG text if attachment is SVG
   svgCode: string | null;
@@ -83,7 +83,7 @@ export interface SVGGenerationState {
 export interface SVGGenerationActions {
   setPrompt: (prompt: string) => void;
   setModel: (model: string) => void;
-  setAspectRatio: (ratio: AspectRatio) => void;
+  setAspectRatio: (ratio: SVGAspectRatio) => void;
   setReferenceAttachment: (attachment: { preview: string | null; svgText: string | null }) => void;
   generate: () => void;
   continueChat: (prompt: string) => void;
@@ -111,7 +111,7 @@ export interface SVGGenerationHandlers {
 export interface SVGGenerationPersistence {
   prompt: string;
   model: string;
-  aspectRatio: AspectRatio;
+  aspectRatio: SVGAspectRatio;
   conversationId: string | null;
   /** Absent in state saved before thread settings existed. */
   threadSettings?: SVGThreadSettings | null;
@@ -138,7 +138,7 @@ export function useSVGGeneration(
   // State
   const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
   const [model, setModelState] = useState(initialState?.model ?? (sync?.selectedModel ?? DEFAULT_SVG_MODEL));
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
+  const [aspectRatio, setAspectRatio] = useState<SVGAspectRatio>(
     initialState?.aspectRatio ?? '1:1'
   );
   const [referenceImage, setReferenceImage] = useState<string | null>(initialState?.referenceImage ?? null);

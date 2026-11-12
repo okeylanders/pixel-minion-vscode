@@ -3,17 +3,17 @@
  */
 import { TokenUsage } from './tokenUsage';
 
-export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3';
-
-export const ASPECT_RATIO_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
-  '1:1': { width: 1024, height: 1024 },
-  '4:3': { width: 1024, height: 768 },
-  '3:4': { width: 768, height: 1024 },
-  '16:9': { width: 1024, height: 576 },
-  '9:16': { width: 576, height: 1024 },
-  '3:2': { width: 1024, height: 683 },
-  '2:3': { width: 683, height: 1024 },
-};
+/**
+ * Normalized aspect ratios published by OpenRouter's Image API (Frame's
+ * `AspectRatio`). The SVG tab keeps its own seven viewBox ratios
+ * (`SVGAspectRatio`, svgGeneration.ts).
+ */
+export type AspectRatio =
+  | 'auto'
+  | '1:1' | '1:2' | '2:1' | '1:4' | '4:1' | '1:8' | '8:1'
+  | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '7:5' | '5:7'
+  | '9:16' | '16:9' | '21:9'
+  | '9:19.5' | '19.5:9' | '9:20' | '20:9' | '9:21';
 
 export interface ImageGenerationRequestPayload {
   prompt: string;
