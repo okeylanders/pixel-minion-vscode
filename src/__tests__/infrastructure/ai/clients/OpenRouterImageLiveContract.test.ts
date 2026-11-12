@@ -89,7 +89,7 @@ it('sends a Single Shot text-to-image and its follow-up exactly as OpenRouter ac
   orchestrator.setClient(new OpenRouterImageClient(secrets, logger));
 
   const turn = await orchestrator.generateImage(first.request.prompt as string, { mode: 'edit', model: 'openai/gpt-image-1-mini', aspectRatio: 'auto' });
-  await orchestrator.continueConversation(turn.conversationId, followUp.request.prompt as string, undefined, undefined, undefined, undefined, undefined, 'edit');
+  await orchestrator.continueConversation(turn.conversationId, followUp.request.prompt as string, { mode: 'edit', turnCount: 1 });
 
   expect(mockFetch.mock.calls[0][0]).toBe(first.url);
   expect(shape(body(0))).toEqual(shape(first.request));
@@ -111,8 +111,9 @@ it('replays a GPT-5 Conversation from its transcript after a restart in the shap
     return orchestrator;
   };
   const turn = await make().generateImage('A blue knight on a white background, simple flat style', { mode: 'conversation', model: 'openai/gpt-5-image-mini', aspectRatio: '3:2' });
-  await make().continueConversation(turn.conversationId, 'Now give the knight a red shield', [{ prompt: 'x', images: [] }],
-    'openai/gpt-5-image-mini', '3:2', 'auto', undefined, 'conversation');
+  await make().continueConversation(turn.conversationId, 'Now give the knight a red shield', {
+    mode: 'conversation', turnCount: 1, model: 'openai/gpt-5-image-mini', aspectRatio: '3:2', resolution: 'auto',
+  });
 
   expect(shape(body(0))).toEqual(shape(first.request));
   // The assistant turn comes back whole: content null, refusal, reasoning and

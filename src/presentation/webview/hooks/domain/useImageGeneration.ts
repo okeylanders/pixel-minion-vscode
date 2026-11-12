@@ -583,27 +583,24 @@ export function useImageGeneration(
         }
       }
 
-      // Build history for self-contained request (enables re-hydration after extension restart)
-      const history: ConversationHistoryTurn[] = conversationHistory.map(turn => ({
-        prompt: turn.prompt,
-        images: turn.images.map(img => ({
-          data: img.data,
-          seed: img.seed,
-        })),
-        referenceSvgText: turn.referenceSvgText,
-      }));
+      // Single Shot follow-ups use only the latest images, which also let the
+      // host restart the thread after a restart.
+      const latestImages: ConversationHistoryTurn['images'] | undefined = threadSettings.mode === 'edit'
+        ? conversationHistory[conversationHistory.length - 1].images.map(img => ({ data: img.data, seed: img.seed }))
+        : undefined;
 
       // The thread's settings, not the draft controls, own a continuation, and
       // draft attachments are not part of the thread: they apply to the next
       // Generate only. Single Shot carries only its last result; Conversation
-      // obtains its transcript from the host.
+      // obtains its transcript from the host and sends only its turn count.
       const message = createEnvelope<ImageGenerationContinuePayload>(
         MessageType.IMAGE_GENERATION_CONTINUE,
         'webview.imageGeneration',
         {
           prompt: chatPrompt,
           conversationId,
-          history,
+          turnCount: conversationHistory.length,
+          ...(latestImages ? { latestImages } : {}),
           ...threadSettings,
         },
         newRequestId('image-continue')

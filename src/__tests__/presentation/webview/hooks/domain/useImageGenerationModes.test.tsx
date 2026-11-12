@@ -162,7 +162,7 @@ describe('bounded webview history', () => {
     const omitted: Partial<ImageGenerationPersistence> = { ...existing, conversationHistory: [{ ...turn, images: [], imagesOmitted: true }] };
     const { result } = renderHook(() => useImageGeneration(omitted));
     act(() => result.current.continueChat('Continue'));
-    expect(posted().payload).toMatchObject({ mode: 'conversation', history: [{ prompt: turn.prompt, images: [] }] });
+    expect(posted().payload).toMatchObject({ mode: 'conversation', turnCount: 1 });
   });
 });
 

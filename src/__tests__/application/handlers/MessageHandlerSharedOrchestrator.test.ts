@@ -55,7 +55,7 @@ it('refuses a clear from a re-resolved view while the old view’s turn is gener
 
   let release!: () => void;
   mockFetch.mockImplementationOnce(async () => { await new Promise<void>(resolve => { release = resolve; }); return chatOk(); });
-  const generating = a.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a tree', conversationId, history: [{ prompt: 'A knight', images: [] }] });
+  const generating = a.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a tree', conversationId, turnCount: 1 });
   await new Promise(resolve => setImmediate(resolve));
 
   // The view is closed and reopened: a new handler over the same orchestrator.
@@ -86,16 +86,15 @@ it('lets a re-resolved view continue the old view’s threads from memory, and s
 
   let release!: () => void;
   mockFetch.mockImplementationOnce(async () => { await new Promise<void>(resolve => { release = resolve; }); return chatOk(); });
-  const fromA = a.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a tree', conversationId, history: [{ prompt: 'A knight', images: [] }] });
+  const fromA = a.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a tree', conversationId, turnCount: 1 });
   await new Promise(resolve => setImmediate(resolve));
-  const fromB = await b.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a moon', conversationId, history: [{ prompt: 'A knight', images: [] }] });
+  const fromB = await b.send(MessageType.IMAGE_GENERATION_CONTINUE, { ...thread, prompt: 'Add a moon', conversationId, turnCount: 1 });
   expect(fromB).toEqual([expect.objectContaining({ type: MessageType.ERROR, payload: expect.objectContaining({ message: expect.stringContaining('already generating') }) })]);
   release();
   await fromA;
 
   const [next] = await b.send(MessageType.IMAGE_GENERATION_CONTINUE, {
-    ...thread, prompt: 'Add a moon', conversationId,
-    history: [{ prompt: 'A knight', images: [] }, { prompt: 'Add a tree', images: [] }],
+    ...thread, prompt: 'Add a moon', conversationId, turnCount: 2,
   });
   expect(next.payload).toMatchObject({ conversationId, turnNumber: 3 });
   // The whole transcript came from memory, not a store read.

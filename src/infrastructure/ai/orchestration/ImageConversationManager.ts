@@ -31,15 +31,12 @@ export interface ImageConversationState {
 }
 
 /**
- * History turn for re-hydration (from webview persistence)
+ * A generated image the webview hands back to restart a Single Shot thread
+ * after a host restart.
  */
-export interface RehydrationTurn {
-  prompt: string;
-  images: Array<{
-    data: string;
-    seed: number;
-  }>;
-  referenceSvgText?: string;
+export interface RehydrationImage {
+  data: string;
+  seed: number;
 }
 
 export class ImageConversationManager {
@@ -178,13 +175,16 @@ export class ImageConversationManager {
   }
 
   /**
-   * Re-hydrate a conversation from webview history (after extension restart)
+   * Restart a Single Shot thread after an extension restart, from what its
+   * next follow-up uses: the latest images (its references and seed). Like a
+   * live Single Shot thread, it keeps no earlier messages.
    */
   rehydrate(
     conversationId: string,
     model: string,
     aspectRatio: string,
-    history: RehydrationTurn[],
+    latestImages: RehydrationImage[],
+    turnCount: number,
     resolution?: string
   ): ImageConversationState {
     const conversation: ImageConversationState = {
@@ -194,47 +194,13 @@ export class ImageConversationManager {
       model,
       aspectRatio,
       resolution,
-      turnNumber: 0,
-      lastImages: [],
+      turnNumber: turnCount,
+      lastSeed: latestImages[0]?.seed,
+      lastImages: latestImages.map(img => img.data),
     };
 
-    // Rebuild messages from history
-    for (const turn of history) {
-      // Add user message with prompt and images as context
-      const userContent: ImageMessageContent[] = [
-        { type: 'text', text: turn.referenceSvgText ? `${turn.prompt}\n\nReference SVG:\n${turn.referenceSvgText}` : turn.prompt }
-      ];
-
-      for (const img of turn.images) {
-        userContent.push({
-          type: 'image_url',
-          image_url: { url: img.data }
-        });
-      }
-
-      conversation.messages.push({
-        role: 'user',
-        content: userContent
-      });
-
-      // Add assistant response with images
-      conversation.messages.push({
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Generated images' }],
-        images: turn.images.map(img => ({ image_url: { url: img.data } }))
-      });
-
-      conversation.turnNumber++;
-
-      // Track the last seed used
-      if (turn.images.length > 0) {
-        conversation.lastSeed = turn.images[0].seed;
-        conversation.lastImages = turn.images.map(img => img.data);
-      }
-    }
-
     this.conversations.set(conversationId, conversation);
-    this.logger.info(`Re-hydrated conversation ${conversationId} with ${conversation.turnNumber} turns`);
+    this.logger.info(`Re-hydrated Single Shot thread ${conversationId} at turn ${turnCount}`);
 
     return conversation;
   }

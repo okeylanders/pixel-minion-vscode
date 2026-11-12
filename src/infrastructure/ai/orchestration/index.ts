@@ -6,9 +6,9 @@ export type { TextOrchestratorOptions, TextTurnResult } from './TextOrchestrator
 
 // Image orchestration
 export { ImageConversationManager } from './ImageConversationManager';
-export type { ImageConversationState, RehydrationTurn } from './ImageConversationManager';
+export type { ImageConversationState, RehydrationImage } from './ImageConversationManager';
 export { ImageOrchestrator } from './ImageOrchestrator';
-export type { ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrator';
+export type { ImageContinuationOptions, ImageGenerationOptions, ImageTurnResult } from './ImageOrchestrator';
 export { FileImageConversationStore, ImageTranscriptTooLargeError, isImageConversationId, MAX_IMAGE_TRANSCRIPT_BYTES } from './ImageConversationStore';
 export type { ImageConversationStore } from './ImageConversationStore';
 

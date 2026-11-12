@@ -243,6 +243,40 @@ describe('capability gating (PR #14 F-01)', () => {
       model: 'recraft/recraft-v4.1', prompt: 'Make it red', aspect_ratio: '1:1',
       input_references: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_1PX}` } }],
     });
+    // The follow-up carries the latest images and a turn count, not the display history.
+    const sent = fromWebview.filter(message => message.type === MessageType.IMAGE_GENERATION_CONTINUE);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].payload).toMatchObject({ turnCount: 1, latestImages: [{ data: `data:image/png;base64,${PNG_1PX}` }] });
+    expect(sent[0].payload).not.toHaveProperty('history');
+  });
+});
+
+describe('Single Shot restart recovery', () => {
+  // A second PNG (same signature, different bytes) so the turns can be told apart.
+  const PNG_B = PNG_1PX.replace('DUlEQVR4', 'DUlEQVR5');
+
+  async function refine(text: string) {
+    const box = screen.getByPlaceholderText('Write a prompt using the latest image...');
+    const before = providerCalls().length;
+    fireEvent.change(box, { target: { value: text } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    await waitFor(() => expect(providerCalls()).toHaveLength(before + 1));
+    await screen.findAllByRole('img', { name: text });
+  }
+
+  it('continues after the extension host restarts, from the latest image alone', async () => {
+    await renderImageTab('recraft/recraft-v4.1');
+    await generate('A blue knight');
+    mockFetch.mockImplementationOnce(async () => ({ ok: true, json: async () => ({ data: [{ b64_json: PNG_B, media_type: 'image/png' }] }) }));
+    await refine('Make it red');
+
+    startHost();
+    await refine('Add a moon');
+    expect(lastBody().input_references).toEqual([{ type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_B}` } }]);
+    const sent = fromWebview.filter(message => message.type === MessageType.IMAGE_GENERATION_CONTINUE).pop()!;
+    expect(sent.payload).toMatchObject({ mode: 'edit', turnCount: 2, latestImages: [{ data: `data:image/png;base64,${PNG_B}` }] });
+    const answer = toWebview.filter(message => message.type === MessageType.IMAGE_GENERATION_RESPONSE).pop()!;
+    expect(answer.payload).toMatchObject({ turnNumber: 3 });
   });
 });
 

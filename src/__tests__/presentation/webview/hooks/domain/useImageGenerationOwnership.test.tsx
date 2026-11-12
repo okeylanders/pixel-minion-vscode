@@ -120,7 +120,10 @@ describe('useImageGeneration request ownership', () => {
     });
     expect(request.payload).not.toHaveProperty('referenceImages');
     expect(request.payload).not.toHaveProperty('referenceSvgText');
-    expect(request.payload.history).toEqual([{ prompt: 'Blue knight', images: [{ data: image.data, seed: 12 }], referenceSvgText: undefined }]);
+    // A Conversation follow-up sends its turn count, not the display history.
+    expect(request.payload).toMatchObject({ turnCount: 1 });
+    expect(request.payload).not.toHaveProperty('history');
+    expect(request.payload).not.toHaveProperty('latestImages');
   });
 
   it('continues a conversation saved before thread settings existed with its saved controls, as Single Shot', () => {

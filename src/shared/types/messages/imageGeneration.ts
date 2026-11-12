@@ -49,7 +49,9 @@ export interface ImageGenerationRequestPayload {
 }
 
 /**
- * History turn for re-hydration (lightweight: prompts + image refs)
+ * A display turn as the host sees it (lightweight: prompt + image refs). A
+ * follow-up sends only the latest Single Shot turn's `images`
+ * (`ImageGenerationContinuePayload.latestImages`).
  */
 export interface ConversationHistoryTurn {
   prompt: string;
@@ -62,20 +64,26 @@ export interface ConversationHistoryTurn {
 
 /**
  * A follow-up turn. It carries only the new prompt: reference images and an
- * attached SVG belong to the turn they were sent with (and travel in
- * `history`), so a draft attachment is never added to a refinement.
+ * attached SVG belong to the turn they were sent with, so a draft attachment
+ * is never added to a refinement. It carries no display history either: the
+ * host keeps a Conversation's transcript, and a Single Shot follow-up uses
+ * only the latest images.
  */
 export interface ImageGenerationContinuePayload {
   mode?: ImageGenerationMode;
   prompt: string;
   conversationId: string;
   /**
-   * Conversation history for re-hydration.
-   * Single Shot can rebuild from display history. Conversation restores its
-   * host transcript and uses this history only to check that the visible
-   * turn count agrees.
+   * Turns in the visible thread. A Conversation restored from its host
+   * transcript must have as many; a Single Shot thread restarted after a host
+   * restart numbers its next turn from it.
    */
-  history?: ConversationHistoryTurn[];
+  turnCount: number;
+  /**
+   * Single Shot only: the latest turn's images (the follow-up's references),
+   * so the thread can restart after a host restart.
+   */
+  latestImages?: ConversationHistoryTurn['images'];
   /** The thread's settings (ImageThreadSettings), needed for re-hydration. */
   model?: string;
   aspectRatio?: AspectRatio;

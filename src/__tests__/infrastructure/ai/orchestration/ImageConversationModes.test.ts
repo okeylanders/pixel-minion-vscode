@@ -27,7 +27,10 @@ const signedAssistant = {
   provider_extra: { preserve: true },
 };
 const options = { mode: 'conversation' as const, model, aspectRatio: '16:9', resolution: '4K' };
-const history = [{ prompt: 'Keep the knight blue', images: [{ data: image, seed: 12 }] }];
+/** What a Single Shot follow-up hands back: the latest turn's images. */
+const latestImages = [{ data: image, seed: 12 }];
+/** A Conversation follow-up's thread settings, as the webview sends them. */
+const restoredThread = { mode: 'conversation' as const, model, aspectRatio: '16:9', resolution: '4K' };
 
 function harness() {
   const { files, storage } = memoryGlobalStorage();
@@ -59,7 +62,7 @@ it('replays the full signed conversation, including original references and SVG 
   expect([...files.keys()][0]).toMatch(/^image-conversations\/img-[a-zA-Z0-9-]+\.json$/);
 
   const restored = create();
-  const next = await restored.continueConversation(result.conversationId, 'Add a tree', history, model, '16:9', '4K', undefined, 'conversation');
+  const next = await restored.continueConversation(result.conversationId, 'Add a tree', { mode: 'conversation', turnCount: 1, model, aspectRatio: '16:9', resolution: '4K' });
   expect(next.turnNumber).toBe(2);
   expect(body(1).messages).toHaveLength(3);
   expect(body(1).messages[0]).toEqual(body(0).messages[0]);
@@ -76,7 +79,7 @@ it('keeps GPT-5 conversational and Single Shot semantics distinct for the same m
   const { create } = harness();
   const orchestrator = create();
   const first = await orchestrator.generateImage('Keep the knight blue', { mode: 'conversation', model: 'openai/gpt-5-image', aspectRatio: '1:1' });
-  await orchestrator.continueConversation(first.conversationId, 'Add a tree', undefined, undefined, undefined, undefined, undefined, 'conversation');
+  await orchestrator.continueConversation(first.conversationId, 'Add a tree', { mode: 'conversation', turnCount: 1 });
   expect(mockFetch.mock.calls[1][0]).toMatch(/\/chat\/completions$/);
   expect(body(1).messages).toHaveLength(3);
   expect(body(1).messages[1]).toEqual(signedAssistant);
@@ -84,7 +87,7 @@ it('keeps GPT-5 conversational and Single Shot semantics distinct for the same m
 
   imagesApi();
   const edit = await orchestrator.generateImage('Keep the knight blue', { mode: 'edit', model: 'openai/gpt-5-image', aspectRatio: '1:1' });
-  await orchestrator.continueConversation(edit.conversationId, 'Add a tree');
+  await orchestrator.continueConversation(edit.conversationId, 'Add a tree', { mode: 'edit', turnCount: 1 });
   expect(mockFetch.mock.calls[3][0]).toMatch(/\/images$/);
   expect(body(3).prompt).toBe('Add a tree');
   expect(body(3).input_references).toEqual([{ type: 'image_url', image_url: { url: 'data:image/png;base64,QUJD' } }]);
@@ -95,7 +98,7 @@ it('retains the unsigned Gemini workaround while keeping earlier textual instruc
   mockFetch.mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { role: 'assistant', content: 'A blue knight', images: [{ image_url: { url: image } }] } }] }) });
   const orchestrator = harness().create();
   const first = await orchestrator.generateImage('Keep the knight blue', options);
-  await orchestrator.continueConversation(first.conversationId, 'Add a tree', undefined, undefined, undefined, undefined, undefined, 'conversation');
+  await orchestrator.continueConversation(first.conversationId, 'Add a tree', { mode: 'conversation', turnCount: 1 });
   expect(body(1).messages[0].content[0].text).toBe('Keep the knight blue');
   expect(body(1).messages[1]).toEqual({ role: 'assistant', content: [{ type: 'text', text: 'A blue knight' }] });
   expect(body(1).messages[2].content[1].image_url.url).toBe(image);
@@ -107,12 +110,37 @@ it('keeps Single Shot follow-ups to the latest result and prompt, including afte
   const first = await create().generateImage('Keep the knight blue', { ...options, mode: 'edit', resolution: 'auto' });
   // Single Shot threads have no transcript.
   expect(files.size).toBe(0);
-  const next = await create().continueConversation(first.conversationId, 'Add a tree', history, model, '16:9', 'auto');
+  const restarted = create();
+  const next = await restarted.continueConversation(first.conversationId, 'Add a tree', { mode: 'edit', turnCount: 1, latestImages, model, aspectRatio: '16:9', resolution: 'auto' });
   expect(next.turnNumber).toBe(2);
   expect(body(1).prompt).toBe('Add a tree');
   expect(body(1).input_references).toEqual([{ type: 'image_url', image_url: { url: image } }]);
   expect(body(1)).not.toHaveProperty('messages');
   expect(files.size).toBe(0);
+  // The restarted thread numbers on from the visible turn count and keeps no messages.
+  expect(restarted.getConversation(first.conversationId)).toMatchObject({ turnNumber: 2, messages: [] });
+});
+
+it('keeps only the latest images in a Single Shot thread, however many turns it has', async () => {
+  const outputs = ['QUJD', 'REVG', 'R0hJ'];
+  for (const b64 of outputs) mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ data: [{ b64_json: b64, media_type: 'image/png' }] }) });
+  const orchestrator = harness().create();
+  const first = await orchestrator.generateImage('A knight', { mode: 'edit', model, aspectRatio: '16:9' });
+  await orchestrator.continueConversation(first.conversationId, 'Add a tree', { mode: 'edit', turnCount: 1 });
+  const third = await orchestrator.continueConversation(first.conversationId, 'Add a moon', { mode: 'edit', turnCount: 2 });
+  expect(third.turnNumber).toBe(3);
+  // Each follow-up sends only the previous turn's image.
+  expect(body(2).input_references).toEqual([{ type: 'image_url', image_url: { url: 'data:image/png;base64,REVG' } }]);
+  // The host keeps no earlier turns: only what the next follow-up will send.
+  expect(orchestrator.getConversation(first.conversationId)).toMatchObject({ messages: [], lastImages: ['data:image/png;base64,R0hJ'] });
+});
+
+it('cannot restart a Single Shot thread without its latest images or a turn count', async () => {
+  const orchestrator = harness().create();
+  const thread = { mode: 'edit' as const, model, aspectRatio: '16:9', resolution: 'auto' };
+  await expect(orchestrator.continueConversation('img-lost', 'Add a tree', { ...thread, turnCount: 1 })).rejects.toThrow('unavailable');
+  await expect(orchestrator.continueConversation('img-lost', 'Add a tree', { ...thread, turnCount: 0, latestImages })).rejects.toThrow('unavailable');
+  expect(mockFetch).not.toHaveBeenCalled();
 });
 
 it('rejects unsupported routes, ratios, resolutions and thread-setting changes before another provider call', async () => {
@@ -124,8 +152,8 @@ it('rejects unsupported routes, ratios, resolutions and thread-setting changes b
   await expect(orchestrator.generateImage('A tree', { mode: 'edit', model: 'recraft/recraft-v4.1-flash', aspectRatio: '1:1', referenceImages: [image] })).rejects.toThrow('reference images');
   expect(mockFetch).not.toHaveBeenCalled();
   const first = await orchestrator.generateImage('A tree', options);
-  await expect(orchestrator.continueConversation(first.conversationId, 'Change mode')).rejects.toThrow('settings cannot change');
-  await expect(orchestrator.continueConversation(first.conversationId, 'Change ratio', undefined, model, '1:1', '4K', undefined, 'conversation')).rejects.toThrow('settings cannot change');
+  await expect(orchestrator.continueConversation(first.conversationId, 'Change mode', { mode: 'edit', turnCount: 1 })).rejects.toThrow('settings cannot change');
+  await expect(orchestrator.continueConversation(first.conversationId, 'Change ratio', { mode: 'conversation', turnCount: 1, model, aspectRatio: '1:1', resolution: '4K' })).rejects.toThrow('settings cannot change');
   expect(mockFetch).toHaveBeenCalledTimes(1);
 });
 
@@ -134,19 +162,19 @@ it('refuses a Single Shot follow-up on a text-only model before the provider see
   const orchestrator = harness().create();
   const first = await orchestrator.generateImage('A poster', { mode: 'edit', model: 'recraft/recraft-v4.1-flash', aspectRatio: 'auto' });
   expect(body(0)).not.toHaveProperty('input_references');
-  await expect(orchestrator.continueConversation(first.conversationId, 'Make it red', undefined, undefined, undefined, undefined, undefined, 'edit'))
+  await expect(orchestrator.continueConversation(first.conversationId, 'Make it red', { mode: 'edit', turnCount: 1 }))
     .rejects.toThrow('accepts 0 reference images; received 1');
   expect(mockFetch).toHaveBeenCalledTimes(1);
-  // The refused turn left the thread as it was.
-  expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(2);
+  // The refused turn left the thread as it was (a Single Shot thread keeps only its latest images).
+  expect(orchestrator.getConversation(first.conversationId)).toMatchObject({ turnNumber: 1, messages: [] });
 });
 
 it('rolls back failed turns so retries do not replay failed user messages', async () => {
   const orchestrator = harness().create();
   const first = await orchestrator.generateImage('Keep the knight blue', options);
   mockFetch.mockRejectedValueOnce(new Error('network unavailable'));
-  await expect(orchestrator.continueConversation(first.conversationId, 'Failed prompt', undefined, undefined, undefined, undefined, undefined, 'conversation')).rejects.toThrow('network unavailable');
-  const next = await orchestrator.continueConversation(first.conversationId, 'Actual retry', undefined, undefined, undefined, undefined, undefined, 'conversation');
+  await expect(orchestrator.continueConversation(first.conversationId, 'Failed prompt', { mode: 'conversation', turnCount: 1 })).rejects.toThrow('network unavailable');
+  const next = await orchestrator.continueConversation(first.conversationId, 'Actual retry', { mode: 'conversation', turnCount: 1 });
   expect(body(2).messages).toHaveLength(3);
   expect(JSON.stringify(body(2))).not.toContain('Failed prompt');
   expect(next.turnNumber).toBe(2);
@@ -154,12 +182,14 @@ it('rolls back failed turns so retries do not replay failed user messages', asyn
 
 it('never reconstructs conversational signatures from visible history when the transcript is missing or stale', async () => {
   const { create } = harness();
-  await expect(create().continueConversation('img-missing', 'Continue', history, model, '16:9', '4K', undefined, 'conversation')).rejects.toThrow('transcript is unavailable');
+  await expect(create().continueConversation('img-missing', 'Continue', { ...restoredThread, turnCount: 1 })).rejects.toThrow('transcript is unavailable');
   expect(mockFetch).not.toHaveBeenCalled();
   const first = await create().generateImage('Keep the knight blue', options);
-  await expect(create().continueConversation(first.conversationId, 'Continue', [], model, '16:9', '4K', undefined, 'conversation')).rejects.toThrow('visible history differ');
+  // The visible thread shows fewer or more turns than the saved transcript holds.
+  await expect(create().continueConversation(first.conversationId, 'Continue', { ...restoredThread, turnCount: 0 })).rejects.toThrow('visible history differ');
+  await expect(create().continueConversation(first.conversationId, 'Continue', { ...restoredThread, turnCount: 2 })).rejects.toThrow('visible history differ');
   // A transcript for other thread settings is refused, not silently retargeted.
-  await expect(create().continueConversation(first.conversationId, 'Continue', history, model, '1:1', '4K', undefined, 'conversation')).rejects.toThrow('settings cannot change');
+  await expect(create().continueConversation(first.conversationId, 'Continue', { ...restoredThread, turnCount: 1, aspectRatio: '1:1' })).rejects.toThrow('settings cannot change');
   expect(mockFetch).toHaveBeenCalledTimes(1);
 });
 
@@ -188,7 +218,7 @@ it('clears persisted transcripts and blocks traversal and corrupt records', asyn
   expect(await store.read(first.conversationId)).toBeUndefined();
   expect(orchestrator.getConversation(first.conversationId)).toBeUndefined();
   // After the tombstone, a restarted host can't resume it.
-  await expect(create().continueConversation(first.conversationId, 'Continue', history, model, '16:9', '4K', undefined, 'conversation')).rejects.toThrow('transcript is unavailable');
+  await expect(create().continueConversation(first.conversationId, 'Continue', { ...restoredThread, turnCount: 1 })).rejects.toThrow('transcript is unavailable');
 });
 
 it('refuses a transcript over the 64 MiB recovery limit, on read and on write', async () => {
@@ -219,20 +249,20 @@ it('retires a thread whose turn crosses the recovery limit, and says so now and 
   const big = `data:image/png;base64,${'A'.repeat(4096)}`;
   const bigAssistant = { ...signedAssistant, images: [{ image_url: { url: big }, thought_signature: 'opaque-image-signature' }] };
   mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: bigAssistant }] }) });
-  const second = await orchestrator.continueConversation(first.conversationId, 'Use this texture', [...history], model, '16:9', '4K', undefined, 'conversation');
+  const second = await orchestrator.continueConversation(first.conversationId, 'Use this texture', { ...restoredThread, turnCount: 1 });
   expect(second.result.images).toHaveLength(1);
   expect(second.recoveryWarning).toBe('This conversation is now too large to recover after a restart. It continues while VS Code stays open; to keep restart recovery, start a new conversation from an image.');
   // The stale one-turn record is gone, so a restart can't resume the thread from it.
   expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'))).toEqual({ version: 1, deleted: true, reason: 'too-large' });
 
   // The thread goes on in this session; each turn repeats the warning.
-  const third = await orchestrator.continueConversation(first.conversationId, 'Brighter', undefined, undefined, undefined, undefined, undefined, 'conversation');
+  const third = await orchestrator.continueConversation(first.conversationId, 'Brighter', { mode: 'conversation', turnCount: 2 });
   expect(third.turnNumber).toBe(3);
   expect(third.recoveryWarning).toContain('too large to recover');
 
   // After a restart the follow-up is refused with the same guidance, before any provider call.
   const calls = mockFetch.mock.calls.length;
-  await expect(create().continueConversation(first.conversationId, 'Continue', [...history, ...history, ...history], model, '16:9', '4K', undefined, 'conversation'))
+  await expect(create().continueConversation(first.conversationId, 'Continue', { ...restoredThread, turnCount: 3 }))
     .rejects.toThrow('This conversation is too large to recover after a restart. Start a new conversation from an image.');
   expect(mockFetch).toHaveBeenCalledTimes(calls);
 });
@@ -244,8 +274,8 @@ it('allows only one provider request for concurrent continuations of a restored 
   let release!: () => void;
   const blocked = new Promise<void>(resolve => { release = resolve; });
   mockFetch.mockImplementationOnce(async () => { await blocked; return { ok: true, json: async () => ({ choices: [{ message: signedAssistant }] }) }; });
-  const next = restored.continueConversation(first.conversationId, 'First follow-up', history, model, '16:9', '4K', undefined, 'conversation');
-  const duplicate = restored.continueConversation(first.conversationId, 'Duplicate follow-up', history, model, '16:9', '4K', undefined, 'conversation');
+  const next = restored.continueConversation(first.conversationId, 'First follow-up', { ...restoredThread, turnCount: 1 });
+  const duplicate = restored.continueConversation(first.conversationId, 'Duplicate follow-up', { ...restoredThread, turnCount: 1 });
   await expect(duplicate).rejects.toThrow('already generating');
   await expect(restored.clearConversation(first.conversationId)).rejects.toThrow('Wait for');
   release();

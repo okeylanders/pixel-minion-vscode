@@ -10,8 +10,12 @@
  * - Handles conversation lifecycle and re-hydration
  * - Provides clean interface for handlers
  *
- * Pixel delta from Frame: a failed turn also restores the turn number and the
- * last images (P2), not only the messages and seed.
+ * Pixel deltas from Frame: a failed turn also restores the turn number and the
+ * last images (P2), not only the messages and seed. A Single Shot thread keeps
+ * only what its next request uses (the latest images and seed), not its
+ * turns, and a follow-up carries a turn count and (Single Shot) those latest
+ * images instead of the whole display history; `continueConversation` takes
+ * them as one options object.
  */
 import {
   ImageGenerationClient,
@@ -20,7 +24,7 @@ import {
 import { TokenUsage, ImageGenerationMode, ImageThreadSettings, AspectRatio, ImageResolution } from '@messages';
 import { ImageTranscriptTooLargeError, isImageConversationId, type ImageConversationStore } from './ImageConversationStore';
 import { imageRouteCapabilities } from '../../../shared/models';
-import { ImageConversationManager, RehydrationTurn } from './ImageConversationManager';
+import { ImageConversationManager, RehydrationImage } from './ImageConversationManager';
 import { LoggingService } from '@logging';
 
 export interface ImageGenerationOptions {
@@ -31,6 +35,24 @@ export interface ImageGenerationOptions {
   seed?: number;
   referenceImages?: string[];
   referenceSvgText?: string;
+}
+
+/** A follow-up: the thread's mode and what the webview knows about the thread. */
+export interface ImageContinuationOptions {
+  /** The thread's mode; a follow-up can't change it. */
+  mode: ImageGenerationMode;
+  /**
+   * Turns in the visible thread. A Conversation must have as many (a restored
+   * transcript that disagrees is refused); a restarted Single Shot thread
+   * numbers its next turn from it.
+   */
+  turnCount: number;
+  /** Single Shot: the latest turn's images, to restart the thread after a host restart. */
+  latestImages?: RehydrationImage[];
+  /** The thread's settings; a follow-up that names different ones is refused. */
+  model?: string;
+  aspectRatio?: string;
+  resolution?: string;
 }
 
 export interface ImageTurnResult {
@@ -146,6 +168,10 @@ export class ImageOrchestrator {
 
       // Add assistant response
       this.conversationManager.addAssistantResponse(conversation.id, result);
+      // A Single Shot request sends only the new prompt and the latest
+      // images, so earlier turns are never needed again; lastImages and
+      // lastSeed carry the latest. (Nothing below can fail the turn.)
+      if (conversation.mode === 'edit') conversation.messages.length = 0;
       let recoveryWarning: string | undefined;
       if (conversation.mode === 'conversation' && this.store) {
         try { await this.store.write(conversation); }
@@ -189,18 +215,17 @@ export class ImageOrchestrator {
   }
 
   /**
-   * Continue an existing conversation with re-hydration support
+   * Continue an existing thread. After a host restart a Conversation restores
+   * its saved transcript and a Single Shot thread restarts from the latest
+   * images the webview sends. A follow-up carries only its prompt: references
+   * and attachments stay with the turns that sent them.
    */
   async continueConversation(
     conversationId: string,
     prompt: string,
-    history?: RehydrationTurn[],
-    model?: string,
-    aspectRatio?: string,
-    resolution?: string,
-    referenceSvgText?: string,
-    mode: ImageGenerationMode = 'edit'
+    options: ImageContinuationOptions
   ): Promise<ImageTurnResult> {
+    const { mode, turnCount, latestImages, model, aspectRatio, resolution } = options;
     let conversation = this.conversationManager.get(conversationId);
     if (!conversation && mode === 'conversation') {
       if (this.inFlight.has(conversationId)) throw new Error('This image thread is already generating');
@@ -214,16 +239,17 @@ export class ImageOrchestrator {
       }
     }
 
-    // Re-hydrate if conversation not found but history provided
-    if (!conversation && history && history.length > 0 && model && aspectRatio) {
-      this.logger.info(`Re-hydrating conversation ${conversationId} from ${history.length} turns`);
-      conversation = this.conversationManager.rehydrate(conversationId, model, aspectRatio, history, resolution === 'auto' ? undefined : resolution);
+    // A Single Shot thread the host lost restarts from its latest images.
+    if (!conversation && mode === 'edit' && latestImages?.length && model && aspectRatio &&
+        Number.isInteger(turnCount) && turnCount > 0) {
+      this.logger.info(`Re-hydrating Single Shot thread ${conversationId} at turn ${turnCount}`);
+      conversation = this.conversationManager.rehydrate(conversationId, model, aspectRatio, latestImages, turnCount, resolution === 'auto' ? undefined : resolution);
     }
 
     if (!conversation) {
-      throw new Error(`Conversation ${conversationId} not found and no history provided for re-hydration.`);
+      throw new Error(`Image thread ${conversationId} is unavailable and nothing was sent to restart it. Start a new thread.`);
     }
-    if (mode === 'conversation' && history && conversation.turnNumber !== history.length) throw new Error('Saved conversation and visible history differ. Start a new conversation from an image.');
+    if (mode === 'conversation' && conversation.turnNumber !== turnCount) throw new Error('Saved conversation and visible history differ. Start a new conversation from an image.');
     if (conversation.mode !== mode || (model && model !== conversation.model) ||
         (aspectRatio && aspectRatio !== conversation.aspectRatio) ||
         (resolution !== undefined && (resolution === 'auto' ? undefined : resolution) !== conversation.resolution)) {
@@ -238,7 +264,6 @@ export class ImageOrchestrator {
       resolution: conversation.resolution,
       seed: conversation.lastSeed,
       referenceImages: conversation.lastImages,
-      referenceSvgText,
     }, conversationId);
   }
 

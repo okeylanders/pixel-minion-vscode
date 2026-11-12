@@ -43,7 +43,8 @@ export { ImageConversationManager, ImageOrchestrator, FileImageConversationStore
 export type {
   ImageConversationState,
   ImageConversationStore,
-  RehydrationTurn,
+  RehydrationImage,
+  ImageContinuationOptions,
   ImageGenerationOptions,
   ImageTurnResult,
 } from './orchestration';

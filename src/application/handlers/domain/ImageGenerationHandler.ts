@@ -25,7 +25,7 @@ import {
   TokenUsage,
 } from '@messages';
 import { LoggingService } from '@logging';
-import { ImageOrchestrator, RehydrationTurn } from '@ai';
+import { ImageOrchestrator } from '@ai';
 import { imageExtensionForMime, sniffImageMime } from '../../../shared/media/imageFormats';
 import { plainSaveFileName } from '../saveFileName';
 import { workspaceOutputDirectory } from '../outputDirectory';
@@ -99,31 +99,22 @@ export class ImageGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<ImageGenerationContinuePayload>): Promise<void> {
-    const { mode, prompt, conversationId, history, model, aspectRatio, resolution } = message.payload;
+    const { mode, prompt, conversationId, turnCount, latestImages, model, aspectRatio, resolution } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
 
     try {
-      // Transform history to rehydration format
-      const rehydrationHistory: RehydrationTurn[] | undefined = history?.map(h => ({
-        prompt: h.prompt,
-        images: h.images,
-        referenceSvgText: h.referenceSvgText,
-      }));
-
       // A refinement carries only its prompt; references and SVG text stay
-      // with the turns that sent them (in the transcript or `history`).
-      const result = await this.orchestrator.continueConversation(
-        conversationId,
-        prompt,
-        rehydrationHistory,
+      // with the turns that sent them (in the transcript or the latest images).
+      const result = await this.orchestrator.continueConversation(conversationId, prompt, {
+        mode: mode ?? 'edit',
+        turnCount,
+        latestImages: latestImages?.map(image => ({ data: image.data, seed: image.seed })),
         model,
         aspectRatio,
         resolution,
-        undefined,
-        mode
-      );
+      });
 
       // Apply token usage if available
       if (result.usage) {
