@@ -84,13 +84,19 @@ describe('shared model catalogs', () => {
     }
   });
 
-  it('keeps native vector models on recraft/, the off-catalog fallback route', () => {
+  it('names native vector models -vector, the off-catalog fallback route', () => {
     // svgRoutes routes a curated id by its `kind`, and an id the catalog doesn't
-    // list (custom or superseded) by the recraft/ prefix. Keep the two agreeing so
+    // list (custom or superseded) by a -vector name. Keep the two agreeing so
     // a model routes the same way after it leaves the catalog.
     for (const model of OPENROUTER_SVG_MODELS) {
-      expect({ id: model.id, recraft: model.id.startsWith('recraft/') })
-        .toEqual({ id: model.id, recraft: model.kind === 'native-vector' });
+      expect({ id: model.id, vectorName: model.id.endsWith('-vector') })
+        .toEqual({ id: model.id, vectorName: model.kind === 'native-vector' });
     }
+  });
+
+  it('lists no raster image id whose name would send it down the SVG vector route', () => {
+    // A raster id typed as a custom SVG model must go to the code route
+    // (refused unbilled), not the vector route (billed, then unusable).
+    for (const model of OPENROUTER_IMAGE_MODELS) expect({ id: model.id, vectorName: model.id.endsWith('-vector') }).toEqual({ id: model.id, vectorName: false });
   });
 });

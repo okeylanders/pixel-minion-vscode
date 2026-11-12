@@ -1,5 +1,5 @@
-import { isNativeVectorSvgModel, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
-import { OPENROUTER_SVG_MODELS } from '../../../shared/models';
+import { isNativeVectorSvgModel, svgModelRefusal, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../shared/models';
 
 describe('svgRoutes', () => {
   it('routes every curated model by its catalog kind', () => {
@@ -10,10 +10,30 @@ describe('svgRoutes', () => {
     }
   });
 
-  it('falls back to the provider for ids the catalog does not list', () => {
+  it('routes an id the catalog does not list by a -vector name, not by the recraft/ prefix', () => {
     expect(isNativeVectorSvgModel('recraft/recraft-v4-vector')).toBe(true);
+    expect(isNativeVectorSvgModel('recraft/recraft-v9-pro-vector:free')).toBe(true);
+    expect(isNativeVectorSvgModel('acme/logo-vector')).toBe(true);
+    // Raster Recraft ids (the Image catalog's) would be billed on the vector route, then fail.
+    for (const raster of ['recraft/recraft-v4.1', 'recraft/recraft-v4.1-flash', 'recraft/recraft-v4-styles', 'recraft/recraft-v9']) {
+      expect({ raster, nativeVector: isNativeVectorSvgModel(raster) }).toEqual({ raster, nativeVector: false });
+      expect(svgModelSupportsRefinement(raster)).toBe(true);
+    }
+    expect(isNativeVectorSvgModel('acme/vector-art')).toBe(false);
     expect(isNativeVectorSvgModel('anthropic/claude-opus-5')).toBe(false);
     expect(isNativeVectorSvgModel('my-org/custom-svg-model')).toBe(false);
+  });
+
+  it('refuses known raster image models before either route could bill them', () => {
+    for (const model of OPENROUTER_IMAGE_MODELS) {
+      expect(svgModelRefusal(model.id)).toBe(`${model.id} makes raster images, not SVG. Use it on the Image tab, or choose a vector (-vector) or text model for SVG.`);
+    }
+    // An unlisted Recraft id without a vector name is raster too.
+    expect(svgModelRefusal('recraft/recraft-v9')).toMatch(/makes raster images/);
+    // Curated SVG models, vector names and other ids are left to their route.
+    for (const ok of [...OPENROUTER_SVG_MODELS.map(model => model.id), 'recraft/recraft-v9-vector', 'acme/logo-vector', 'acme/svg-writer', 'openai/gpt-6.1-sol']) {
+      expect({ ok, refusal: svgModelRefusal(ok) }).toEqual({ ok, refusal: null });
+    }
   });
 
   it('follows the catalog kind, not the id prefix, for a curated model', () => {

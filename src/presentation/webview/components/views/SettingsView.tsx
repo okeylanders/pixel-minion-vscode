@@ -14,6 +14,7 @@ import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import { CustomModelIdField } from '../shared/CustomModelIdField';
 import { UseSettingsReturn } from '@hooks';
 import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '@shared/models';
+import { svgModelRefusal } from '../../../../shared/svg/svgRoutes';
 
 const IMAGE_MODEL_IDS = OPENROUTER_IMAGE_MODELS.map(model => model.id);
 const SVG_MODEL_IDS = OPENROUTER_SVG_MODELS.map(model => model.id);
@@ -102,7 +103,8 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           <CustomModelIdField
             label="Custom SVG model id"
             catalogIds={SVG_MODEL_IDS}
-            help="Any OpenRouter model. An id starting with recraft/ makes native vector SVG; any other writes SVG code."
+            refusal={svgModelRefusal}
+            help="Any OpenRouter model. An id ending in -vector (a vector model, such as Recraft’s) makes native vector SVG; any other writes SVG code, so it must be a text model."
             onUse={model => updateSetting('svgModel', model)}
           />
         </div>

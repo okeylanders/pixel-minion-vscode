@@ -15,7 +15,7 @@ import { TextClient } from '../clients/TextClient';
 import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
 import { SVGAspectRatio, TokenUsage } from '@messages';
-import { isNativeVectorSvgModel, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
+import { isNativeVectorSvgModel, svgModelRefusal, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
 import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
 
 /**
@@ -96,6 +96,9 @@ export class SVGOrchestrator {
    * (e.g. Recraft) need a different API shape and produce SVG via image output.
    */
   private selectClient(model: string): TextClient {
+    // A raster image model would be billed on either route, then fail.
+    const refusal = svgModelRefusal(model);
+    if (refusal) throw new Error(refusal);
     if (isNativeVectorSvgModel(model)) {
       if (!this.vectorImageClient) {
         throw new Error('Vector image client not configured for Recraft models.');

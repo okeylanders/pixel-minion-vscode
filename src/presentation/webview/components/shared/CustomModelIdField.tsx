@@ -18,6 +18,8 @@ export interface CustomModelIdFieldProps {
   help: string;
   /** The tab's curated ids: a differently-cased copy of one is stored as the curated id. */
   catalogIds: readonly string[];
+  /** Why a well-formed id still can't be used on this tab, or null (e.g. a raster model for SVG). */
+  refusal?: (modelId: string) => string | null;
   onUse: (modelId: string) => void;
 }
 
@@ -54,7 +56,7 @@ export function customModelIdFor(
   return { id: catalogIds.find(curated => curated.toLowerCase() === lower) ?? id };
 }
 
-export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, help, catalogIds, onUse }) => {
+export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, help, catalogIds, refusal, onUse }) => {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
@@ -64,6 +66,11 @@ export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, h
     const result = customModelIdFor(value, catalogIds);
     if (result.error !== undefined) {
       setError(result.error);
+      return;
+    }
+    const refused = refusal?.(result.id);
+    if (refused) {
+      setError(refused);
       return;
     }
     setError(null);

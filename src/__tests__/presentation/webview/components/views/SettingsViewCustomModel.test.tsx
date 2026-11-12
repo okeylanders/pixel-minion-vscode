@@ -72,6 +72,23 @@ describe('SettingsView custom model ids', () => {
     expect(value.updateSetting).toHaveBeenCalledWith('svgModel', 'recraft/recraft-v4.1-vector');
   });
 
+  it('refuses a raster image model as the SVG default, and takes a vector-named one', () => {
+    const value = settings();
+    render(<SettingsView settings={value} />);
+    const field = screen.getByLabelText('Custom SVG model id');
+    fireEvent.change(field, { target: { value: 'recraft/recraft-v4.1' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(value.updateSetting).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toMatch(/recraft\/recraft-v4\.1 makes raster images, not SVG/);
+    fireEvent.change(field, { target: { value: 'recraft/recraft-v9-vector' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(value.updateSetting).toHaveBeenCalledWith('svgModel', 'recraft/recraft-v9-vector');
+    // The same raster id is fine as the Image default.
+    fireEvent.change(screen.getByLabelText('Custom image model id'), { target: { value: 'recraft/recraft-v4.1' } });
+    fireEvent.keyDown(screen.getByLabelText('Custom image model id'), { key: 'Enter' });
+    expect(value.updateSetting).toHaveBeenCalledWith('imageModel', 'recraft/recraft-v4.1');
+  });
+
   it('keeps Use disabled while the field is empty', () => {
     render(<SettingsView settings={settings()} />);
     for (const button of screen.getAllByRole('button', { name: 'Use' })) {
@@ -83,7 +100,8 @@ describe('SettingsView custom model ids', () => {
     render(<SettingsView settings={settings()} />);
     expect(screen.getByLabelText('Custom image model id').getAttribute('aria-describedby')).toBeTruthy();
     expect(screen.getByText(/runs as Single Shot with automatic dimensions/)).toBeTruthy();
-    expect(screen.getByText(/recraft\/ makes native vector SVG/)).toBeTruthy();
+    expect(screen.getByText(/An id ending in -vector .* makes native vector SVG; any other writes SVG code, so it must be a text model/)).toBeTruthy();
+    expect(screen.queryByText(/starting with recraft\//)).toBeNull();
   });
 
   it('shows a saved custom id in the picker rather than hiding it', () => {
