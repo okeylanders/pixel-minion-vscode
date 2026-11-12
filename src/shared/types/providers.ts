@@ -6,8 +6,8 @@
  *
  * The image-pricing and image-model types below are ported from
  * frame-minion@40e7949 packages/core/src/shared/types/providers.ts; keep in
- * sync. Pixel-only additions (`TextPricing`, `SvgModelDefinition`) are
- * marked as such.
+ * sync. Pixel-only additions (`TextPricing`, `SvgModelDefinition`) are marked
+ * as such.
  */
 
 import type { AspectRatio } from './messages/imageGeneration';
@@ -60,12 +60,11 @@ export interface ImagePricing {
  * pricing surface: absent ⇒ the provider publishes no price and the Model
  * Browser renders no cost hint.
  *
- * ⚠️ Not yet consumed in Pixel: `transport`, `supportsSeed`, `referenceImages`,
- * `referenceMimeTypes`, `supportedResolutions` and `supportedAspectRatios` are
- * recorded from the live Image API endpoint records so the catalog stays
- * shareable with Frame. Nothing reads them until the Image API transport and
- * capability-driven controls land (roadmap P3); today every request goes to
- * `/chat/completions` with the Image tab's fixed controls.
+ * The capability fields come from the live Image API endpoint records and
+ * drive both the controls the Image tab shows and the host's checks before a
+ * request is sent (`imageRouteCapabilities`, shared/models/ImageGenerationModes.ts).
+ * For a native-vector SVG row they describe the Image API record only: the SVG
+ * tab's vector client still uses `/chat/completions` (roadmap P5b).
  */
 export interface ImageModelDefinition {
   id: string;           // e.g., 'google/gemini-2.5-flash-image'

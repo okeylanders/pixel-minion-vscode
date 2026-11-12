@@ -1,7 +1,14 @@
+// Ported from frame-minion@40e7949 packages/core/src/presentation/webview/components/image/ImageUploader.tsx; keep in sync
 /**
  * ImageUploader - Component for uploading and managing reference images
  *
  * Pattern: Controlled component for image-to-image generation workflow
+ *
+ * `maxImages` and `accept` come from the selected model's route; a model that
+ * takes no reference images gets a disabled button and says so.
+ *
+ * Pixel deltas: the family button classes (`btn btn-secondary`), and the
+ * text-only note is a `generation-note`.
  */
 import React, { useRef, useCallback } from 'react';
 import '../../styles/components/image-uploader.css';
@@ -13,6 +20,8 @@ export interface ImageUploaderProps {
   onClear: () => void;
   disabled?: boolean;
   maxImages?: number;
+  /** MIME types the file picker offers; defaults to every raster format plus SVG. */
+  accept?: string;
 }
 
 export function ImageUploader({
@@ -22,6 +31,7 @@ export function ImageUploader({
   onClear,
   disabled = false,
   maxImages = 4,
+  accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml',
 }: ImageUploaderProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,8 +39,7 @@ export function ImageUploader({
     const files = e.target.files;
     if (!files) return;
 
-    for (const file of Array.from(files)) {
-      if (images.length >= maxImages) break;
+    for (const file of Array.from(files).slice(0, Math.max(0, maxImages - images.length))) {
 
       // Always read data URL for preview
       const reader = new FileReader();
@@ -72,6 +81,7 @@ export function ImageUploader({
         >
           + Add Reference Image{images.length > 0 ? ` (${images.length}/${maxImages})` : ''}
         </button>
+        {maxImages === 0 && <span className="generation-note">This model accepts text prompts only.</span>}
         {images.length > 0 && (
           <button
             type="button"
@@ -87,7 +97,7 @@ export function ImageUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+        accept={accept}
         multiple
         onChange={handleFileChange}
         style={{ display: 'none' }}

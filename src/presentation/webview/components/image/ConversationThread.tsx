@@ -53,6 +53,9 @@ export const ConversationThread: React.FC<ConversationThreadProps> = ({
             <div className="conversation-prompt-text">{turn.prompt}</div>
           </div>
 
+          {turn.imagesOmitted && (
+            <p className="generation-note">Image previews were not retained after reload. Use your saved image files.</p>
+          )}
           {/* Generated images */}
           <div className="conversation-images">
             {turn.images.map((image) => (

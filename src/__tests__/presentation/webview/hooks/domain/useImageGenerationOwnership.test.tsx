@@ -34,7 +34,7 @@ const image: GeneratedImage = {
 const turn: ConversationTurn = { id: 'turn-1', prompt: 'Blue knight', images: [image], turnNumber: 1, timestamp: 1 };
 const existing: Partial<ImageGenerationPersistence> = {
   model, aspectRatio: '16:9', conversationId: 'img-existing',
-  threadSettings: { model, aspectRatio: '16:9' },
+  threadSettings: { mode: 'conversation', model, aspectRatio: '16:9', resolution: 'auto' },
   generatedImages: [image], conversationHistory: [turn],
 };
 
@@ -78,7 +78,7 @@ describe('useImageGeneration request ownership', () => {
     act(() => result.current.handleGenerationResponse(response(request.correlationId)));
     expect(result.current.isLoading).toBe(false);
     expect(result.current.conversationHistory[0]).toMatchObject({ prompt: 'A knight', referenceSvgText: svg });
-    expect(result.current.threadSettings).toEqual({ model, aspectRatio: '1:1' });
+    expect(result.current.threadSettings).toEqual({ mode: 'conversation', model, aspectRatio: '1:1', resolution: 'auto' });
 
     // A duplicate delivery of the same response can't add a second turn.
     act(() => result.current.handleGenerationResponse(response(request.correlationId)));
@@ -116,21 +116,22 @@ describe('useImageGeneration request ownership', () => {
     const request = last(MessageType.IMAGE_GENERATION_CONTINUE);
     expect(request.correlationId).toMatch(/^image-continue-/);
     expect(request.payload).toMatchObject({
-      prompt: 'Add a tree', conversationId: 'img-existing', model, aspectRatio: '16:9',
+      prompt: 'Add a tree', conversationId: 'img-existing', mode: 'conversation', model, aspectRatio: '16:9', resolution: 'auto',
     });
     expect(request.payload).not.toHaveProperty('referenceImages');
     expect(request.payload).not.toHaveProperty('referenceSvgText');
     expect(request.payload.history).toEqual([{ prompt: 'Blue knight', images: [{ data: image.data, seed: 12 }], referenceSvgText: undefined }]);
   });
 
-  it('continues a conversation saved before thread settings existed with its saved controls', () => {
+  it('continues a conversation saved before thread settings existed with its saved controls, as Single Shot', () => {
     const legacy: Partial<ImageGenerationPersistence> = { ...existing };
     delete legacy.threadSettings;
     const { result } = renderHook(() => useImageGeneration(legacy));
     act(() => result.current.setModel('openai/gpt-5-image'));
     act(() => result.current.continueChat('Add a tree'));
 
-    expect(last(MessageType.IMAGE_GENERATION_CONTINUE).payload).toMatchObject({ model, aspectRatio: '16:9' });
+    // No host transcript exists for it, so it can only continue as Single Shot.
+    expect(last(MessageType.IMAGE_GENERATION_CONTINUE).payload).toMatchObject({ mode: 'edit', model, aspectRatio: '16:9', resolution: 'auto' });
   });
 
   it('settles an enhance by its own answer; generation errors leave it running', () => {

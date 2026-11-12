@@ -39,9 +39,10 @@ export type {
 } from './orchestration';
 
 // Image orchestration
-export { ImageConversationManager, ImageOrchestrator } from './orchestration';
+export { ImageConversationManager, ImageOrchestrator, FileImageConversationStore, isImageConversationId } from './orchestration';
 export type {
   ImageConversationState,
+  ImageConversationStore,
   RehydrationTurn,
   ImageGenerationOptions,
   ImageTurnResult,

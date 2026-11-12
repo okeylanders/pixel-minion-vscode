@@ -1,6 +1,9 @@
 export { AspectRatioSelector } from './AspectRatioSelector';
 export type { AspectRatioSelectorProps } from './AspectRatioSelector';
 
+export { ResolutionSelector } from './ResolutionSelector';
+export type { ResolutionSelectorProps } from './ResolutionSelector';
+
 export { ImageCard } from './ImageCard';
 export type { ImageCardProps } from './ImageCard';
 

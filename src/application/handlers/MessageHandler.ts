@@ -45,6 +45,7 @@ import { LoggingService } from '@logging';
 import {
   OpenRouterImageClient,
   ImageOrchestrator,
+  ImageConversationStore,
   OpenRouterDynamicTextClient,
   OpenRouterImageSVGClient,
   SVGOrchestrator,
@@ -88,7 +89,9 @@ export class MessageHandler {
     postToWebview: (message: MessageEnvelope) => void,
     secretStorage: SecretStorageService,
     private readonly logger: LoggingService,
-    private readonly accountBalanceService: AccountBalanceService
+    private readonly accountBalanceService: AccountBalanceService,
+    /** Conversation transcripts for restart recovery (one per extension, built in extension.ts). */
+    imageConversationStore?: ImageConversationStore
   ) {
     const postMessage = (message: MessageEnvelope): void => {
       postToWebview(message);
@@ -115,7 +118,7 @@ export class MessageHandler {
       () => this.resetClients()
     );
     // Create image generation orchestrator and inject client
-    const imageOrchestrator = new ImageOrchestrator(logger);
+    const imageOrchestrator = new ImageOrchestrator(logger, imageConversationStore);
     imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
     this.imageGenerationHandler = new ImageGenerationHandler(
       postMessage,

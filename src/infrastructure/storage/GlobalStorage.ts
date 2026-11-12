@@ -1,0 +1,58 @@
+/**
+ * GlobalStorage - the slice of a file system the host-owned stores need.
+ *
+ * Pixel has no platform ports (Frame has `FileSystem` / `Workspace`); this is
+ * the smallest seam that keeps a store testable without VS Code. Paths are
+ * relative to the extension's global storage folder and '/'-separated; the
+ * store decides them, never the webview.
+ */
+import * as vscode from 'vscode';
+
+export interface GlobalStorage {
+  /** Size in bytes, or undefined when nothing is stored at the path. */
+  size(path: string): Promise<number | undefined>;
+  read(path: string): Promise<Uint8Array>;
+  /** Writes the file, creating missing parent folders first. */
+  write(path: string, bytes: Uint8Array): Promise<void>;
+}
+
+/** A missing file, as `vscode.workspace.fs` (or Node, under it) reports it. */
+function isNotFound(error: unknown): boolean {
+  const { code, name } = (error ?? {}) as { code?: unknown; name?: unknown };
+  return code === 'FileNotFound' || code === 'ENOENT' || name === 'EntryNotFound (FileSystemError)';
+}
+
+/**
+ * `context.globalStorageUri` through `vscode.workspace.fs`, which works for
+ * any URI scheme (remote and web hosts included), unlike Node's `fs`.
+ */
+export class VsCodeGlobalStorage implements GlobalStorage {
+  constructor(private readonly root: vscode.Uri) {}
+
+  private uri(path: string): vscode.Uri {
+    return vscode.Uri.joinPath(this.root, ...path.split('/'));
+  }
+
+  async size(path: string): Promise<number | undefined> {
+    try {
+      return (await vscode.workspace.fs.stat(this.uri(path))).size;
+    } catch (error) {
+      if (isNotFound(error)) return undefined;
+      throw error;
+    }
+  }
+
+  async read(path: string): Promise<Uint8Array> {
+    return vscode.workspace.fs.readFile(this.uri(path));
+  }
+
+  async write(path: string, bytes: Uint8Array): Promise<void> {
+    const segments = path.split('/');
+    // workspace.fs.writeFile fails when the parent folder is missing;
+    // createDirectory makes the whole chain (mkdir -p).
+    if (segments.length > 1) {
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.root, ...segments.slice(0, -1)));
+    }
+    await vscode.workspace.fs.writeFile(this.uri(path), bytes);
+  }
+}

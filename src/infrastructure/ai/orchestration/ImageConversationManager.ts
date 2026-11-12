@@ -1,3 +1,4 @@
+// Ported from frame-minion@40e7949 packages/core/src/infrastructure/ai/orchestration/ImageConversationManager.ts; keep in sync
 /**
  * ImageConversationManager - Manages image generation conversation state
  *
@@ -12,15 +13,18 @@ import {
   ImageGenerationResult,
 } from '../clients/ImageGenerationClient';
 import { LoggingService } from '@logging';
+import type { ImageGenerationMode } from '@messages';
 
 /**
  * State for a single image generation conversation
  */
 export interface ImageConversationState {
+  mode: ImageGenerationMode;
   id: string;
   messages: ImageConversationMessage[];
   model: string;
   aspectRatio: string;
+  resolution?: string;
   turnNumber: number;
   lastSeed?: number;
   lastImages?: string[];
@@ -46,13 +50,15 @@ export class ImageConversationManager {
   /**
    * Create a new conversation
    */
-  create(model: string, aspectRatio: string): ImageConversationState {
+  create(model: string, aspectRatio: string, resolution?: string, mode: ImageGenerationMode = 'edit'): ImageConversationState {
     const id = `img-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const conversation: ImageConversationState = {
       id,
+      mode,
       messages: [],
       model,
       aspectRatio,
+      resolution,
       turnNumber: 0,
       lastImages: [],
     };
@@ -74,7 +80,9 @@ export class ImageConversationManager {
   getOrCreate(
     id: string | undefined,
     model: string,
-    aspectRatio: string
+    aspectRatio: string,
+    resolution?: string,
+    mode: ImageGenerationMode = 'edit'
   ): ImageConversationState {
     if (id) {
       const existing = this.conversations.get(id);
@@ -82,7 +90,7 @@ export class ImageConversationManager {
         return existing;
       }
     }
-    return this.create(model, aspectRatio);
+    return this.create(model, aspectRatio, resolution, mode);
   }
 
   /**
@@ -176,13 +184,16 @@ export class ImageConversationManager {
     conversationId: string,
     model: string,
     aspectRatio: string,
-    history: RehydrationTurn[]
+    history: RehydrationTurn[],
+    resolution?: string
   ): ImageConversationState {
     const conversation: ImageConversationState = {
       id: conversationId,
+      mode: 'edit',
       messages: [],
       model,
       aspectRatio,
+      resolution,
       turnNumber: 0,
       lastImages: [],
     };
@@ -226,6 +237,11 @@ export class ImageConversationManager {
     this.logger.info(`Re-hydrated conversation ${conversationId} with ${conversation.turnNumber} turns`);
 
     return conversation;
+  }
+
+  /** Only the host-owned transcript store may restore opaque provider messages. */
+  restore(state: ImageConversationState): void {
+    this.conversations.set(state.id, state);
   }
 
   /**

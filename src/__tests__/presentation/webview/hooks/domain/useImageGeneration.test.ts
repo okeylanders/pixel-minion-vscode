@@ -4,6 +4,9 @@
 import {
   isSourcefulModel,
   calculateBase64Size,
+  normalizeAspectRatioForModel,
+  normalizeResolutionForModel,
+  referenceImageIssue,
 } from '../../../../../presentation/webview/hooks/domain/useImageGeneration';
 
 describe('isSourcefulModel', () => {
@@ -86,5 +89,63 @@ describe('calculateBase64Size', () => {
     const result = calculateBase64Size([largBase64]);
     const fourPointFiveMB = 4.5 * 1024 * 1024;
     expect(result).toBeGreaterThan(fourPointFiveMB);
+  });
+});
+
+// Ported from frame-minion@40e7949 useImageGeneration.test.ts ("model capability
+// normalization"); Muse cases use a custom id, which Pixel no longer lists.
+describe('model capability normalization', () => {
+  it('resets an unsupported aspect ratio to the model default', () => {
+    expect(normalizeAspectRatioForModel('openai/gpt-image-1', '16:9')).toBe('1:1');
+    expect(normalizeAspectRatioForModel('recraft/recraft-v4.1', '21:9', 'edit')).toBe('1:1');
+  });
+
+  it('keeps a supported extended aspect ratio', () => {
+    expect(normalizeAspectRatioForModel('bytedance-seed/seedream-5-0-pro', '9:21')).toBe('9:21');
+  });
+
+  it('resets an unsupported resolution to auto', () => {
+    expect(normalizeResolutionForModel('bytedance-seed/seedream-5-0-lite', '1K')).toBe('auto');
+    expect(normalizeResolutionForModel('vendor/custom', '4K', 'edit')).toBe('auto');
+    expect(normalizeAspectRatioForModel('vendor/custom', '16:9', 'edit')).toBe('auto');
+  });
+
+  it('keeps a supported high-resolution tier', () => {
+    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '4K')).toBe('4K');
+  });
+
+  it('uses the route’s own lists: Gemini’s 512 tier is Single Shot only', () => {
+    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '512', 'edit')).toBe('512');
+    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '512', 'conversation')).toBe('auto');
+  });
+});
+
+describe('referenceImageIssue', () => {
+  const png = 'data:image/png;base64,QUJD';
+
+  it('blocks references to a text-only model', () => {
+    expect(referenceImageIssue('recraft/recraft-v4.1-flash', 'edit', [])).toBeNull();
+    expect(referenceImageIssue('recraft/recraft-v4.1-flash', 'edit', [png])).toMatch(/text prompts only/);
+  });
+
+  it('asks for the references a model requires', () => {
+    expect(referenceImageIssue('krea/k3-edit', 'edit', [])).toBe('This model needs at least 1 reference image. Add one to generate.');
+    expect(referenceImageIssue('krea/k3-edit', 'edit', [png])).toBeNull();
+  });
+
+  it('counts references against the model’s maximum', () => {
+    expect(referenceImageIssue('recraft/recraft-v4.1', 'edit', [png, png, png]))
+      .toBe('This model accepts 0–1 reference images; 3 attached. Remove 2 to generate.');
+    expect(referenceImageIssue('google/gemini-2.5-flash-image', 'conversation', [png, png, png, png])).toMatch(/0–3/);
+  });
+
+  it('checks reference formats where the model restricts them', () => {
+    expect(referenceImageIssue('recraft/recraft-v4-styles', 'edit', ['data:image/gif;base64,R0lG']))
+      .toBe('This model requires PNG, JPEG, or WebP reference images.');
+    expect(referenceImageIssue('recraft/recraft-v4-styles', 'edit', ['data:image/jpg;base64,QUJD'])).toBeNull();
+  });
+
+  it('places no bounds on a custom id in Single Shot', () => {
+    expect(referenceImageIssue('vendor/custom', 'edit', [png, png, png, png, png])).toBeNull();
   });
 });

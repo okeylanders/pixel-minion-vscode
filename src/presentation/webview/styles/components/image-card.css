@@ -1,7 +1,8 @@
 /**
  * ImageCard — Frame's fm-result card.
  *
- * Left-aligned, up to 320px wide: the image on a square stage, then a meta
+ * Left-aligned, up to 320px wide: the image on a stage shaped like the image
+ * (square until its size is known; ImageCard sets it inline), then a meta
  * block with the prompt and the approve/save tile on the first row and the
  * mono seed chip on its own row.
  */

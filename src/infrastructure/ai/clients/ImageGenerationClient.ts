@@ -7,6 +7,7 @@
  * - Message structure (multimodal content with image_url)
  */
 import { TokenUsage } from './TextClient';
+import type { ImageGenerationMode } from '@messages';
 
 /**
  * Multimodal message content for image generation
@@ -43,9 +44,17 @@ export interface ImageConversationMessage {
  * Request to generate images
  */
 export interface ImageGenerationRequest {
+  /**
+   * Conversation sends `messages` whole; Single Shot (`edit`) sends only the
+   * latest user message. Omitted means Single Shot, with the historical
+   * request defaults (no capability checks on ratio or resolution).
+   */
+  mode?: ImageGenerationMode;
   messages: ImageConversationMessage[];
   model: string;
   aspectRatio: string;
+  /** Output tier; undefined or `auto` lets the provider choose. */
+  resolution?: string;
   seed?: number;
 }
 
@@ -61,6 +70,8 @@ export interface GeneratedImageData {
  * Result from image generation
  */
 export interface ImageGenerationResult {
+  /** False means the route takes no seed, so none was sent. */
+  seedSupported?: boolean;
   images: GeneratedImageData[];
   seed: number;
   usage?: TokenUsage;

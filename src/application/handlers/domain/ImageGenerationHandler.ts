@@ -19,6 +19,8 @@ import {
   ImageSaveRequestPayload,
   ImageSaveResultPayload,
   GeneratedImage,
+  AspectRatio,
+  ImageResolution,
   StatusPayload,
   TokenUsage,
 } from '@messages';
@@ -44,15 +46,17 @@ export class ImageGenerationHandler {
    * Handle new image generation request
    */
   async handleGenerationRequest(message: MessageEnvelope<ImageGenerationRequestPayload>): Promise<void> {
-    const { prompt, model, aspectRatio, referenceImages, referenceSvgText, conversationId, seed } = message.payload;
+    const { mode, prompt, model, aspectRatio, resolution, referenceImages, referenceSvgText, conversationId, seed } = message.payload;
     this.logger.info(`Image generation request: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
 
     try {
       const result = await this.orchestrator.generateImage(prompt, {
+        mode,
         model,
         aspectRatio,
+        resolution: resolution === 'auto' ? undefined : resolution,
         seed,
         referenceImages,
         referenceSvgText,
@@ -67,7 +71,8 @@ export class ImageGenerationHandler {
         result.result,
         result.conversationId,
         result.turnNumber,
-        prompt
+        prompt,
+        result.settings
       );
 
       this.postMessage(createEnvelope<ImageGenerationResponsePayload>(
@@ -78,6 +83,8 @@ export class ImageGenerationHandler {
           images,
           turnNumber: result.turnNumber,
           usage: result.usage,
+          settings: result.settings,
+          recoveryWarning: result.recoveryWarning,
         },
         message.correlationId
       ));
@@ -92,7 +99,7 @@ export class ImageGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<ImageGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
+    const { mode, prompt, conversationId, history, model, aspectRatio, resolution } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
@@ -112,7 +119,10 @@ export class ImageGenerationHandler {
         prompt,
         rehydrationHistory,
         model,
-        aspectRatio
+        aspectRatio,
+        resolution,
+        undefined,
+        mode
       );
 
       // Apply token usage if available
@@ -124,7 +134,8 @@ export class ImageGenerationHandler {
         result.result,
         result.conversationId,
         result.turnNumber,
-        prompt
+        prompt,
+        result.settings
       );
 
       this.postMessage(createEnvelope<ImageGenerationResponsePayload>(
@@ -135,6 +146,8 @@ export class ImageGenerationHandler {
           images,
           turnNumber: result.turnNumber,
           usage: result.usage,
+          settings: result.settings,
+          recoveryWarning: result.recoveryWarning,
         },
         message.correlationId
       ));
@@ -146,13 +159,14 @@ export class ImageGenerationHandler {
   }
 
   /**
-   * Handle conversation clear request
+   * Handle a thread clear request: releases the host's copy and tombstones a
+   * Conversation transcript.
    */
-  handleClearConversation(message: MessageEnvelope<{ conversationId: string }>): void {
+  async handleClearConversation(message: MessageEnvelope<{ conversationId: string }>): Promise<void> {
     const { conversationId } = message.payload;
     this.logger.info(`Clearing conversation: ${conversationId}`);
     try {
-      this.orchestrator.clearConversation(conversationId);
+      await this.orchestrator.clearConversation(conversationId);
     } catch (error) {
       this.logger.warn('Image conversation clear refused', error);
       this.postMessage(createEnvelope(
@@ -248,18 +262,22 @@ export class ImageGenerationHandler {
   }
 
   private transformToGeneratedImages(
-    result: { images: Array<{ data: string; mimeType: string }>; seed: number },
+    result: { images: Array<{ data: string; mimeType: string }>; seed: number; seedSupported?: boolean },
     conversationId: string,
     turnNumber: number,
-    prompt: string
+    prompt: string,
+    settings: { aspectRatio: AspectRatio; resolution: ImageResolution }
   ): GeneratedImage[] {
     return result.images.map((img, index) => ({
       id: `${conversationId}-${turnNumber}-${index}`,
       data: img.data,
       mimeType: img.mimeType,
       prompt,
+      aspectRatio: settings.aspectRatio,
+      resolution: settings.resolution,
       timestamp: Date.now(),
       seed: result.seed,
+      seedSupported: result.seedSupported,
     }));
   }
 

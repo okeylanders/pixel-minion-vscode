@@ -162,24 +162,26 @@ describe('SettingsHandler', () => {
       );
     });
 
-    it('moves Image-API-only selections and says why', async () => {
+    it('leaves Image API models alone now that Pixel speaks the Image API', async () => {
+      // These were migrated as `images-api-only` until roadmap P3.
       savedSettings({ imageModel: 'krea/krea-2-large' });
-      savedScopes({ imageModel: { globalValue: 'openai/gpt-image-1' } });
+      savedScopes({ imageModel: { globalValue: 'krea/krea-2-large', workspaceValue: 'openai/gpt-image-1' } });
 
       await requestSettings();
 
-      expect(mockConfig.update.mock.calls).toEqual([
-        ['imageModel', 'openai/gpt-5.4-image-2', vscode.ConfigurationTarget.Global],
-      ]);
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Model openai/gpt-image-1 is only served by OpenRouter's Image API, which Pixel Minion does not use yet; switching imageModel to openai/gpt-5.4-image-2"
-      );
+      expect(mockConfig.update).not.toHaveBeenCalled();
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        type: MessageType.SETTINGS_DATA,
+        payload: expect.objectContaining({ imageModel: 'krea/krea-2-large' }),
+      }));
     });
 
     it('clears a workspace value that would fall back to the replacement anyway', async () => {
       mockConfig.update.mockResolvedValue(undefined);
-      // Nothing in user settings: the workspace falls back to the default.
-      savedScopes({ imageModel: { workspaceValue: 'krea/krea-2-large' } });
+      // The user value is already the replacement: the workspace can just fall back to it.
+      savedScopes({
+        imageModel: { globalValue: 'x-ai/grok-imagine-image-2.0', workspaceValue: 'x-ai/grok-imagine-image-quality' },
+      });
 
       await requestSettings();
 
@@ -187,20 +189,20 @@ describe('SettingsHandler', () => {
         ['imageModel', undefined, vscode.ConfigurationTarget.Workspace],
       ]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        "Model krea/krea-2-large is only served by OpenRouter's Image API, which Pixel Minion does not use yet; clearing the workspace imageModel setting so it falls back to google/gemini-3.1-flash-image"
+        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; clearing the workspace imageModel setting so it falls back to x-ai/grok-imagine-image-2.0'
       );
     });
 
-    it('writes the default into a workspace value when clearing would pick up another user choice', async () => {
+    it('writes the replacement into a workspace value when clearing would pick up another user choice', async () => {
       mockConfig.update.mockResolvedValue(undefined);
       savedScopes({
-        imageModel: { globalValue: 'openai/gpt-5.4-image-2', workspaceValue: 'krea/krea-2-large' },
+        imageModel: { globalValue: 'openai/gpt-5.4-image-2', workspaceValue: 'x-ai/grok-imagine-image-quality' },
       });
 
       await requestSettings();
 
       expect(mockConfig.update.mock.calls).toEqual([
-        ['imageModel', 'google/gemini-3.1-flash-image', vscode.ConfigurationTarget.Workspace],
+        ['imageModel', 'x-ai/grok-imagine-image-2.0', vscode.ConfigurationTarget.Workspace],
       ]);
     });
 

@@ -14,6 +14,8 @@ import { LoggingService } from './infrastructure/logging/LoggingService';
 import { PromptLoader } from './infrastructure/resources/PromptLoader';
 import { OpenRouterAccountClient } from './infrastructure/ai/clients/OpenRouterAccountClient';
 import { AccountBalanceService } from './infrastructure/account';
+import { VsCodeGlobalStorage } from './infrastructure/storage';
+import { FileImageConversationStore } from './infrastructure/ai/orchestration/ImageConversationStore';
 
 // Module-level reference to logging service for deactivate()
 let logger: LoggingService | undefined;
@@ -49,12 +51,20 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push({ dispose: () => accountBalanceService.dispose() });
 
+  // Conversation transcripts for restart recovery, under the extension's
+  // global storage and scoped to this workspace's folders.
+  const imageConversationStore = new FileImageConversationStore(
+    new VsCodeGlobalStorage(context.globalStorageUri),
+    (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.toString())
+  );
+
   // Create and register the webview view provider
   const provider = new WebviewViewProvider(
     context.extensionUri,
     secretStorage,
     loggingService,
-    accountBalanceService
+    accountBalanceService,
+    imageConversationStore
   );
 
   // Register the webview view provider

@@ -1,185 +1,347 @@
+/**
+ * OpenRouterImageClient: the request bodies that reach OpenRouter.
+ *
+ * Ported from frame-minion@40e7949
+ * packages/core/src/__tests__/infrastructure/ai/clients/OpenRouterImageClient.test.ts.
+ * Pixel deltas: Muse cases use a Gemini / GPT-5 conversational route instead
+ * (Muse has no route on 2026-11-12), the Ming and project-frame cases are
+ * dropped (not in Pixel), and the old per-prefix modality snapshot is
+ * replaced by catalog-wide route checks driven by the 2026-11-12 fixture.
+ */
 import { OpenRouterImageClient } from '../../../../infrastructure/ai/clients/OpenRouterImageClient';
 import type { SecretStorageService } from '../../../../infrastructure/secrets/SecretStorageService';
 import type { LoggingService } from '../../../../infrastructure/logging/LoggingService';
-import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../shared/models';
+import { OPENROUTER_IMAGE_MODELS, imageRouteCapabilities } from '../../../../shared/models';
+import chatRoutes from '../../../fixtures/provider-contracts/openrouter-image-chat-routes-2026-11-12.json';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
-describe('OpenRouterImageClient', () => {
-  let client: OpenRouterImageClient;
-  let mockSecretStorage: jest.Mocked<SecretStorageService>;
-  let mockLogger: jest.Mocked<LoggingService>;
+const mockSecretStorage = {
+  getApiKey: jest.fn().mockResolvedValue('test-api-key'),
+  hasApiKey: jest.fn().mockResolvedValue(true),
+} as unknown as jest.Mocked<SecretStorageService>;
+const mockLogger = {
+  debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(),
+} as unknown as jest.Mocked<LoggingService>;
+const client = () => new OpenRouterImageClient(mockSecretStorage, mockLogger);
+const body = (call = 0) => JSON.parse(mockFetch.mock.calls[call][1].body);
+const url = (call = 0) => mockFetch.mock.calls[call][0];
+const prompt = (text: string) => [{ role: 'user' as const, content: [{ type: 'text' as const, text }] }];
 
-  const createMockApiResponse = () => ({
+const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const signedAssistant = {
+  role: 'assistant',
+  content: [{ type: 'text', text: 'A blue knight' }],
+  images: [{ image_url: { url: `data:image/png;base64,${PNG_1PX}` }, thought_signature: 'opaque' }],
+};
+const chatResponse = (message: object = signedAssistant, usage?: object) => ({
+  ok: true, json: async () => ({ choices: [{ message }], ...(usage ? { usage } : {}) }),
+});
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockFetch.mockReset().mockResolvedValue({
     ok: true,
     json: async () => ({
-      choices: [
-        {
-          message: {
-            content: [{ type: 'text', text: 'Generated image' }],
-            images: [{ image_url: { url: 'data:image/png;base64,AAA' } }],
-          },
-        },
-      ],
-      usage: {
-        prompt_tokens: 1,
-        completion_tokens: 1,
-        cost: 0.001,
-      },
+      data: [{ b64_json: 'AAA', media_type: 'image/png' }, { b64_json: 'BBB', media_type: 'image/webp' }],
+      usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3, cost: 0.001 },
     }),
   });
+});
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+describe('Single Shot: the dedicated Image API', () => {
+  it('sends the prompt, references, ratio and tier to /images, without the seed this route does not take', async () => {
+    const result = await client().generateImages({
+      model: 'google/gemini-3.1-flash-image', mode: 'edit', aspectRatio: '16:9', resolution: '4K', seed: 123,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'A cinematic forest' },
+          { type: 'image_url', image_url: { url: 'data:image/png;base64,REF' } },
+        ],
+      }],
+    });
 
-    mockSecretStorage = {
-      getApiKey: jest.fn().mockResolvedValue('test-api-key'),
-      hasApiKey: jest.fn().mockResolvedValue(true),
-      storeSecret: jest.fn().mockResolvedValue(undefined),
-      getSecret: jest.fn().mockResolvedValue('test-api-key'),
-      deleteSecret: jest.fn().mockResolvedValue(undefined),
-    } as unknown as jest.Mocked<SecretStorageService>;
-
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      separator: jest.fn(),
-      show: jest.fn(),
-      clear: jest.fn(),
-      getChannel: jest.fn(),
-    } as unknown as jest.Mocked<LoggingService>;
-
-    client = new OpenRouterImageClient(mockSecretStorage, mockLogger);
-    mockFetch.mockResolvedValue(createMockApiResponse());
+    expect(url()).toBe('https://openrouter.ai/api/v1/images');
+    expect(mockFetch.mock.calls[0][1].headers).toMatchObject({
+      'HTTP-Referer': 'https://github.com/pixel-minion-vscode',
+      'X-Title': 'Pixel Minion VS Code Extension',
+    });
+    // Field by field: Gemini's Image API record lists no `seed`, and nothing else rides along.
+    expect(body()).toEqual({
+      model: 'google/gemini-3.1-flash-image',
+      prompt: 'A cinematic forest',
+      aspect_ratio: '16:9',
+      resolution: '4K',
+      input_references: [{ type: 'image_url', image_url: { url: 'data:image/png;base64,REF' } }],
+    });
+    expect(result.images).toEqual([
+      { data: 'data:image/png;base64,AAA', mimeType: 'image/png' },
+      { data: 'data:image/webp;base64,BBB', mimeType: 'image/webp' },
+    ]);
+    expect(result.seedSupported).toBe(false);
+    expect(result.usage).toEqual({ promptTokens: 1, completionTokens: 2, totalTokens: 3, costUsd: 0.001 });
   });
 
-  const requestModalities = async (model: string): Promise<string[]> => {
-    mockFetch.mockClear();
-    await client.generateImages({
-      model,
-      aspectRatio: '1:1',
-      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }] }],
+  it('sends the seed where the route takes one', async () => {
+    const result = await client().generateImages({
+      model: 'black-forest-labs/flux-3-image-klein', mode: 'edit', aspectRatio: '1:1', resolution: '768', seed: 42,
+      messages: prompt('A lighthouse'),
     });
-    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-    return body.modalities;
-  };
+    expect(body()).toEqual({ model: 'black-forest-labs/flux-3-image-klein', prompt: 'A lighthouse', seed: 42, aspect_ratio: '1:1', resolution: '768' });
+    expect(result.seed).toBe(42);
+    expect(result.seedSupported).toBe(true);
+  });
 
-  it('uses image-only modalities for image-only providers (FLUX, Sourceful, Recraft, Seedream, Krea, MAI, Grok Imagine)', async () => {
-    const imageOnlyModels = [
-      'black-forest-labs/flux.2-flex',
-      'sourceful/riverflow-v2-fast',
-      'recraft/recraft-v4.1-pro',
-      'recraft/recraft-v4-pro',
-      'openai/gpt-image-2',
-      'bytedance-seed/seedream-4.5',
-      'krea/krea-2-large',
-      'microsoft/mai-image-2.5-pro',
-      'x-ai/grok-imagine-image-2.0',
-    ];
+  it('sends ten FLUX.3 references and its 1.5K tier without a seed', async () => {
+    const references = Array.from({ length: 10 }, (_, index) => ({ type: 'image_url' as const, image_url: { url: `data:image/png;base64,REF${index}` } }));
+    await client().generateImages({
+      model: 'black-forest-labs/flux-3-image', mode: 'edit', aspectRatio: '7:5', resolution: '1.5K', seed: 123,
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'Keep the subject, change the lighting' }, ...references] }],
+    });
+    expect(body()).toMatchObject({ model: 'black-forest-labs/flux-3-image', resolution: '1.5K', aspect_ratio: '7:5' });
+    expect(body().input_references).toHaveLength(10);
+    expect(body()).not.toHaveProperty('seed');
+  });
 
-    for (const model of imageOnlyModels) {
-      expect({ model, modalities: await requestModalities(model) })
-        .toEqual({ model, modalities: ['image'] });
+  it('sends a prompt-only Recraft V4.1 Flash request with no references and no seed', async () => {
+    await client().generateImages({
+      model: 'recraft/recraft-v4.1-flash', mode: 'edit', aspectRatio: 'auto', seed: 12,
+      messages: prompt('A poster'),
+    });
+    // Auto is in this route's list, so it is sent; the route lists no seed.
+    expect(body()).toEqual({ model: 'recraft/recraft-v4.1-flash', prompt: 'A poster', aspect_ratio: 'auto' });
+  });
+
+  it.each([
+    ['black-forest-labs/flux-3-image', 11],
+    ['bytedance-seed/seedream-5-0-flash', 15],
+    ['recraft/recraft-v4.1-flash', 1],
+    ['recraft/recraft-v4.1', 2],
+  ])('rejects excess references before calling %s', async (model, count) => {
+    const references = Array.from({ length: count }, () => ({ type: 'image_url' as const, image_url: { url: 'data:image/png;base64,REF' } }));
+    await expect(client().generateImages({
+      model, mode: 'edit', aspectRatio: '1:1',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }, ...references] }],
+    })).rejects.toThrow(/reference images/);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['krea/k3-edit', 'recraft/recraft-v4-styles', 'recraft/recraft-v4-styles-pro'])(
+    'requires a reference before %s is called', async model => {
+      await expect(client().generateImages({
+        model, mode: 'edit', aspectRatio: '1:1', messages: prompt('A botanical poster'),
+      })).rejects.toThrow(/at least|1–(8|10) reference images; received 0/);
+      expect(mockFetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('requires a PNG, JPEG or WebP style reference for Recraft Styles', async () => {
+    await expect(client().generateImages({
+      model: 'recraft/recraft-v4-styles', mode: 'edit', aspectRatio: '1:1',
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: 'A botanical poster' },
+        { type: 'image_url', image_url: { url: 'data:image/gif;base64,REF' } },
+      ] }],
+    })).rejects.toThrow('requires PNG, JPEG, or WebP');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('rejects a ratio or resolution the route does not list before calling the provider', async () => {
+    await expect(client().generateImages({
+      model: 'openai/gpt-image-1', mode: 'edit', aspectRatio: '16:9', messages: prompt('A tree'),
+    })).rejects.toThrow('Aspect ratio is not supported');
+    await expect(client().generateImages({
+      model: 'bytedance-seed/seedream-5-0-lite', mode: 'edit', aspectRatio: '1:1', resolution: '1K', messages: prompt('A tree'),
+    })).rejects.toThrow('Resolution is not supported');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), 'image/png'],
+    [Buffer.from([255, 216, 255, 224]), 'image/jpeg'],
+    [Buffer.from('GIF89a'), 'image/gif'],
+    [Buffer.from('RIFF0000WEBP'), 'image/webp'],
+  ])('identifies omitted media_type from raster bytes (%s)', async (bytes, mimeType) => {
+    const base64 = (bytes as Buffer).toString('base64');
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: [{ b64_json: base64 }] }) });
+    const result = await client().generateImages({
+      model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree'),
+    });
+    expect(result.images[0]).toEqual({ data: `data:${mimeType};base64,${base64}`, mimeType });
+  });
+
+  it('trusts the bytes over a disagreeing media_type', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: [{ b64_json: PNG_1PX, media_type: 'image/jpeg' }] }) });
+    const result = await client().generateImages({ model: 'recraft/recraft-v4.1', mode: 'edit', aspectRatio: '1:1', messages: prompt('A tree') });
+    expect(result.images[0].mimeType).toBe('image/png');
+    expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('disagrees with its bytes'));
+  });
+
+  it.each([
+    [{ data: [{ b64_json: 'QUJD' }] }, 'format could not be identified'],
+    [{ data: [{ b64_json: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64'), media_type: 'image/svg+xml' }] }, 'format could not be identified'],
+    [{ data: [] }, 'No images returned'],
+    [{}, 'No images returned'],
+  ])('rejects unidentified or missing output instead of saving a guess: %j', async (response, message) => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => response });
+    await expect(client().generateImages({
+      model: 'vendor/custom', mode: 'edit', aspectRatio: 'auto', messages: prompt('A tree'),
+    })).rejects.toThrow(message);
+  });
+
+  it('omits an unverified automatic ratio for a custom id', async () => {
+    await client().generateImages({ model: 'vendor/custom', mode: 'edit', aspectRatio: 'auto', seed: 5, messages: prompt('A tree') });
+    // Custom ids keep a seed (permissive) but no ratio the catalog never verified.
+    expect(body()).toEqual({ model: 'vendor/custom', prompt: 'A tree', seed: 5 });
+  });
+
+  it('omits resolution when the picker is set to auto', async () => {
+    await client().generateImages({ model: 'openai/gpt-image-2', aspectRatio: '1:1', resolution: 'auto', messages: prompt('A tree') });
+    expect(body()).not.toHaveProperty('resolution');
+  });
+
+  it.each([
+    'openai/gpt-image-2.5-sunburst', 'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.6-flare',
+    'microsoft/mai-image-2.6', 'microsoft/mai-image-2.6-flash',
+  ])('routes %s through the Image API without an unsupported seed', async model => {
+    await client().generateImages({ model, mode: 'edit', aspectRatio: '16:9', seed: 123, messages: prompt('A tree') });
+    expect(url()).toBe('https://openrouter.ai/api/v1/images');
+    expect(body()).toEqual({ model, prompt: 'A tree', aspect_ratio: '16:9' });
+  });
+
+  it('does not retry a failed Image API request on the other billable endpoint', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 503, statusText: 'Unavailable', text: async () => 'Unavailable' });
+    await expect(client().generateImages({
+      model: 'google/gemini-3.1-flash-image', mode: 'edit', aspectRatio: '1:1', messages: prompt('A tree'),
+    })).rejects.toThrow('503');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Conversation: chat/completions', () => {
+  const transcript = [
+    { role: 'user' as const, content: [{ type: 'text' as const, text: 'Keep the knight blue' }] },
+    signedAssistant as never,
+    { role: 'user' as const, content: [
+      { type: 'text' as const, text: 'Add a tree' },
+      { type: 'image_url' as const, image_url: { url: `data:image/png;base64,${PNG_1PX}` } },
+    ] },
+  ];
+
+  it('sends the whole transcript with exactly these fields (old body: usage.include dropped, stream added)', async () => {
+    mockFetch.mockResolvedValue(chatResponse());
+    const result = await client().generateImages({
+      mode: 'conversation', model: 'google/gemini-3-pro-image', aspectRatio: '16:9', resolution: '4K', seed: 7,
+      messages: transcript,
+    });
+    expect(url()).toBe('https://openrouter.ai/api/v1/chat/completions');
+    // Before P3 the chat body was { model, messages, modalities, seed,
+    // image_config: { aspect_ratio }, usage: { include: true } }. usage.include
+    // is deprecated (cost is always returned); stream and image_size are new.
+    expect(body()).toEqual({
+      model: 'google/gemini-3-pro-image',
+      messages: transcript,
+      modalities: ['image', 'text'],
+      stream: false,
+      seed: 7,
+      image_config: { aspect_ratio: '16:9', image_size: '4K' },
+    });
+    expect(result.assistantMessage).toEqual(signedAssistant);
+    expect(result.seedSupported).toBe(true);
+  });
+
+  it('sends no image_size for a GPT-5 wrapper (no chat size tiers) and rejects an unlisted tier', async () => {
+    mockFetch.mockResolvedValue(chatResponse());
+    await client().generateImages({ mode: 'conversation', model: 'openai/gpt-5-image', aspectRatio: '3:2', messages: transcript });
+    expect(body().image_config).toEqual({ aspect_ratio: '3:2' });
+    await expect(client().generateImages({
+      mode: 'conversation', model: 'openai/gpt-5-image', aspectRatio: '1:1', resolution: '2K', messages: transcript,
+    })).rejects.toThrow('Resolution is not supported');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses Conversation for a model without a verified chat route, before any request', async () => {
+    for (const model of ['openai/gpt-image-2.5-flare', 'krea/k3-edit', 'recraft/recraft-v4.1', 'vendor/custom', 'meta/muse-image']) {
+      await expect(client().generateImages({ mode: 'conversation', model, aspectRatio: '1:1', messages: prompt('A tree') }))
+        .rejects.toThrow('no verified Conversation route');
     }
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('uses image+text modalities for Gemini image models', async () => {
-    expect(await requestModalities('google/gemini-3.1-flash-image-preview')).toEqual(['image', 'text']);
+  it('bounds the latest message’s references by the model’s limits', async () => {
+    const references = Array.from({ length: 4 }, () => ({ type: 'image_url' as const, image_url: { url: 'data:image/png;base64,REF' } }));
+    await expect(client().generateImages({
+      mode: 'conversation', model: 'google/gemini-2.5-flash-image', aspectRatio: '1:1',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }, ...references] }],
+    })).rejects.toThrow('0–3 reference images; received 4');
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('never sends text output to Recraft V4.1 (its endpoints are image-only)', async () => {
-    for (const model of ['recraft/recraft-v4.1', 'recraft/recraft-v4.1-pro', 'recraft/recraft-v4.1-utility-pro']) {
-      expect(await requestModalities(model)).toEqual(['image']);
-    }
+  it('normalizes image/jpg chat results without altering the opaque assistant message', async () => {
+    mockFetch.mockResolvedValue(chatResponse({
+      role: 'assistant', content: [], images: [{ image_url: { url: 'data:image/jpg;base64,QUJD' }, thought_signature: 'opaque' }],
+    }));
+    const result = await client().generateImages({ mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree') });
+    expect(result.images[0]).toEqual({ data: 'data:image/jpeg;base64,QUJD', mimeType: 'image/jpeg' });
+    expect(result.assistantMessage?.images?.[0].image_url.url).toBe('data:image/jpg;base64,QUJD');
   });
 
-  describe('catalog-wide modality contract', () => {
-    /**
-     * Output modalities each catalog model declares on OpenRouter, copied from
-     * `GET https://openrouter.ai/api/v1/images/models` (`architecture.output_modalities`)
-     * snapshot taken 2026-11-07. Asking an image-only endpoint for text output fails
-     * with 404 "No endpoints found that support the requested output modalities".
-     * When the catalog changes, re-check the live feed and update this map.
-     */
-    const DECLARED_OUTPUT_MODALITIES_2026_11_07: Record<string, string[]> = {
-      'google/gemini-nano-banana-2.1': ['image', 'text'],
-      'google/gemini-3.1-flash-image': ['image', 'text'],
-      'google/gemini-3.1-flash-image-preview': ['image', 'text'],
-      'google/gemini-3-pro-image': ['image', 'text'],
-      'google/gemini-3-pro-image-preview': ['image', 'text'],
-      'google/gemini-3.1-flash-lite-image': ['image', 'text'],
-      'google/gemini-2.5-flash-image': ['image', 'text'],
-      'openai/gpt-5.4-image-2': ['image', 'text'],
-      'openai/gpt-5-image': ['image', 'text'],
-      'openai/gpt-5-image-mini': ['image', 'text'],
-      'microsoft/mai-image-2.6': ['image'],
-      'microsoft/mai-image-2.6-flash': ['image'],
-      'microsoft/mai-image-2.5-pro': ['image'],
-      'microsoft/mai-image-2.5': ['image'],
-      'black-forest-labs/flux.2-klein-4b': ['image'],
-      'black-forest-labs/flux.2-pro': ['image'],
-      'black-forest-labs/flux.2-flex': ['image'],
-      'black-forest-labs/flux.2-max': ['image'],
-      'sourceful/riverflow-v2.6-pro': ['image'],
-      'sourceful/riverflow-v2.5-pro': ['image'],
-      'sourceful/riverflow-v2.5-fast': ['image'],
-      'sourceful/riverflow-v2-pro': ['image'],
-      'sourceful/riverflow-v2-fast': ['image'],
-      'bytedance-seed/seedream-5-0-pro': ['image'],
-      'bytedance-seed/seedream-5-0-lite': ['image'],
-      'bytedance-seed/seedream-5-0-flash': ['image'],
-      'bytedance-seed/seedream-4.5': ['image'],
-      'x-ai/grok-imagine-image-2.0': ['image'],
-      'recraft/recraft-v4.1-pro': ['image'],
-      'recraft/recraft-v4.1': ['image'],
-      'recraft/recraft-v4.1-utility-pro': ['image'],
-      'recraft/recraft-v4.1-utility': ['image'],
-      'recraft/recraft-v4-pro': ['image'],
-      'recraft/recraft-v4': ['image'],
-      'recraft/recraft-v3': ['image'],
-    };
+  it.each([
+    {}, { choices: [] }, { choices: [{ message: { content: 'No image' } }] },
+    { choices: [{ message: { images: [null, {}, { image_url: { url: 'https://example.com/image.png' } }] } }] },
+    { choices: [{ message: { images: [{ image_url: { url: 'data:image/svg+xml;base64,QUJD' } }] } }] },
+  ])('rejects missing or unsupported chat image responses: %j', async response => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => response });
+    await expect(client().generateImages({
+      mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree'),
+    })).rejects.toThrow(/images/i);
+  });
 
-    /**
-     * Ids OpenRouter rejects on `/chat/completions` with 404 "is an image
-     * generation model and cannot be used with the chat/completions endpoint.
-     * Use the /api/v1/images endpoint instead." Probed 2026-11-07 (the rejection
-     * happens before routing, so the probe is free). Pixel only speaks
-     * chat/completions until the Image API transport lands (roadmap P3), so none
-     * of these may appear in a catalog until then.
-     */
-    const CHAT_BLOCKED_2026_11_07 = [
-      'openai/gpt-image-2', 'openai/gpt-image-1', 'openai/gpt-image-1-mini',
-      'openai/gpt-image-2.5-flare', 'openai/gpt-image-2.5-sunburst',
-      'openai/gpt-image-2.6-flare', 'openai/gpt-image-2.6-sunburst',
-      'krea/krea-2-large', 'krea/krea-2-medium', 'krea/krea-2-medium-turbo', 'krea/k3-edit',
-      'black-forest-labs/flux-3-image', 'black-forest-labs/flux-3-image-klein',
-      'qwen/qwen-image-3', 'qwen/qwen-image-3-pro', 'qwen/qwen-image-2.1-turbo',
-      'meta/muse-image',
-    ];
+  it('does not retry a failed chat request on the other billable endpoint', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 503, statusText: 'Unavailable', text: async () => 'Unavailable' });
+    await expect(client().generateImages({
+      mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree'),
+    })).rejects.toThrow('503');
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 
-    it('lists no model that OpenRouter only serves through the Image API', () => {
-      const catalogIds = [...OPENROUTER_IMAGE_MODELS, ...OPENROUTER_SVG_MODELS].map(model => model.id);
-      expect(catalogIds.filter(id => CHAT_BLOCKED_2026_11_07.includes(id))).toEqual([]);
+  it('prefers native token counts over normalized counts for the full transcript', async () => {
+    mockFetch.mockResolvedValue(chatResponse(signedAssistant, {
+      prompt_tokens: 1, completion_tokens: 2, total_tokens: 3, native_tokens_prompt: 1400, native_tokens_completion: 900, cost: 0.06,
+    }));
+    const result = await client().generateImages({ mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree') });
+    expect(body()).not.toHaveProperty('usage');
+    expect(result.usage).toEqual({ promptTokens: 1400, completionTokens: 900, totalTokens: 2300, costUsd: 0.06 });
+  });
+});
+
+describe('catalog-wide routes', () => {
+  const declaredOutput = (id: string) =>
+    chatRoutes.chatEndpoints.find(entry => entry.id === id)?.architecture.output_modalities ?? [];
+
+  it.each(OPENROUTER_IMAGE_MODELS.map(model => model.id))('sends %s to /images in Single Shot, with no chat fields', async id => {
+    const model = OPENROUTER_IMAGE_MODELS.find(entry => entry.id === id)!;
+    const min = model.referenceImages?.min ?? 0;
+    const references = Array.from({ length: min }, () => ({ type: 'image_url' as const, image_url: { url: 'data:image/png;base64,REF' } }));
+    await client().generateImages({
+      model: id, mode: 'edit', aspectRatio: model.supportedAspectRatios![0],
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'A tree' }, ...references] }],
     });
-
-    it('has a snapshot entry for every catalog image model', () => {
-      const missing = OPENROUTER_IMAGE_MODELS
-        .map(model => model.id)
-        .filter(id => !(id in DECLARED_OUTPUT_MODALITIES_2026_11_07));
-      expect(missing).toEqual([]);
-    });
-
-    it.each(OPENROUTER_IMAGE_MODELS.map(model => model.id))(
-      'requests only output modalities %s declares',
-      async (id) => {
-        const requested = await requestModalities(id);
-        const declared = DECLARED_OUTPUT_MODALITIES_2026_11_07[id] ?? [];
-        expect(requested.filter(modality => !declared.includes(modality))).toEqual([]);
-        expect(requested).toContain('image');
-      }
-    );
+    expect(url()).toBe('https://openrouter.ai/api/v1/images');
+    for (const field of ['messages', 'modalities', 'image_config', 'usage', 'stream']) expect(body()).not.toHaveProperty(field);
   });
+
+  it.each(OPENROUTER_IMAGE_MODELS.filter(model => imageRouteCapabilities(model.id, 'conversation')).map(model => model.id))(
+    'sends %s to chat in Conversation, asking only for the output modalities it declares', async id => {
+      mockFetch.mockResolvedValue(chatResponse());
+      const ratio = imageRouteCapabilities(id, 'conversation')!.supportedAspectRatios[0];
+      await client().generateImages({ mode: 'conversation', model: id, aspectRatio: ratio, messages: prompt('A tree') });
+      expect(url()).toBe('https://openrouter.ai/api/v1/chat/completions');
+      const requested: string[] = body().modalities;
+      expect(requested).toContain('image');
+      expect(requested.filter(modality => !declaredOutput(id).includes(modality))).toEqual([]);
+    },
+  );
 });
