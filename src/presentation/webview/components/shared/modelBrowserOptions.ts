@@ -88,7 +88,7 @@ const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
   'google/gemini-3.1-flash-lite-image': { releaseDate: '2026-06-30', narrative: 'Fastest Nano Banana 2 lane for high-volume iteration, rough comps, and inexpensive visual exploration.' },
   'google/gemini-2.5-flash-image': { releaseDate: '2025-10-07', narrative: 'The earlier Nano Banana workhorse, retained for its familiar Flash-image behavior and modest price.' },
   'openai/gpt-5.4-image-2': { releaseDate: '2026-04-21', narrative: "OpenAI's higher-end image path for complex instruction following and text-aware visual edits." },
-  'openai/gpt-5-image': { releaseDate: '2025-10-14', narrative: 'General OpenAI image generation with stronger language grounding than the mini tier.' },
+  'openai/gpt-5-image': { releaseDate: '2025-10-14', retiresOn: '2026-12-11', narrative: 'General OpenAI image generation with stronger language grounding than the mini tier. OpenRouter retires it on December 11, 2026.' },
   'openai/gpt-5-image-mini': { releaseDate: '2025-10-16', retiresOn: '2026-12-01', narrative: 'Lower-cost OpenAI image model for drafts, alternates, and quick visual passes. OpenRouter retires it on December 1, 2026.' },
   'microsoft/mai-image-2.5': { releaseDate: '2026-06-02', narrative: "Microsoft's MAI-Image via Azure for photorealistic and artistic generation with aspect-ratio control." },
   'microsoft/mai-image-2.5-pro': { releaseDate: '2026-07-23', narrative: 'Higher-fidelity MAI-Image tier for more demanding prompts and cleaner detail.' },
@@ -112,6 +112,7 @@ const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
 
 const SVG_MODEL_METADATA: Record<string, ModelMetadata> = {
   // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
+  'anthropic/claude-fable-5.2': { releaseDate: '2026-11-09', narrative: 'Anthropic’s latest Fable model for demanding visual and coding work; it reasons by default.' }, // checked 2026-11-12
   'recraft/recraft-v4.1-pro-vector': { releaseDate: '2026-05-13', narrative: "Recraft's premium native-vector lane for polished, scalable SVG artwork without code generation." },
   'recraft/recraft-v4.1-vector': { releaseDate: '2026-05-13', narrative: 'Budget native-vector generation for scalable SVG drafts and graphic exploration.' },
   'openai/gpt-6.1-terra': { releaseDate: '2026-10-26', narrative: 'Mid-tier OpenAI model that OpenRouter describes as particularly strong at reading screenshots, for affordable SVG from a visual reference.' },

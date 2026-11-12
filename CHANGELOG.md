@@ -49,15 +49,15 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **Start a new thread from any image** - Each generated image has a button that starts a new conversation or Single Shot with that image attached, shown when the selected model can take that image.
 - **Custom model ids in Settings** - Type any OpenRouter model id (`vendor/model`) as the default Image or SVG model, for models that aren't in the list yet. A custom image model runs as Single Shot with automatic dimensions. An id that differs from a listed model only in capitalisation selects the listed model, and an image (raster) model is refused as the SVG default because it can't produce SVG.
 - **New SVG code models**
-  - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
+  - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.2 and ⭐ GPT-6.1 Sol
   - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
 
 ### Changed
 
 - **Honest price estimates** - Each model's price now follows how it is actually billed: per image, per megapixel or per token. Per-image estimates for token-billed models come from each model's own reference, so GPT-5.4 Image 2 now reads ≈ $0.211 per image at 1K high quality instead of ≈ $0.039. This corrects the estimate; OpenRouter's prices did not go up. Extra charges for reference images are shown where OpenRouter lists them.
 - **SVG models are grouped by how they make SVG** - "Native SVG" (Recraft) or "SVG code". Code models show their per-token price, with an approximate cost per SVG and a note when the model reasons by default.
-- **Older SVG models keep working** - Claude Opus 5, Claude Fable 5, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
-- **GPT-5 Image Mini** is labelled "retiring Dec 1, 2026", the date OpenRouter has announced.
+- **Older SVG models keep working** - Claude Opus 5, Claude Fable 5 and 5.1, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
+- **GPT-5 Image Mini and GPT-5 Image** show their OpenRouter retirement dates, December 1 and December 11, 2026, respectively.
 - **Threads started before this update open as Single Shot**: a refinement sends the latest image with your new prompt (earlier prompts aren't resent), because there is no saved conversation to replay. If such a thread used an aspect ratio its model doesn't offer, it continues at one the model does.
 - **Generated images keep their real shape** - The result card follows the image's actual dimensions instead of a square, so a model that picks its own size is shown as it came back.
 - **Image history saved between sessions has a size limit** - Very large image histories keep your prompts and settings but may leave out older previews; a note says so while it applies, and a refinement that needs a missing image tells you how to continue. Save the images you want to keep.

@@ -140,7 +140,7 @@
         "pixelMinion.svgModel": {
           "type": "string",
           "default": "recraft/recraft-v4.1-pro-vector",
-          "description": "Selected model for SVG generation (default: Recraft V4.1 Pro Vector for native vector output; for code-based SVG, Claude Opus 5.5, Claude Fable 5.1 or GPT-6.1 Sol are recommended)"
+          "description": "Selected model for SVG generation (default: Recraft V4.1 Pro Vector for native vector output; for code-based SVG, Claude Opus 5.5, Claude Fable 5.2 or GPT-6.1 Sol are recommended)"
         }
       }
     }
