@@ -40,13 +40,13 @@ export const OPENROUTER_SVG_MODELS: SvgModelDefinition[] = [
   // Re-curated 2026-11-07 (audit §2d): newer generations replace older ones rather than
   // accumulate, matching the July curation. Prices are the standard first-party endpoint
   // [chat endpoints]; reasoning comes from the chat feed. All accept image input.
-  // ⭐ keeps the owner's slots on their successors: Opus 5 → Opus 5.5 (cheaper), Fable 5 → Fable 5.1
-  // (same price, "front-end and visual" gains), GPT-5.6 Sol → GPT-6.1 Sol (half the price).
+  // ⭐ keeps the owner's slots on their successors: Opus 5 → Opus 5.5, Fable 5 → Fable 5.2,
+  // GPT-5.6 Sol → GPT-6.1 Sol. Fable 5.2 is cheaper than 5.1 on the standard endpoint.
   // Gemini 4 Argon is the strongest unstarred pick; no SVG-quality benchmark exists yet (audit O7).
-  // Replaced, still live (so saved picks keep working and show as Custom): claude-fable-5,
+  // Replaced, still live (so saved picks keep working and show as Custom): claude-fable-5, claude-fable-5.1,
   // claude-opus-5, gpt-5.6-sol, gpt-5.6-sol-pro, gpt-5.4, gemini-3.1-pro-preview.
   { kind: 'code', id: 'anthropic/claude-opus-5.5', displayName: '⭐ Claude Opus 5.5 (code SVG) - Recommended', textPricing: { inputPer1M: 4, outputPer1M: 20 }, acceptsImageInput: true, reasoning: { mandatory: true, defaultEffort: 'high' } }, // 11 endpoints; fast tag $8/$40
-  { kind: 'code', id: 'anthropic/claude-fable-5.1', displayName: '⭐ Claude Fable 5.1 (code SVG) - Recommended', textPricing: { inputPer1M: 10, outputPer1M: 50 }, acceptsImageInput: true, reasoning: { mandatory: true, defaultEffort: 'high' } }, // 4 endpoints
+  { kind: 'code', id: 'anthropic/claude-fable-5.2', displayName: '⭐ Claude Fable 5.2 (code SVG) - Recommended', textPricing: { inputPer1M: 8, outputPer1M: 40 }, acceptsImageInput: true, reasoning: { mandatory: true, defaultEffort: 'high' } }, // OpenRouter chat feed and endpoints, 2026-11-12
   { kind: 'code', id: 'anthropic/claude-sonnet-5.5', displayName: 'Claude Sonnet 5.5 (code SVG)', textPricing: { inputPer1M: 2, outputPer1M: 10 }, acceptsImageInput: true, reasoning: { mandatory: true, defaultEffort: 'high' } }, // 10 endpoints
   { kind: 'code', id: 'anthropic/claude-haiku-5.5', displayName: 'Claude Haiku 5.5 (code SVG, budget)', textPricing: { inputPer1M: 0.1, outputPer1M: 0.5 }, acceptsImageInput: true, reasoning: { mandatory: false, defaultEffort: 'medium' } }, // 10 endpoints; feed omits default_enabled
   { kind: 'code', id: 'openai/gpt-6.1-sol', displayName: '⭐ GPT-6.1 Sol (code SVG) - Recommended', textPricing: { inputPer1M: 2, outputPer1M: 10 }, acceptsImageInput: true, reasoning: { mandatory: true, defaultEnabled: true, defaultEffort: 'medium' } }, // 9 endpoints; flex $1/$5

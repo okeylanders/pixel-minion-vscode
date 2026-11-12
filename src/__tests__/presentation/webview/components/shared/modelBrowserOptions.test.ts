@@ -160,7 +160,7 @@ describe('modelBrowserOptions', () => {
       ['x-ai/grok-4.7', '2026-09-21'],
       ['openai/gpt-6-astra', '2026-09-04'],
       ['google/gemini-3.8-flash', '2026-09-02'],
-      ['anthropic/claude-fable-5.1', '2026-09-01'],
+      ['anthropic/claude-fable-5.2', '2026-11-09'],
     ])('dates the new SVG code model %s by its OpenRouter creation date', (id, date) => {
       expect(svgModelToBrowserOption(svgModel(id)).releaseDate).toBe(date);
     });
@@ -173,14 +173,17 @@ describe('modelBrowserOptions', () => {
       expect(option.badges).toContainEqual({ label: 'recommended', tone: 'accent' });
     });
 
-    it('labels GPT-5 Image Mini as retiring with a warn badge', () => {
-      const option = modelDefinitionToBrowserOption(imageModel('openai/gpt-5-image-mini'));
+    it.each([
+      ['openai/gpt-5-image-mini', 'December 1, 2026'],
+      ['openai/gpt-5-image', 'December 11, 2026'],
+    ])('labels %s as retiring with a warn badge', (id, date) => {
+      const option = modelDefinitionToBrowserOption(imageModel(id));
       const retiring = option.badges?.find(badge => badge.label.startsWith('retiring '));
       expect(retiring?.tone).toBe('warn');
       expect(retiring?.label).toMatch(/2026/);
-      expect(option.narrative).toContain('December 1, 2026');
+      expect(option.narrative).toContain(date);
       // Only models with an announced expiration get the badge.
-      expect(modelDefinitionToBrowserOption(imageModel('openai/gpt-5-image')).badges)
+      expect(modelDefinitionToBrowserOption(imageModel('openai/gpt-5.4-image-2')).badges)
         .not.toContainEqual(expect.objectContaining({ tone: 'warn' }));
     });
 
@@ -270,10 +273,10 @@ describe('modelBrowserOptions', () => {
     });
 
     it('prices code models per 1M tokens and moves the 1k/4k estimate into the cost description', () => {
-      const option = svgModelToBrowserOption(svgModel('anthropic/claude-fable-5.1'));
-      expect(option.costLabel).toBe('$10/$50 per 1M');
+      const option = svgModelToBrowserOption(svgModel('anthropic/claude-fable-5.2'));
+      expect(option.costLabel).toBe('$8/$40 per 1M');
       expect(option.costDescription).toBe(
-        '≈ $0.21 per SVG at about 1k input and 4k output tokens. '
+        '≈ $0.168 per SVG at about 1k input and 4k output tokens. '
         + 'Reasons by default (high effort); reasoning tokens bill as output, so expect more.'
       );
       expect(option.family).toBe('SVG code');

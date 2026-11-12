@@ -23,7 +23,7 @@ import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
  *
  * On OpenRouter, `max_tokens` covers reasoning tokens AND the visible answer
  * on most providers, and every recommended code model reasons by default
- * (Opus 5.5, Fable 5.1, Sonnet 5.5 and Grok 4.7 at high effort). At the text
+ * (Opus 5.5, Fable 5.2, Sonnet 5.5 and Grok 4.7 at high effort). At the text
  * client's 16,384 default a long SVG could stop with `finish_reason:
  * "length"` before the markup closed, which surfaces as "no valid SVG".
  *
@@ -31,7 +31,7 @@ import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
  * of any endpoint serving a curated code model (65,536: Gemini 3.8 Flash,
  * and Gemini 4 Argon on vertex/us, as of 2026-11-07), so no endpoint is asked
  * for more than it allows. It is a ceiling, not a charge, but it also bounds a
- * runaway turn: at most $1.60 at Fable 5.1's $50/1M output rate, where 48,000
+ * runaway turn: at most $1.60 at GPT-6 Astra's $50/1M output rate, where 48,000
  * would allow $2.40. The vector client ignores it.
  */
 export const SVG_MAX_OUTPUT_TOKENS = 32_000;
