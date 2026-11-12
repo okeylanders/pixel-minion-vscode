@@ -104,11 +104,11 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | C11 | ⚪ | Post-generation balance refresh depends on `usage` being present | C | A | ✅ Fixed in `25a6f55` |
 | C12 | ⚪ | Session token totals now a dead pipeline; "Last request" persists across reloads and shows only a time of day | C | A | ✅ Fixed in `47f364e` |
 | C13 | ⚪ | Duplicate unavailable reason; headline blanks to "…" on refresh; stale `svgModel` description in `package.json` | C | A | ✅ Fixed in `609da39`, `76fddce` |
-| C14 | ⚪ | Settings lost free-text model id entry (custom ids) | C | P4 | ✅ Fixed in `9a7cbb2` |
+| C14 | ⚪ | Settings lost free-text model id entry (custom ids) | C | P4 | ✅ Fixed in `aced642` (validated in `6d2a254`) |
 | D19 | ⚪ | Tokens on `:root` rather than `.app-container`; modal aliases lack fallbacks | D | A | ✅ Fixed in `078bcf4` |
 | D20 | ⚪ | Stale doc comments describe the pre-PR UI | D | A | ✅ Fixed in `9800bad`, `2696d4e` |
 | D21 | ⚪ **pre** | Inert Tailwind pipeline (all three repos) | D | ↪ Deferred: family-wide cleanup, not this PR | ↪ Deferred |
-| D22 | ⚪ | No Conversation / Single Shot mode pill | D | P4 | ✅ Fixed in `81d095e` |
+| D22 | ⚪ | No Conversation / Single Shot mode pill | D | P4 | ✅ Fixed in `c9c61fb` (buttons in `35381b0`) |
 | V15 | ⚪ | Modal: no release-date pivot; selected card off-screen on open; cost chips wrap at 320 | V | B | ✅ Fixed in 5d8bb2d |
 | V16 | ⚪ | Vertical rhythm and three-edge stagger (header/tabs/well) | V | A | ✅ Fixed in `0d39415` |
 | V17 | ⚪ | Last-request cost hidden in the collapsed pill | V | ↪ Deferred: optional; expanded card already shows it | ↪ Deferred |
@@ -222,8 +222,8 @@ Branch `claude/pixel-minion-svg-safety-dhbqpd`, stacked on P2.
 
 Branch `claude/pixel-minion-image-modes-dhbqpd`, stacked on P3. Detail in [CHANGELOG-DETAILED.md](../CHANGELOG-DETAILED.md) and [parity plan §9](../plans/frame-image-parity-plan.md#9-p4-as-built-2026-11-12).
 
-- **D22** ✅ `81d095e`. Frame's Conversation | Single Shot pill (native radios, `--px-*` tokens) on the input card's top edge, disabled while a request runs; the picker is filtered by mode, endpoint copy per mode, "Start Conversation", Earlier threads with Delete thread, start-from-image. High contrast outlines the checked half with `contrastActiveBorder`.
-- **C14** ✅ `9a7cbb2`. Settings has a free-text "Custom image model id" and "Custom SVG model id" under the pickers, applied on Use or Enter and validated as `vendor/model`; the picker shows the id as "Custom: <id>", with helper text on what a custom id does in each tab.
+- **D22** ✅ `c9c61fb`, `35381b0`. Frame's Conversation | Single Shot pill (two `aria-pressed` buttons after review m3, `--px-*` tokens) on the input card's top edge, disabled while a request runs; the picker is filtered by mode, endpoint copy per mode, "Start Conversation", Earlier threads with Delete thread, start-from-image. High contrast outlines the checked half with `contrastActiveBorder`.
+- **C14** ✅ `aced642`, `6d2a254`. Settings has a free-text "Custom image model id" and "Custom SVG model id" under the pickers, applied on Use or Enter and validated as `vendor/model`; the picker shows the id as "Custom: <id>", with helper text on what a custom id does in each tab.
 
 ### P2/P5a adversarial review follow-up
 
