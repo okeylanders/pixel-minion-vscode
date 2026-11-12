@@ -332,6 +332,23 @@ it('refuses a request without a known mode before the provider: no unchecked rat
   expect(mockFetch).not.toHaveBeenCalled();
 });
 
+it('keeps a cleared transcript cleared even if another orchestrator was generating it (defence behind the shared orchestrator)', async () => {
+  const { create, files } = harness();
+  const a = create();
+  const first = await a.generateImage('A knight', options);
+  let release!: () => void;
+  mockFetch.mockImplementationOnce(async () => { await new Promise<void>(resolve => { release = resolve; }); return { ok: true, json: async () => ({ choices: [{ message: signedAssistant }] }) }; });
+  const late = a.continueConversation(first.conversationId, 'Add a tree', { mode: 'conversation', turnCount: 1 });
+  await new Promise(resolve => setImmediate(resolve));
+  // A second orchestrator over the same store (the P3 review H1 repro) clears it meanwhile.
+  await create().clearConversation(first.conversationId);
+  release();
+  const result = await late;
+  expect(result.recoveryWarning).toContain('could not be saved');
+  expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'))).toEqual({ version: 1, deleted: true });
+  await expect(create().continueConversation(first.conversationId, 'Again', { ...restoredThread, turnCount: 2 })).rejects.toThrow('transcript is unavailable');
+});
+
 it('tombstones the saved record of a thread a restarted host has never seen', async () => {
   const { create, files } = harness();
   const first = await create().generateImage('A tree', options);

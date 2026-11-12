@@ -246,7 +246,8 @@ export class ImageOrchestrator {
     }
 
     if (!conversation) {
-      throw new Error(`Image thread ${conversationId} is unavailable and nothing was sent to restart it. Start a new thread.`);
+      this.logger.warn(`Image thread ${conversationId} is not held here and the follow-up can't restart it`, { mode, turnCount, latestImageCount: latestImages?.length ?? 0 });
+      throw new Error('Image thread is unavailable. Start a new thread.');
     }
     if (mode === 'conversation' && conversation.turnNumber !== turnCount) throw new Error('Saved conversation and visible history differ. Start a new conversation from an image.');
     if (conversation.mode !== mode || (model && model !== conversation.model) ||
