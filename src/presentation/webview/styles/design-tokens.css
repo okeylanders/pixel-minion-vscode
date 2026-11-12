@@ -128,12 +128,24 @@ body.vscode-high-contrast-light .app-container :is(.tab-button.active, .model-br
   border-color: var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
 }
 
-/* The Image tab's mode pill: its checked half is a soft tint, so HC marks it
-   with the active-contrast colour as an inset outline (a span has no border),
-   rounded so it follows the pill rather than cutting a rectangle into it. */
-body.vscode-high-contrast .app-container .image-mode-selector input:checked + span,
-body.vscode-high-contrast-light .app-container .image-mode-selector input:checked + span {
-  outline: 1px solid var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
-  outline-offset: -3px;
+/* The Image tab's mode pill: its pressed half is a soft tint, so HC marks it
+   with the active-contrast colour as a solid inset ring (a box-shadow, 2px
+   in from the pill's own border), rounded so it follows the pill rather
+   than cutting a rectangle into it. Keyboard focus (the component sheet's
+   ::after ring) turns dashed and sits further in: in HC themes
+   contrastActiveBorder and focusBorder are often the same colour, so focus
+   must differ in shape, and a focused pressed half shows both (WCAG 2.4.7).
+   Neither uses `outline`, so neither can hide the other. */
+body.vscode-high-contrast .app-container .image-mode-selector button[aria-pressed="true"],
+body.vscode-high-contrast-light .app-container .image-mode-selector button[aria-pressed="true"] {
   border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 2px var(--px-card),
+    inset 0 0 0 3px var(--vscode-contrastActiveBorder, var(--vscode-focusBorder, Highlight));
+}
+
+body.vscode-high-contrast .app-container .image-mode-selector button:focus-visible::after,
+body.vscode-high-contrast-light .app-container .image-mode-selector button:focus-visible::after {
+  inset: 5px;
+  border: 2px dashed var(--vscode-focusBorder, Highlight);
 }

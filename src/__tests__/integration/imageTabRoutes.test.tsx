@@ -123,8 +123,8 @@ const description = (element: HTMLElement) => (element.getAttribute('aria-descri
   .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim();
 
 /** The mode the toggle shows as selected (its label). */
-const selectedMode = () => (screen.getAllByRole('radio') as HTMLInputElement[])
-  .find(radio => radio.checked)?.closest('label')?.textContent;
+const selectedMode = () => within(screen.getByRole('group', { name: 'Image generation mode' }))
+  .getAllByRole('button').find(button => button.getAttribute('aria-pressed') === 'true')?.textContent;
 
 /**
  * A fresh install with `model` configured in Settings. Until the user picks
@@ -139,7 +139,7 @@ async function renderImageTab(model: string, mode?: 'conversation' | 'edit') {
   await waitFor(() => expect(toWebview.some(message =>
     message.type === MessageType.SETTINGS_DATA && (message.payload as { imageModel?: string }).imageModel === model)).toBe(true));
   expect(selectedMode()).toBe(imageModeLabel(defaultImageMode(model)));
-  if (mode) fireEvent.click(screen.getByRole('radio', { name: imageModeLabel(mode) }));
+  if (mode) fireEvent.click(screen.getByRole('button', { name: imageModeLabel(mode) }));
   return view;
 }
 
@@ -382,7 +382,7 @@ describe('controls follow the selected model', () => {
     const resolution = screen.getByLabelText('Resolution') as HTMLSelectElement;
     expect(Array.from(resolution.options).map(option => option.value)).toEqual(['auto', '1K', '2K', '4K']);
     // Its Single Shot route lists no seed but adds the 512 tier.
-    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));
     expect(screen.queryByLabelText('Seed')).toBeNull();
     expect(Array.from((screen.getByLabelText('Resolution') as HTMLSelectElement).options).map(option => option.value))
       .toEqual(['auto', '512', '1K', '2K', '4K']);
@@ -464,7 +464,7 @@ describe('empty state', () => {
     const { unmount } = await renderImageTab('google/gemini-3-pro-image');
     expect(screen.getByText('Your images appear here')).toBeTruthy();
     expect(screen.getByText(/start a conversation, then refine it/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));
     expect(screen.getByText(/A follow-up prompt works from the latest image/)).toBeTruthy();
     unmount();
     await renderImageTab('recraft/recraft-v4.1-flash', 'edit');

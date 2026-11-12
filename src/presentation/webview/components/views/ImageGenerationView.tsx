@@ -165,19 +165,15 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
   return (
     <div className="generation-view image-generation-view">
-      {/* The mode for the next thread: native radios styled as a pill on the input card's top edge */}
+      {/* The mode for the next thread: a segmented control (two toggle buttons) styled as a pill on
+          the input card's top edge. Buttons, not radios: a switch keeps the current thread under
+          Earlier threads, so it happens only on click, Enter or Space, never when arrow keys move
+          focus. Each button is its own Tab stop; the pressed one is the mode. */}
       <fieldset className="image-mode-selector" disabled={busy} aria-label="Image generation mode">
         {MODES.map(value => (
-          <label key={value}>
-            <input
-              type="radio"
-              name="image-generation-mode"
-              value={value}
-              checked={mode === value}
-              onChange={() => setMode(value)}
-            />
-            <span>{imageModeLabel(value)}</span>
-          </label>
+          <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)}>
+            {imageModeLabel(value)}
+          </button>
         ))}
       </fieldset>
       {/* Input well: Model, Aspect Ratio, Resolution, Seed, Prompt, Reference Images, Generate button */}

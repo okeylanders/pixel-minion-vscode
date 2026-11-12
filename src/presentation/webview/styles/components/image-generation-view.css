@@ -41,11 +41,11 @@
   overflow-wrap: anywhere;
 }
 
-/* Conversation | Single Shot: native radios styled as a compact pill that
-   sits centred on the input card's top border (Frame's .image-mode-selector,
-   on --px-* tokens). The negative bottom margin pulls the card up under the
-   pill: the view's gap plus half the pill, so the border runs through its
-   middle; the card's top padding makes room for it. */
+/* Conversation | Single Shot: two toggle buttons styled as a compact pill
+   that sits centred on the input card's top border (Frame's
+   .image-mode-selector, on --px-* tokens). The negative bottom margin pulls
+   the card up under the pill: the view's gap plus half the pill, so the
+   border runs through its middle; the card's top padding makes room for it. */
 .image-generation-view {
   --image-view-gap: 16px;
   --image-mode-height: 32px;
@@ -68,45 +68,54 @@
   border-radius: 999px;
 }
 
-.image-mode-selector label {
+.image-mode-selector button {
   position: relative;
-  flex: 1;
-  cursor: pointer;
-}
-
-.image-mode-selector input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.image-mode-selector span {
   display: flex;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   align-items: center;
   justify-content: center;
+  margin: 0;
   padding: 0 14px;
   color: var(--px-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  font: inherit;
   font-size: 12px;
   white-space: nowrap;
 }
 
-.image-mode-selector input:checked + span {
+.image-mode-selector button[aria-pressed="true"] {
   color: var(--px-text);
   background: color-mix(in oklab, var(--px-accent) 16%, var(--px-card));
 }
 
-.image-mode-selector input:focus-visible + span {
-  outline: 2px solid var(--px-focus-ring);
-  outline-offset: -3px;
+/* Keyboard focus: a rounded ring inside the half, drawn by ::after so it
+   follows the pill's ends (the pill clips anything outside it, and an
+   outline would take the button's square corners) without rounding the
+   pressed tint. Scoped under .app-container so it replaces global.css's
+   outside outline for buttons (0,3,1 beats 0,3,0). */
+.app-container .image-mode-selector button:focus-visible {
+  outline: none;
+}
+
+.image-mode-selector button:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 2px solid var(--px-focus-ring);
+  border-radius: 999px;
+  pointer-events: none;
 }
 
 .image-mode-selector:disabled {
   opacity: 0.6;
 }
 
-.image-mode-selector:disabled label {
+.image-mode-selector:disabled button {
   cursor: default;
 }
 

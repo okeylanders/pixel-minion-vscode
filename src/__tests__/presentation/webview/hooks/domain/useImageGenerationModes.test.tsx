@@ -349,13 +349,14 @@ describe('migration of history saved before modes', () => {
 });
 
 describe('the Image tab', () => {
-  it('renders accessible mode radios, archive labels and the latest-image explanation', () => {
+  it('renders an accessible segmented mode control, archive labels and the latest-image explanation', () => {
     render(<View initial={existing} />);
-    const edit = screen.getByRole('radio', { name: 'Single Shot' });
-    expect((screen.getByRole('radio', { name: 'Conversation' }) as HTMLInputElement).checked).toBe(true);
-    expect(screen.getByRole('group', { name: 'Image generation mode' })).toBeTruthy();
+    const group = screen.getByRole('group', { name: 'Image generation mode' });
+    const edit = within(group).getByRole('button', { name: 'Single Shot' });
+    expect(within(group).getByRole('button', { name: 'Conversation' }).getAttribute('aria-pressed')).toBe('true');
+    expect(edit.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(edit);
-    expect((edit as HTMLInputElement).checked).toBe(true);
+    expect(edit.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText('Earlier threads')).toBeTruthy();
     expect(screen.getByText(/Conversation · Keep the knight blue · 1 turn/)).toBeTruthy();
     expect(screen.getAllByText(/Earlier messages are not included/).length).toBeGreaterThan(0);
@@ -367,6 +368,44 @@ describe('the Image tab', () => {
     render(<View initial={{ ...existing, prompt: 'A knight' }} />);
     fireEvent.click(screen.getByRole('button', { name: /Start Conversation/ }));
     expect((screen.getByRole('group', { name: 'Image generation mode' }) as HTMLFieldSetElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Single Shot' }) as HTMLButtonElement).matches(':disabled')).toBe(true);
+  });
+
+  it('switches mode only on activation, never when arrow keys move focus (review P4-m3)', () => {
+    render(<View initial={existing} />);
+    const group = screen.getByRole('group', { name: 'Image generation mode' });
+    // Toggle buttons, not radios: browsers move a radio group's selection with
+    // the arrow keys, which here would archive the thread. Native buttons are
+    // activated (a click) only by a pointer, Enter or Space, and each is its
+    // own Tab stop.
+    expect(within(group).queryAllByRole('radio')).toHaveLength(0);
+    const buttons = within(group).getAllByRole('button') as HTMLButtonElement[];
+    expect(buttons.map(button => [button.tagName, button.type, button.tabIndex])).toEqual([['BUTTON', 'button', 0], ['BUTTON', 'button', 0]]);
+    for (const button of buttons) {
+      button.focus();
+      for (const key of ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+        fireEvent.keyDown(button, { key });
+        fireEvent.keyUp(button, { key });
+      }
+    }
+    expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    expect(screen.queryByText('Earlier threads')).toBeNull();
+    expect(mockPost).not.toHaveBeenCalled();
+    // Activating the pressed one changes nothing either.
+    fireEvent.click(buttons[0]);
+    expect(mockPost).not.toHaveBeenCalled();
+    // Activating the other switches, keeping the thread under Earlier threads.
+    fireEvent.click(buttons[1]);
+    expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
+    expect(screen.getByText('Earlier threads')).toBeTruthy();
+  });
+
+  it('switches harmlessly when no thread is on screen: nothing archived, nothing released', () => {
+    render(<View initial={{ model }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));
+    expect(screen.getByRole('button', { name: 'Single Shot' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByText('Earlier threads')).toBeNull();
+    expect(mockPost).not.toHaveBeenCalled();
   });
 
   it('lists only the models the selected mode supports', () => {
@@ -379,7 +418,7 @@ describe('the Image tab', () => {
     expect(within(browser).queryByRole('button', { name: 'Recraft V4.1' })).toBeNull();
     expect(within(browser).getByRole('button', { name: 'GPT-5 Image' })).toBeTruthy();
     fireEvent.click(within(browser).getByRole('button', { name: 'Close' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));
     fireEvent.click(screen.getByRole('button', { name: /Current model:/ }));
     const singleShot = screen.getByRole('dialog', { name: /browser/ });
     expect(within(singleShot).getByRole('button', { name: 'Recraft V4.1' })).toBeTruthy();
