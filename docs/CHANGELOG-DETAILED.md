@@ -436,6 +436,53 @@ Same defects in Frame (report upstream): W1, W2, W3, W6, N3 and H7; F-1 (H3) is 
 ---
 
 
+### P4: Conversation | Single Shot toggle and threads (`claude/pixel-minion-image-modes-dhbqpd`, stacked on P3)
+
+Roadmap phase P4. Commits `81d095e` (toggle, Earlier threads, start-from-image, filtered picker, two-column controls), `9a7cbb2` (Settings custom ids, ledger C14), `c072a8f` (empty-state placement). Plan: [parity plan §9](plans/frame-image-parity-plan.md#9-p4-as-built-2026-11-12). Webview only; the host is P3's.
+
+#### User-facing
+
+- The mode pill (Frame's `.image-mode-selector`, on `--px-*` tokens) sits on the input card's top border: native radios in a `<fieldset aria-label="Image generation mode">`, disabled while a generation or enhance runs. Ledger D22.
+- The mode applies to the next thread. The output card names the thread on screen by its own mode (`threadSettings.mode`); the endpoint note under the controls describes the selected one (Frame's `imageModeEndpointDescription`, plus "Longer conversations may cost more" and "Switching modes starts a new thread and keeps earlier threads below").
+- The picker lists only models with a route in the selected mode (10 in Conversation, all 54 in Single Shot). A selection outside the list stays visible: a catalog model keeps its own name (new `catalog` prop on `ModelSelector`) and the helper says it has no verified route in that mode; a custom id says it runs in Single Shot only.
+- Primary action: "⚡ Start Conversation" / "⚡ Generate"; the follow-up box submits with "Send" / "Generate" (`ContinueChatInput.submitLabel`). The trash button is "Clear thread".
+- Earlier threads (newest first): mode, first 40 characters of the first prompt, turn count; opening one shows its turns with Save and start-from-image, and Delete thread. They never continue.
+- "Start a conversation / Single Shot from this image" on every image card (current and earlier threads): archives the current thread and attaches the image to the draft. Hidden while busy and when the selected model takes no references.
+- Settings: a "Custom image model id" and "Custom SVG model id" field under the two pickers (`CustomModelIdField`): any `vendor/model` id with no spaces, applied on Use or Enter. Ledger C14.
+- Controls: two columns from 480 px (Model + Aspect Ratio, Resolution + Seed; `minmax(0, 1fr) minmax(142px, 180px)`); a control alone on the last row spans both (`:last-child:nth-child(odd)`), so a model without Seed shows Resolution full width. Stacked below 480 px.
+- Empty state: anchored near the top of the output card (`.generation-empty`, shared with the SVG tab) instead of centred, and the hint follows the mode (and a text-only model).
+
+#### Webview
+
+- `useImageGeneration`: `mode` state (initial: saved mode, else the restored thread's, else Single Shot for untagged history, else `defaultImageMode(model)`), `setMode` (refused while a request or enhance is pending; normalizes ratio and resolution for the new mode), `archivedThreads`, `startFromImage`, `removeArchivedThread`; `archiveCurrentThread` runs on mode switch, Generate and start-from-image. A settings-sync model change uses the current mode through a ref.
+- Pixel delta from Frame: archiving posts `IMAGE_GENERATION_CLEAR` for the archived thread (P3's Generate already released the thread it replaced; an earlier thread never continues, so its transcript would be orphaned). Delete thread posts the clear again, as Frame does (idempotent; for a Single Shot id the host writes a small tombstone, R-4).
+- `imageHistoryPersistence`: `MAX_PERSISTED_IMAGE_ARCHIVES = 5` (Frame's); archive images are omitted before the current thread's; the warning names both limits and is set whenever archives are dropped; `mode` rides the draft and the pathological fallback (which drops archives).
+- `ImageCard` / `ConversationThread`: `onStartFromImage` + `startFromImageLabel`. `ModelSelector`: optional `catalog`.
+- CSS: `image-generation-view.css` (pill, card padding under it, the 480 px grid, Earlier threads), `image-card.css` (`.image-card-action`), `design-tokens.css` (high contrast: the checked half of the pill gets a rounded `contrastActiveBorder` outline), `global.css` (custom-id row), `generation-view.css` (empty state).
+
+#### Test infrastructure / coverage
+
+1,139 → 1,156 tests (55 → 56 suites).
+
+- `useImageGenerationModes.test.tsx` (14 → 22): Frame's cases (archive on switch and reload, archive on Generate + Delete, mode switch refused while generating, Single Shot copy, start-from-image incl. text-only, custom ids in both modes, migration of untagged history, filtered list counts, curated-model-unavailable helper, five-archive persistence) with Pixel's request ids and release-on-archive.
+- `imageHistoryPersistence.test.ts` (5 → 7): five newest archives kept with live history intact; archive images dropped first.
+- `SettingsViewCustomModel.test.tsx` (new, 6): Use/Enter only, validation and its message, disabled while empty, helper text, saved custom id shown.
+- `imageTabRoutes.test.tsx`: helpers pick the mode explicitly; new empty-state copy case.
+
+#### Visual check
+
+Harness copied to `scratchpad/roundP4/visual/harness` with new states (`image-single-shot`, `image-single-shot-thread`, `image-earlier-threads`) for Pixel and Frame, plus `dark-hc` in the default theme list. Frame was built from a `git archive` of the sprint-06 worktree (the worktree itself has no `dist/`). Shot in Dark Modern, Light Modern and Dark High Contrast at 320 and 480 px, and 480 × 1400 / 480 × 640 for the empty state; no horizontal overflow or console errors. Fixes from looking: the high-contrast outline on the pill was rectangular (now rounded), the custom-id field used Settings' larger label style (now the picker's), and the empty state sat mid-card in a tall sidebar.
+
+Frame differences seen, left as they are: Frame shows Seed for Nano Banana 2 in Single Shot (Pixel follows the Image API's `supportsSeed: false`, pinned in P3); Frame's controls stay stacked at 480 px; Frame renders a stray `0` under the uploader for models whose minimum reference count is 0 (`min && …`), an upstream candidate.
+
+#### Not done here (deferred)
+
+- Earlier threads stay read-only (Frame's design): a Conversation can't be resumed from the archive.
+- In-session archives are unbounded (as in Frame); only the saved snapshot keeps five, and the warning says so.
+- The paid and installed-VSIX checks owed by P3 still apply; P4 adds no provider calls.
+
+---
+
 ### Packaging (pre-merge cleanup)
 
 - `.vscodeignore` now excludes `docs/**`, `screenshots/**`, `AGENTS.md`, `tsconfig.webview.json`, `tsconfig.test.json`, `tailwind.config.js` and `postcss.config.js`. The VSIX shrinks from 21.2 MB / 89 files to 10.4 MB / 22 files. `vsce` already rewrites the README's relative image links to `github.com/…/raw/HEAD/…`, so the Marketplace page keeps its screenshots, and review-witness test files no longer ship.

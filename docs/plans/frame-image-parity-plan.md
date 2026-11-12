@@ -1,6 +1,6 @@
 # Pixel Minion ← Frame Minion: image-generator parity and port plan
 
-**Status:** Investigation complete, 2026-11-07 (no code changed, no paid generations). P3 implemented 2026-11-12: see [§8](#8-p3-as-built-2026-11-12).
+**Status:** Investigation complete, 2026-11-07 (no code changed, no paid generations). P3 implemented 2026-11-12: see [§8](#8-p3-as-built-2026-11-12). P4 implemented 2026-11-12: see [§9](#9-p4-as-built-2026-11-12).
 **Decision:** [Declared] Pixel's image generator should do what Frame's now does, with nothing that uses fal.ai, and Pixel's model picker should look and behave the same as Frame's.
 **Inspected:**
 - Frame `40e7949` (detached worktree of `feat/video-models-sprint-06`), which contains `aa1bab1 23be8e8 eea465c 51ef963 5492f94 a61d131 658396d b138cb7 ce4ae49`.
@@ -351,7 +351,7 @@ The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, P
 | 16 | MIME detection, natural dimensions | ✅ `cfb0d34` |
 | 21 | Text-only models | ✅ `cfb0d34` |
 | 25 | Catalog breadth | ✅ 35 → 54 rows |
-| 1, 10, 11, 20, 22 | Mode toggle, archives, start-from-image, custom ids in Settings, mode copy | ⏳ P4 |
+| 1, 10, 11, 20, 22 | Mode toggle, archives, start-from-image, custom ids in Settings, mode copy | ✅ P4 (§9) |
 
 ### Ported vs adapted
 
@@ -423,3 +423,54 @@ The key's workspace is BYOK-restricted, so the live run reached only OpenAI (aud
 ### Inherited limitations (documented, not fixed)
 
 F-7 (each Conversation turn rewrites its whole transcript; no expiry; tombstones stay), F-10 (reloading mid-generation strands the Conversation; the next follow-up fails with "visible history differ"), F-11 (the latest image is a user reference even when signed assistant images are replayed, so it is billed twice), R-4 (deleting an unknown Single Shot id after a restart writes a small tombstone). Also observed in the live run: GPT-5 Image Mini ignored a chat `aspect_ratio` once; BYOK turns report `cost: 0`.
+
+## 9. P4 as built (2026-11-12)
+
+**Status:** ✅ Implemented on `claude/pixel-minion-image-modes-dhbqpd` (`81d095e`, `9a7cbb2`, `c072a8f`), stacked on P3 (`b8dc618`). Awaiting review. Webview only: the host contract is P3's.
+
+### Status by item (parity matrix rows touched)
+
+| Row | Item | Status |
+| --- | --- | --- |
+| 1 | Conversation \| Single Shot radio; `setMode` archives the current thread | ✅ `81d095e` (refused while a request or enhance is in flight) |
+| 10 | Earlier threads + Delete thread | ✅ `81d095e`; persisted snapshot keeps five (`MAX_PERSISTED_IMAGE_ARCHIVES`) |
+| 11 | Start a new thread from an image | ✅ `81d095e`, on current and earlier threads; hidden for text-only models and while busy |
+| 20 | Custom model ids | ✅ policy in P3; the picker's helper per mode in `81d095e`; Settings free-text entry in `9a7cbb2` (ledger C14) |
+| 22 | Mode and endpoint copy, "Start Conversation", `submitLabel` | ✅ `81d095e` |
+| 9 | Untagged history → Single Shot | ✅ P3; the toggle starts from the restored thread's mode |
+| — | Picker filtered by mode | ✅ `81d095e` (10 Conversation / 54 Single Shot) |
+| — | Frame's two-column control grid | ✅ `81d095e`: from 480 px, a lone last control spans both columns |
+| — | Empty state visible in a tall sidebar | ✅ `c072a8f` (was centred in a card that fills the sidebar) |
+
+### Ported vs adapted
+
+- **Verbatim (modulo Pixel's request ids and tokens):** `setMode`, `archiveCurrentThread`, `startFromImage`, the Earlier-threads markup, the mode radio, the endpoint copy, `submitLabel`, the archive cap and archive-first image omission in `imageHistoryPersistence`, Frame's hook tests.
+- **Adapted:**
+  - Archiving releases the host thread (`IMAGE_GENERATION_CLEAR`). Frame keeps it until Delete; in Pixel, P3's Generate already released the thread it replaced, and an earlier thread never continues. Delete still posts the clear (idempotent).
+  - `ModelSelector` takes the full `catalog` so a catalog model outside the mode's list keeps its name, with a helper that says why. Frame labels it "Custom: <id>" with "Choose a model with a verified … route".
+  - The pill and grid use `--px-*` tokens and Pixel's card padding; high contrast outlines the checked half with `contrastActiveBorder`.
+  - The empty state (Pixel-only) follows the mode.
+  - The Settings custom-id fields are Pixel-only (ledger C14: Pixel's Settings had free-text ids before PR #12).
+- **Not ported:** the image card's video and orchestrator action groups.
+
+### Acceptance (§5 row P4, Frame's manual smoke list minus MVO and desktop)
+
+| Check | Evidence |
+| --- | --- |
+| Switching modes keeps the old thread below and starts an empty one | hook tests; harness `image-earlier-threads` |
+| Mode switch disabled while generating | hook test; fieldset `disabled` |
+| Conversation lists only verified-route models; Single Shot lists all | hook test (exact counts) |
+| A custom id works in Single Shot and is refused in Conversation, staying visible | hook tests; P3 host tests |
+| Start from an image attaches it and archives the thread | hook and view tests |
+| Delete thread removes it and releases it on the host | hook test |
+| Reload keeps the mode and five earlier threads | hook and persistence tests |
+
+### Visual check
+
+Harness `scratchpad/roundP4/visual/harness` (new Pixel and Frame states for Single Shot, a Single Shot thread and Earlier threads), Dark Modern / Light Modern / Dark HC at 320 and 480 px, plus 480 × 1400 and 480 × 640 for the empty state. Fixed from the shots: the HC pill outline, the custom-id field's label style, the empty state's position.
+
+Frame differences seen and left: Frame shows Seed for Nano Banana 2 in Single Shot (the Image API reports no seed; Pixel follows it), Frame keeps its controls stacked at 480 px, and Frame prints a stray `0` under the uploader when a model's minimum reference count is 0 (upstream candidate).
+
+### Manual checks still owed (owner-run)
+
+The installed-VSIX pass at 360 px in Dark, Light and High Contrast now includes the pill, Earlier threads and the Settings custom-id fields. P3's paid checks still apply; P4 makes no provider calls.
