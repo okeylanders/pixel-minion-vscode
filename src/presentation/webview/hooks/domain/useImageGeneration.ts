@@ -371,7 +371,11 @@ export interface ImageGenerationHandlers {
 // Note: referenceSvgText and referenceImages are NOT persisted - they're per-request context
 // The conversation history stores referenceSvgText per turn for context
 export interface ImageGenerationPersistence {
-  /** Absent in state saved before the mode toggle. */
+  /**
+   * The toggle, once the user has committed to a mode (absent before: the
+   * mode then follows the default model). Absent in state saved before the
+   * toggle, too.
+   */
   mode?: ImageGenerationMode;
   /** Absent in state saved before Earlier threads. */
   archivedThreads?: ArchivedImageThread[];
@@ -417,13 +421,24 @@ export function useImageGeneration(
   );
   // The saved toggle wins. State from before the toggle keeps the restored
   // thread's mode; an untagged history opens as Single Shot (no transcript to
-  // continue a conversation from); a new installation follows the model.
+  // continue a conversation from); otherwise the mode follows the model.
   const [mode, setModeState] = useState<ImageGenerationMode>(() =>
     initialState?.mode
     ?? threadSettings?.mode
     ?? (initialState?.conversationHistory?.length ? 'edit' : defaultImageMode(model)));
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  // Until the user commits to a mode, it follows the selected model by
+  // Frame's default rule, including the configured default that arrives
+  // with the first SETTINGS_DATA (before it, `model` is useSettings'
+  // placeholder). Choosing the mode, picking a model in this tab, Generate,
+  // or a restored thread commits it. Only a committed mode is saved, so a
+  // reload before the settings arrive still follows them.
+  const [modeChosen, setModeChosen] = useState(
+    () => initialState?.mode !== undefined || threadSettings !== null || !!initialState?.conversationHistory?.length
+  );
+  const modeChosenRef = useRef(modeChosen);
+  modeChosenRef.current = modeChosen;
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
     () => normalizeAspectRatioForModel(model, initialState?.aspectRatio ?? '1:1', mode)
   );
@@ -467,22 +482,24 @@ export function useImageGeneration(
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Select a model and keep only the ratio and resolution its route lists in the current mode. */
-  const applyModel = useCallback((newModel: string) => {
-    const currentMode = modeRef.current;
+  /** Select a model in a mode, and keep only the ratio and resolution its route lists there. */
+  const applyModel = useCallback((newModel: string, newMode: ImageGenerationMode) => {
     setModelState(newModel);
-    setAspectRatio(current => normalizeAspectRatioForModel(newModel, current, currentMode));
-    setResolution(current => normalizeResolutionForModel(newModel, current, currentMode));
+    setModeState(newMode);
+    setAspectRatio(current => normalizeAspectRatioForModel(newModel, current, newMode));
+    setResolution(current => normalizeResolutionForModel(newModel, current, newMode));
   }, []);
   const setModel = useCallback((newModel: string) => {
-    applyModel(newModel);
+    // Picked from this mode's list: keep the mode it was picked in.
+    setModeChosen(true);
+    applyModel(newModel, modeRef.current);
     sync?.onModelChange?.(newModel);
   }, [sync, applyModel]);
   // Reset defaults when settings change (only when idle)
   const selectedModel = sync?.selectedModel;
   useEffect(() => {
     if (selectedModel && !pending.current) {
-      applyModel(selectedModel);
+      applyModel(selectedModel, modeChosenRef.current ? modeRef.current : defaultImageMode(selectedModel));
     }
   }, [selectedModel, applyModel]);
 
@@ -710,6 +727,7 @@ export function useImageGeneration(
   const setMode = useCallback((nextMode: ImageGenerationMode) => {
     if (pending.current || pendingEnhance.current || nextMode === mode) return;
     archiveCurrentThread();
+    setModeChosen(true);
     setModeState(nextMode);
     setAspectRatio(current => normalizeAspectRatioForModel(model, current, nextMode));
     setResolution(current => normalizeResolutionForModel(model, current, nextMode));
@@ -786,6 +804,7 @@ export function useImageGeneration(
     // Generate takes the prompt on screen. An enhance still running is
     // dropped, so its answer can't rewrite the box under this request.
     dropPendingEnhance();
+    setModeChosen(true);
     setIsLoading(true);
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
@@ -936,8 +955,8 @@ export function useImageGeneration(
   }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
   [replacedThread, archivedThreads, threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
   const persistedState = useMemo<ImageGenerationPersistence>(() => mergeImageHistoryDraft(persistedHistory, {
-    mode, model, prompt, aspectRatio, resolution,
-  }), [persistedHistory, mode, model, prompt, aspectRatio, resolution]);
+    mode: modeChosen ? mode : undefined, model, prompt, aspectRatio, resolution,
+  }), [persistedHistory, modeChosen, mode, model, prompt, aspectRatio, resolution]);
   // What Earlier threads show: the kept ones, plus, while a Generate runs,
   // the thread it replaces (provisionally: it comes back if that fails).
   const visibleArchivedThreads = useMemo(() => {

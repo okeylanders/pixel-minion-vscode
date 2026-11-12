@@ -113,6 +113,52 @@ describe('modes and Earlier threads', () => {
     expect(renderHook(() => useImageGeneration({ ...existing, mode: undefined })).result.current.mode).toBe('conversation');
   });
 
+  it('follows the configured default model until the user chooses a mode, and saves the mode only once chosen', () => {
+    type Props = { selected: string; initial?: Partial<ImageGenerationPersistence> };
+    const render = (props: Props) => renderHook(({ selected, initial }: Props) =>
+      useImageGeneration(initial, { selectedModel: selected }), { initialProps: props });
+    // Mounted on useSettings' placeholder; the configured default arrives next.
+    const hook = render({ selected: 'google/gemini-3.1-flash-image' });
+    expect(hook.result.current.mode).toBe('conversation');
+    hook.rerender({ selected: 'recraft/recraft-v4.1' });
+    expect(hook.result.current.mode).toBe('edit');
+    act(() => hook.result.current.setPrompt('A poster'));
+    act(() => hook.result.current.generate());
+    expect(hook.result.current.error).toBeNull();
+    expect(posted().payload).toMatchObject({ mode: 'edit', model: 'recraft/recraft-v4.1' });
+
+    // Saved before a choice: no mode, so a reload keeps following the settings.
+    const fresh = render({ selected: 'google/gemini-3.1-flash-image' });
+    expect(fresh.result.current.persistedState.mode).toBeUndefined();
+    const reloaded = render({ selected: 'recraft/recraft-v4.1', initial: fresh.result.current.persistedState });
+    expect(reloaded.result.current.mode).toBe('edit');
+    // Chosen: saved, and a later default change leaves it alone.
+    act(() => reloaded.result.current.setMode('conversation'));
+    expect(reloaded.result.current.persistedState.mode).toBe('conversation');
+    reloaded.rerender({ selected: 'recraft/recraft-v4.1-flash', initial: fresh.result.current.persistedState });
+    expect(reloaded.result.current.mode).toBe('conversation');
+  });
+
+  it('keeps the mode a model was picked in, even when the pick comes back as the settings default', () => {
+    const onModelChange = jest.fn();
+    const hook = renderHook(({ selected }: { selected: string }) => useImageGeneration(undefined, { selectedModel: selected, onModelChange }),
+      { initialProps: { selected: 'recraft/recraft-v4.1' } });
+    expect(hook.result.current.mode).toBe('edit');
+    // Gemini picked from the Single Shot list; Settings echo it back.
+    act(() => hook.result.current.setModel('google/gemini-3.1-flash-image'));
+    hook.rerender({ selected: 'google/gemini-3.1-flash-image' });
+    expect(onModelChange).toHaveBeenCalledWith('google/gemini-3.1-flash-image');
+    expect(hook.result.current.mode).toBe('edit');
+    expect(hook.result.current.persistedState.mode).toBe('edit');
+  });
+
+  it('keeps a restored thread’s mode when the settings arrive', () => {
+    const hook = renderHook(({ selected }: { selected: string }) => useImageGeneration({ ...existing, mode: undefined }, { selectedModel: selected }),
+      { initialProps: { selected: model } });
+    hook.rerender({ selected: 'recraft/recraft-v4.1' });
+    expect(hook.result.current.mode).toBe('conversation');
+  });
+
   it('keeps the model on a mode switch, normalizing only what the new route drops', () => {
     const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', mode: 'edit', resolution: '512' }));
     act(() => result.current.setMode('conversation'));

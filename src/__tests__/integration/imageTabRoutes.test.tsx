@@ -22,6 +22,7 @@ import { ImageOrchestrator } from '../../infrastructure/ai/orchestration/ImageOr
 import { OpenRouterImageClient } from '../../infrastructure/ai/clients/OpenRouterImageClient';
 import { MessageEnvelope, MessageType, OpenRouterBalancePayload, createEnvelope } from '@messages';
 import { memoryGlobalStorage } from '../helpers/memoryGlobalStorage';
+import { defaultImageMode, imageModeLabel } from '../../shared/models';
 import { __resetOverlayStateForTests } from '../../presentation/webview/hooks/useOverlayDismiss';
 
 const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -121,14 +122,24 @@ const warnings = () => screen.queryAllByRole('status').map(element => element.te
 const description = (element: HTMLElement) => (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
   .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim();
 
-/** The tab with `model` selected from Settings, in the given mode (a fresh install starts in Conversation). */
-async function renderImageTab(model: string, mode: 'conversation' | 'edit' = 'conversation') {
+/** The mode the toggle shows as selected (its label). */
+const selectedMode = () => (screen.getAllByRole('radio') as HTMLInputElement[])
+  .find(radio => radio.checked)?.closest('label')?.textContent;
+
+/**
+ * A fresh install with `model` configured in Settings. Until the user picks
+ * a mode it follows the configured model (Frame's default rule), not the
+ * placeholder the webview starts with, so every caller also witnesses that.
+ * Then switch to `mode`, if given.
+ */
+async function renderImageTab(model: string, mode?: 'conversation' | 'edit') {
   settingsValues.imageModel = model;
   const view = render(<App />);
   // Settings arrive from the host and select the model.
   await waitFor(() => expect(toWebview.some(message =>
     message.type === MessageType.SETTINGS_DATA && (message.payload as { imageModel?: string }).imageModel === model)).toBe(true));
-  if (mode === 'edit') fireEvent.click(screen.getByRole('radio', { name: 'Single Shot' }));
+  expect(selectedMode()).toBe(imageModeLabel(defaultImageMode(model)));
+  if (mode) fireEvent.click(screen.getByRole('radio', { name: imageModeLabel(mode) }));
   return view;
 }
 
@@ -170,6 +181,28 @@ async function sendRaw(type: MessageType, payload: object) {
   await host.handleMessage(message);
   return toWebview.filter(reply => reply.correlationId === message.correlationId);
 }
+
+describe('the mode a fresh install opens in (review P4-m1)', () => {
+  it('follows the configured default model once Settings arrive, not the placeholder', async () => {
+    // The webview starts on useSettings' placeholder (a Conversation model);
+    // the configured default is Single-Shot-only.
+    await renderImageTab('recraft/recraft-v4.1');
+    expect(selectedMode()).toBe('Single Shot');
+    fireEvent.change(promptBox(), { target: { value: 'A poster' } });
+    expect(generateButton().disabled).toBe(false);
+    await generate('A poster');
+    expect(lastUrl()).toBe('https://openrouter.ai/api/v1/images');
+  });
+
+  it('stays where the user put it when the default model changes later', async () => {
+    await renderImageTab('google/gemini-3.1-flash-image', 'edit');
+    // The Settings overlay changes the default to a Conversation model: the toggle is the user's now.
+    act(() => { window.dispatchEvent(new MessageEvent('message', { data: createEnvelope(MessageType.SETTINGS_DATA, 'extension.settings',
+      { ...(toWebview.filter(message => message.type === MessageType.SETTINGS_DATA).pop()!.payload as object), imageModel: 'google/gemini-3-pro-image' }) })); });
+    expect(screen.getByRole('button', { name: /Current model: Nano Banana Pro/ })).toBeTruthy();
+    expect(selectedMode()).toBe('Single Shot');
+  });
+});
 
 describe('capability gating (PR #14 F-01)', () => {
   it('prompt-only first turn: a text-only model generates with no references; a reference-only model waits for one', async () => {
