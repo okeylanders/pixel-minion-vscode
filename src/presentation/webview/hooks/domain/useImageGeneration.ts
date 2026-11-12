@@ -11,21 +11,28 @@
  * kind, save tracking, enhance answers dropped by Generate and Clear).
  *
  * The mode (Conversation | Single Shot) is the user's choice for the next
- * thread; a new installation starts with Frame's default rule (Conversation
- * when the model has a verified route, otherwise Single Shot). Switching
- * modes, Generate and "start from this image" keep the current thread under
- * Earlier threads, which are for browsing, saving and starting again; they
- * don't continue. Pixel delta: archiving also releases the thread on the
- * host (memory and any saved transcript), since nothing can continue it.
- * Generate's archive is provisional: the replaced thread is released (and
- * stays archived) only once the new thread exists; if the request fails it
- * comes back as the current, continuable thread.
+ * thread; until the user makes it, it follows the selected model by Frame's
+ * default rule (Conversation when the model has a verified route, otherwise
+ * Single Shot). Switching modes, Generate and "start from this image" keep
+ * the current thread under Earlier threads, which are for browsing, saving
+ * and starting again; they don't continue. Pixel delta: archiving also
+ * releases the thread on the host (memory and any saved transcript), since
+ * nothing can continue it. A mode switch and a start from an image send no
+ * generation, so they archive and release at once. Generate's archive is
+ * provisional: the replaced thread shows under Earlier threads while the
+ * request runs, and is archived and released only once the new thread
+ * exists; if the request fails it comes back as the current, continuable
+ * thread (the snapshot keeps it as current meanwhile).
  *
  * Pixel fixes not yet upstream (flag them when syncing): snapshot warnings
  * are recomputed from live state, never restored; thread settings are saved
  * only with a conversation id; Generate releases the thread it replaces only
  * after the new one succeeds (and puts it back if it fails); request-size
- * warnings and requirement wording come from catalog fields, not id prefixes.
+ * warnings and requirement wording come from catalog fields, not id prefixes;
+ * the mode follows the configured default model (the first SETTINGS_DATA,
+ * not useSettings' placeholder) until the user commits to one, and is saved
+ * only then; saved state is validated before it is restored
+ * (restoredImageState); Earlier threads carry no warning fields.
  */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
