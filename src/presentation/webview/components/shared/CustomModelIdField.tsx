@@ -6,7 +6,8 @@
  * picker). The id is applied on "Use" or Enter, not per keystroke, so a
  * half-typed id never becomes the setting. The picker then shows it as
  * "Custom: <id>". Pixel-only; it borrows the picker's label and helper
- * styles so the two read as one field group.
+ * styles so the two read as one field group. What it accepts:
+ * `customModelIdFor` (format, length, curated-id case).
  */
 import React, { useId, useState } from 'react';
 
@@ -15,27 +16,59 @@ export interface CustomModelIdFieldProps {
   label: string;
   /** What a custom id does on this tab (shown under the field). */
   help: string;
+  /** The tab's curated ids: a differently-cased copy of one is stored as the curated id. */
+  catalogIds: readonly string[];
   onUse: (modelId: string) => void;
 }
 
-/** OpenRouter ids are `vendor/model`, optionally with a `:variant`; no spaces. */
-const MODEL_ID = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._:@+-]+$/;
+/** Longer than any OpenRouter id; a pasted paragraph is refused, not stored. */
+export const MAX_CUSTOM_MODEL_ID_LENGTH = 200;
 
-export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, help, onUse }) => {
+/**
+ * An OpenRouter id: `vendor/model`, optionally `vendor/model:variant`. Each
+ * part starts with a letter or digit and continues with letters, digits,
+ * `.`, `_` or `-`; nothing else (no spaces, no further `/`, no `@`). The
+ * classes exclude both separators, so matching is linear in the length.
+ */
+const PART = '[A-Za-z0-9][A-Za-z0-9._-]*';
+const MODEL_ID = new RegExp(`^${PART}/${PART}(?::${PART})?$`);
+
+const FORMAT_ERROR = 'Enter an OpenRouter model id such as vendor/model-name: letters, digits, dots, dashes and underscores, each part starting with a letter or digit.';
+
+/**
+ * The id to store for what was typed, or why it can't be one. Surrounding
+ * spaces are dropped; a case-insensitive match for a curated id becomes
+ * that id, so it keeps the curated routes and pricing instead of running as
+ * a permissive custom id.
+ */
+export function customModelIdFor(
+  input: string,
+  catalogIds: readonly string[]
+): { id: string; error?: undefined } | { id?: undefined; error: string } {
+  const id = input.trim();
+  if (id.length > MAX_CUSTOM_MODEL_ID_LENGTH) {
+    return { error: `Model ids are at most ${MAX_CUSTOM_MODEL_ID_LENGTH} characters.` };
+  }
+  if (!MODEL_ID.test(id)) return { error: FORMAT_ERROR };
+  const lower = id.toLowerCase();
+  return { id: catalogIds.find(curated => curated.toLowerCase() === lower) ?? id };
+}
+
+export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, help, catalogIds, onUse }) => {
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const inputId = useId();
   const helpId = `${inputId}-help`;
 
   const use = () => {
-    const id = value.trim();
-    if (!MODEL_ID.test(id)) {
-      setError('Enter an OpenRouter model id such as vendor/model-name.');
+    const result = customModelIdFor(value, catalogIds);
+    if (result.error !== undefined) {
+      setError(result.error);
       return;
     }
     setError(null);
     setValue('');
-    onUse(id);
+    onUse(result.id);
   };
 
   return (

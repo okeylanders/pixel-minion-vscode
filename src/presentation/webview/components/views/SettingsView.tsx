@@ -15,6 +15,9 @@ import { CustomModelIdField } from '../shared/CustomModelIdField';
 import { UseSettingsReturn } from '@hooks';
 import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '@shared/models';
 
+const IMAGE_MODEL_IDS = OPENROUTER_IMAGE_MODELS.map(model => model.id);
+const SVG_MODEL_IDS = OPENROUTER_SVG_MODELS.map(model => model.id);
+
 export interface SettingsViewProps {
   settings: UseSettingsReturn;
 }
@@ -84,6 +87,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           />
           <CustomModelIdField
             label="Custom image model id"
+            catalogIds={IMAGE_MODEL_IDS}
             help="Any OpenRouter image model. A custom id runs as Single Shot with automatic dimensions; Conversation needs a verified route."
             onUse={model => updateSetting('imageModel', model)}
           />
@@ -97,6 +101,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           />
           <CustomModelIdField
             label="Custom SVG model id"
+            catalogIds={SVG_MODEL_IDS}
             help="Any OpenRouter model. An id starting with recraft/ makes native vector SVG; any other writes SVG code."
             onUse={model => updateSetting('svgModel', model)}
           />
