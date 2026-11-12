@@ -6,7 +6,7 @@
  * the row can show a request from an earlier session; the UI dates it.
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   MessageType,
   TokenUsage,
@@ -52,10 +52,11 @@ export function useTokenTracking(
   }, []);
 
   // Persistence
-  const persistedState: TokenTrackingPersistence = {
+  // Memoized: App writes webview state whenever this identity changes.
+  const persistedState = useMemo<TokenTrackingPersistence>(() => ({
     lastRequest,
     requestedAt,
-  };
+  }), [lastRequest, requestedAt]);
 
   return {
     // State

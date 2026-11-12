@@ -75,9 +75,10 @@ describe('shared model catalogs', () => {
     }
   });
 
-  it('keeps native vector models on recraft/ while routing still keys on that prefix', () => {
-    // SVGOrchestrator.selectClient and the Refine gate use id.startsWith('recraft/')
-    // until roadmap P5b routes on `kind`; a non-Recraft vector row would be misrouted.
+  it('keeps native vector models on recraft/, the off-catalog fallback route', () => {
+    // svgRoutes routes a curated id by its `kind`, and an id the catalog doesn't
+    // list (custom or superseded) by the recraft/ prefix. Keep the two agreeing so
+    // a model routes the same way after it leaves the catalog.
     for (const model of OPENROUTER_SVG_MODELS) {
       expect({ id: model.id, recraft: model.id.startsWith('recraft/') })
         .toEqual({ id: model.id, recraft: model.kind === 'native-vector' });

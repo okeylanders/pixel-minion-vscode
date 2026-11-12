@@ -1,11 +1,3 @@
-export { useHelloWorld } from './useHelloWorld';
-export type {
-  HelloWorldState,
-  HelloWorldActions,
-  HelloWorldPersistence,
-  UseHelloWorldReturn,
-} from './useHelloWorld';
-
 export { useSettings } from './useSettings';
 export type {
   SettingsState,

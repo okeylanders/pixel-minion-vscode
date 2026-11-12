@@ -49,6 +49,26 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
 - **Long SVGs from code models could come back cut off** - Most code models reason before they answer, and that reasoning counts against the response limit. SVG requests now allow up to 32,000 tokens (was 16,384).
 - The SVG model browser grouped Gemini text models with the image models.
+- **Answers land where they belong.** Every generation, refinement, prompt enhancement and save now carries its own request id. A late or repeated answer can no longer replace a newer result, and an Enhance Prompt error in one tab no longer stops the other tab's spinner or appears in both tabs.
+- **A failed turn is not sent again.** When a generation or refinement fails, its prompt is dropped instead of being resent with your next refinement. Starting a second refinement of the same conversation while one is running is refused instead of mixing the two.
+- **An attached SVG reaches the model once.** On the Image tab, an attached SVG's markup was sent twice with the first prompt. It is now sent once and stays with the turn it was attached to, including after VS Code restarts.
+- **Refine keeps the conversation's own settings.** A refinement always uses the model and aspect ratio the conversation started with, also after a restart, and no longer picks up attachments added afterwards: those apply to your next Generate, and a note says so.
+- **"Saved" means saved.** The checkmark now waits until the file is written. Cancelling the save dialog or a failed write no longer shows "Saved", and a cancel is no longer reported as an error. A save the extension couldn't handle at all stops spinning and says why, without interrupting a generation in progress.
+- **WebP and GIF images keep their format when saved.** Files are named after the image's real format (`.png`, `.jpg`, `.webp`, `.gif`) instead of always `.jpg`. Data that isn't a supported image is refused instead of being saved under the wrong name.
+- A failed settings change now shows its error in the tab you are looking at, without stopping a generation in progress.
+- The panel no longer re-saves all of its state, including every generated image, each time it redraws.
+- **Enhance Prompt no longer rewrites a prompt you have moved on from.** If you press Generate or clear the conversation while an enhancement is still running, the enhancement is discarded, and a change you type while it runs is kept.
+- **A request that fails unexpectedly no longer spins forever.** It now ends with an error, and an error that can't be matched to a request is shown in the tab you are looking at instead of being lost.
+- **Refine on the SVG tab follows the conversation's model.** A Recraft conversation can no longer be "refined" by switching the picker to a text model (which sent the whole conversation to Recraft), and a text-model conversation can still be refined after you pick Recraft for your next Generate.
+- After VS Code restarts, refining an SVG that was generated from a reference image still sends that image.
+- SVG previews keep the conversation's aspect ratio when you change the picker.
+
+### Security
+
+- **Generated SVGs are previewed in isolation.** The SVG tab no longer inserts generated markup into the panel, so an SVG's styles can't restyle or hide the panel (including Settings and the API key field), and nothing in it can run. Animated SVGs still animate.
+- **Unsafe SVGs are neither previewed nor saved.** An SVG that would run code or load something from the internet when opened, or that reports to a tracking address when one of its links is clicked, or that isn't a well-formed SVG under 2 MB, shows a short explanation and its code instead, and Save is turned off for it. SVGs that use unexpected XML namespaces or declare a character encoding other than UTF-8 are refused too. A saved `.svg` can't run script when you open it in a browser. Recraft's vector SVGs, including their content-credentials metadata, are unaffected.
+- **Checking an SVG is quick whatever it contains.** A very large or deliberately malformed SVG no longer stalls the extension while it is checked.
+- **Saving stays in your workspace.** If the Output Directory setting (which a project's `.vscode/settings.json` can set) points outside the workspace folder, saving is refused with an explanation instead of writing there. A file name that points anywhere else, that Windows treats as a device (such as `CON` or `NUL.svg`), that ends in a dot or that hides its real extension with right-to-left characters is refused.
 
 ## [1.3.0] - 2026-05-20
 

@@ -39,6 +39,7 @@ import {
 } from './hooks';
 import { useOverlayDismiss } from './hooks/useOverlayDismiss';
 import { useReducedMotion } from './hooks/useReducedMotion';
+import { isGenerationTabRequestId } from './utils/requestId';
 
 const TABS: Tab[] = [
   { id: 'image', label: 'Image', icon: <TabImageIcon /> },
@@ -87,7 +88,8 @@ export function App(): JSX.Element {
     [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleGenerationResponse,
     [MessageType.SVG_SAVE_RESULT]: svgGeneration.handleSaveResult,
 
-    // Prompt Enhancement messages - route based on type
+    // Prompt Enhancement messages - route based on type (each hook also
+    // checks the correlation id, so a stale answer can't replace a prompt)
     [MessageType.ENHANCE_PROMPT_RESPONSE]: (msg) => {
       const payload = msg.payload as { type?: string };
       if (payload.type === 'image') {
@@ -109,21 +111,23 @@ export function App(): JSX.Element {
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),
 
-    // Error routing - check source to route to correct handler
+    // Error routing. Generation, enhance, save and clear errors carry the id
+    // of the request that failed, and each hook settles only its own
+    // requests, so both see every error: an Image-tab enhance failure can't
+    // stop the SVG spinner, a failed save leaves a running generation alone,
+    // and a stale error settles nothing.
     [MessageType.ERROR]: (msg) => {
-      const source = msg.source ?? '';
-      if (source.includes('image') || source.includes('Image')) {
-        imageGeneration.handleError(msg);
-      } else if (source.includes('svg') || source.includes('SVG')) {
-        svgGeneration.handleError(msg);
-      } else if (source.includes('enhance')) {
-        // Route enhance errors based on active tab or to both
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
-      } else {
-        // Default: send to both (they'll handle based on their loading state)
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
+      const ownedByImage = imageGeneration.handleError(msg);
+      const ownedBySvg = svgGeneration.handleError(msg);
+      // An error for a tab request neither hook claims answers a request
+      // that is no longer outstanding (late, duplicate or superseded).
+      if (ownedByImage || ownedBySvg || isGenerationTabRequestId(msg.correlationId)) return;
+      // Anything else (a settings write, or a host path that lost the
+      // request's id) belongs to no tab request: show it in the visible tab
+      // without touching any spinner, rather than nowhere.
+      const text = (msg.payload as { message?: string } | undefined)?.message;
+      if (text) {
+        (activeTab === 'svg' ? svgGeneration : imageGeneration).showError(text);
       }
     },
   });

@@ -4,6 +4,8 @@ import '../../styles/components/svg-code-view.css';
 interface SVGCodeViewProps {
   svgCode: string | null;
   onCopy: () => void;
+  /** Open on mount, e.g. when the code is all there is to see. */
+  initiallyExpanded?: boolean;
 }
 
 const ChevronIcon: React.FC = () => (
@@ -12,8 +14,8 @@ const ChevronIcon: React.FC = () => (
   </svg>
 );
 
-export const SVGCodeView: React.FC<SVGCodeViewProps> = ({ svgCode, onCopy }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+export const SVGCodeView: React.FC<SVGCodeViewProps> = ({ svgCode, onCopy, initiallyExpanded = false }) => {
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const codeId = React.useId();
 
   if (!svgCode) return null;
