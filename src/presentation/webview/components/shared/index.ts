@@ -21,3 +21,5 @@ export {
   svgModelToBrowserOption,
   customSvgModelToBrowserOption,
 } from './modelBrowserOptions';
+export { CustomModelIdField } from './CustomModelIdField';
+export type { CustomModelIdFieldProps } from './CustomModelIdField';
