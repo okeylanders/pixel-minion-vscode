@@ -12,6 +12,12 @@
  * the mode toggle lands (roadmap P4), each new thread's mode is chosen by
  * Frame's default rule: Conversation when the model has a verified route,
  * otherwise Single Shot.
+ *
+ * Pixel fixes not yet upstream (flag them when syncing): snapshot warnings
+ * are recomputed from live state, never restored; thread settings are saved
+ * only with a conversation id; Generate releases the thread it replaces only
+ * after the new one succeeds (and puts it back if it fails); request-size
+ * warnings and requirement wording come from catalog fields, not id prefixes.
  */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
