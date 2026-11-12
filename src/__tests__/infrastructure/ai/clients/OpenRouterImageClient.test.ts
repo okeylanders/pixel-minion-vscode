@@ -290,6 +290,15 @@ describe('Conversation: chat/completions', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
+  it('omits aspect_ratio for Auto on chat (the GPT-5 wrappers list Auto), as /images does', async () => {
+    mockFetch.mockResolvedValue(chatResponse());
+    await client().generateImages({ mode: 'conversation', model: 'openai/gpt-5-image', aspectRatio: 'auto', messages: transcript });
+    expect(body()).not.toHaveProperty('image_config');
+    // A listed ratio is still sent.
+    await client().generateImages({ mode: 'conversation', model: 'openai/gpt-5-image', aspectRatio: '2:3', messages: transcript });
+    expect(body(1).image_config).toEqual({ aspect_ratio: '2:3' });
+  });
+
   it('refuses Conversation for a model without a verified chat route, before any request', async () => {
     for (const model of ['openai/gpt-image-2.5-flare', 'krea/k3-edit', 'recraft/recraft-v4.1', 'vendor/custom', 'meta/muse-image']) {
       await expect(client().generateImages({ mode: 'conversation', model, aspectRatio: '1:1', messages: prompt('A tree') }))

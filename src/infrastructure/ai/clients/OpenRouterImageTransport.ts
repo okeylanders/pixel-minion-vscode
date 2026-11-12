@@ -6,9 +6,10 @@
  *     as `input_references`, `aspect_ratio` / `resolution` / `seed`, and
  *     `data[].b64_json` back.
  *   - `/chat/completions`: the conversation's messages (or just the current
- *     user message), `modalities`, an `image_config`, and
- *     `choices[0].message.images` back. The assistant message is returned
- *     untouched so provider signatures survive the next turn.
+ *     user message), `modalities`, an `image_config` (no `aspect_ratio`
+ *     for Auto), and `choices[0].message.images` back. The assistant
+ *     message is returned untouched so provider signatures survive the next
+ *     turn.
  *
  * Pixel deltas: raster formats are recognised by the shared
  * `sniffImageMime` (src/shared/media/imageFormats.ts, also used by the save
@@ -94,7 +95,9 @@ const chatImageTransport: OpenRouterImageTransport = {
   path: '/chat/completions',
   buildBody(request, userMessage, capabilities) {
     const imageConfig = {
-      ...(capabilities?.supportedAspectRatios.some(ratio => ratio !== 'auto')
+      // Auto means "let the model choose": it is omitted, as on /images, since
+      // chat accepting `aspect_ratio: 'auto'` is unverified.
+      ...(request.aspectRatio !== 'auto' && capabilities?.supportedAspectRatios.some(ratio => ratio !== 'auto')
         ? { aspect_ratio: request.aspectRatio } : {}),
       ...(request.resolution && capabilities?.supportedResolutions.length
         ? { image_size: request.resolution } : {}),
