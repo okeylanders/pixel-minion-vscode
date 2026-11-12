@@ -157,6 +157,25 @@ it('rejects unsupported routes, ratios, resolutions and thread-setting changes b
   expect(mockFetch).toHaveBeenCalledTimes(1);
 });
 
+it.each([
+  ['mode', { mode: 'edit' as const }],
+  ['model', { model: 'google/gemini-3.1-flash-image' }],
+  ['aspect ratio', { aspectRatio: '1:1' }],
+  ['resolution', { resolution: '2K' }],
+  ['resolution (to Auto)', { resolution: 'auto' }],
+])('refuses a turn that names an existing thread with another %s, before the provider', async (_setting, change) => {
+  // A new-image request can name a thread directly, so generateImage itself
+  // must hold the thread's settings, not only continueConversation.
+  const orchestrator = harness().create();
+  const first = await orchestrator.generateImage('A tree', options);
+  const before = JSON.stringify(orchestrator.getConversation(first.conversationId));
+  await expect(orchestrator.generateImage('Change it', { ...options, ...change }, first.conversationId)).rejects.toThrow('settings cannot change');
+  expect(mockFetch).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(orchestrator.getConversation(first.conversationId))).toBe(before);
+  // The same settings continue the thread.
+  await expect(orchestrator.generateImage('Keep going', options, first.conversationId)).resolves.toMatchObject({ turnNumber: 2 });
+});
+
 it('refuses a Single Shot follow-up on a text-only model before the provider sees the previous image', async () => {
   imagesApi();
   const orchestrator = harness().create();
