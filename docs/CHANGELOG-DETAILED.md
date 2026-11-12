@@ -335,6 +335,70 @@ Lint unchanged (9 errors, 20 warnings, all pre-existing).
 ---
 
 
+### P3: Image API transport and capability-driven controls (`claude/pixel-minion-images-transport-dhbqpd`)
+
+Roadmap phase P3, on `main` after #12–#16 merged (`035906f`). Commits `19136ad` (types), `cfb0d34` (engine, controls, catalog), `a501ad5` (end-to-end witnesses, live contract). Plan: [parity plan §8](plans/frame-image-parity-plan.md#8-p3-as-built-2026-11-12). Ported files carry `// Ported from frame-minion@40e7949 packages/core/src/<path>; keep in sync`.
+
+#### User-facing
+
+- Single Shot requests go to `POST /api/v1/images`; Conversation requests go to `/chat/completions`. Each new thread's mode follows Frame's default rule (Conversation when the model has a verified chat route, otherwise Single Shot); the toggle is P4.
+- 19 catalog rows that OpenRouter serves only through its Image API (or that need reference gating) are added; Muse is not.
+- Controls follow the model: ratios (Auto included), Resolution, Seed, uploader count and formats. Generate is blocked, with a note, while the attachments don't fit the model; a text-only Single Shot thread offers no follow-up.
+- A Conversation continues after an extension-host restart from its saved transcript; Single Shot continues from display history.
+- The output card shows the thread's mode and settings, a "controls apply to a new thread" note when the draft differs, recovery and storage warnings, and images at their natural shape.
+
+#### Engine (host)
+
+- `shared/models/ImageGenerationModes.ts` (ported): `imageRouteCapabilities(model, mode)`, `defaultImageMode`, the mode labels and endpoint copy. Pixel deltas: the conversational set is Frame's six Gemini ids + `google/gemini-nano-banana-2.1` + the three GPT-5 wrappers (2026-11-07 probe, re-run free on 2026-11-12); Muse's branch is dropped (rejected on chat, no Image API endpoint); Conversation carries the model's reference bounds (Frame leaves them unbounded); the project-frame helpers are not ported.
+- `infrastructure/ai/clients/OpenRouterImageTransport.ts` (ported): the `/images` and chat adapters. Pixel delta: raster detection reuses `shared/media/imageFormats.sniffImageMime`, the same sniffer the save handler uses.
+- `OpenRouterImageClient.ts` (ported, keeps Pixel's `HTTP-Referer` / `X-Title` and the Conversation signature diagnostics in the debug log): one transport per request, no retry on the other endpoint, preflight before `fetch` (reference count and MIME; ratio and resolution for an explicit mode; Conversation without a route). Modalities come from capabilities: the `IMAGE_ONLY_MODEL_PREFIXES` table is gone (the catalog-driven half of ledger C1/U4).
+- Request bodies, field by field against the pre-P3 chat body `{ model, messages, modalities, seed, image_config: { aspect_ratio }, usage: { include: true } }`: Conversation now sends `{ model, messages, modalities, stream: false, seed?, image_config: { aspect_ratio?, image_size? } }` (no `usage`: deprecated, cost is always returned; `seed` only where the route takes it; `image_size` only for Gemini K tiers). Single Shot sends `{ model, prompt, seed?, aspect_ratio?, resolution?, input_references? }`; an unverified Auto ratio is omitted. Both pinned in `OpenRouterImageClient.test.ts`.
+- `ImageConversationManager` gains `mode`, `resolution` and `restore()` (now identical to Frame's).
+- `ImageOrchestrator` (ported): thread-setting immutability, the unknown-id guard scoped to explicit modes (Frame F-1), Conversation transcript writes and restore, the turn-count check (Frame F-10 surfaces as an explicit error), async `clearConversation` that tombstones only conversational or unknown `img-…` ids (F-2, R-4). Pixel delta kept from P2: a failed turn also restores the turn number and last images.
+- `ImageConversationStore.ts` (ported): `FileImageConversationStore`, 64 MiB (`MAX_IMAGE_TRANSCRIPT_BYTES`) checked on size, read and write; id regex; workspace-scoped directory (sha256 of the workspace folder URIs); tombstones; one actionable message for corrupt or mismatched JSON (F-9). Pixel delta: writes through `infrastructure/storage/GlobalStorage.ts`, a three-method seam (`size` / `read` / `write` with mkdir-p) with `VsCodeGlobalStorage` over `context.globalStorageUri` and `workspace.fs` (any URI scheme). Built once in `extension.ts` and passed through `WebviewViewProvider` → `MessageHandler` → `ImageOrchestrator`.
+- `ImageGenerationHandler`: forwards mode and resolution; responses carry `settings`, `recoveryWarning`, and each image's requested ratio, resolution and `seedSupported`.
+
+#### Webview
+
+- `useImageGeneration`: `mode` (derived from the model until P4), `resolution`, `referenceIssue` (`referenceImageIssue()`, also used by Generate), normalization of ratio and resolution on model change and settings sync, thread settings from the host's response, F-8 (a failed new thread clears its optimistic settings), local refusal of a Single Shot follow-up for a text-only model or a turn whose image was not retained. Generate posts `IMAGE_GENERATION_CLEAR` for the thread it replaces before the new request (P3 has no archive, so nothing can reach it again; this also clears part of R5-S9's "unreleased conversations" deferral). Pixel's P2 ownership (per-kind request ids, save tracking, enhance dropped by Generate/Clear) is unchanged.
+- Migration: state saved before modes (no `threadSettings`, or P2's `{ model, aspectRatio }`) opens as Single Shot, `resolution: 'auto'`, with the ratio moved onto one the model's Single Shot route lists. The old picker offered seven ratios to every model.
+- `imageHistoryPersistence.ts` (ported without archives or the desktop budget): 48 MiB, conservative UTF-16 accounting, latest images stored once, oldest previews omitted first (`imagesOmitted`), draft fallback for pathological text, a 64 KiB draft reserve, bounded history memoized apart from the draft.
+- Components: `AspectRatioSelector` (ported; per model and mode, Auto labelled), `ResolutionSelector` (ported), `ImageUploader` (`maxImages` / `accept` from the route, text-only note; Frame's slice also fixes Pixel's old loop that could exceed the limit), `ImageCard` (natural dimensions first, then the requested ratio; Frame prefers the requested ratio), `ConversationThread` (omitted-previews note). SVG keeps `SVGAspectRatioSelector` (`19136ad`).
+
+#### Catalog
+
+- 35 → 54 image rows. Re-added (were `images-api-only` retirements): GPT Image 2 (⭐), 1, 1 Mini; Krea 2 Large / Medium / Medium Turbo. New: GPT Image 2.5 Sunburst / Flare, GPT Image 2.6 Sunburst / Flare, FLUX.3 Image, FLUX.3 Image Klein, Qwen Image 3 Pro / 3 / 2.1 Turbo, Krea K3 Edit (1–8 refs required), Recraft V4 Styles / Styles Pro (1–10 PNG/JPEG/WebP refs required), Recraft V4.1 Flash (no refs). Rows come from the 2026-11-07 audit's Part B; prices and capabilities unchanged on the 2026-11-12 re-check (one new provider listing, MiniMax H3 Image, not evaluated).
+- GPT Image 2.6 has no verifiable per-image reference, so it carries only `approxNote`; `imagePricingDescription` now explains native rates and the note for such rows (Frame has none yet).
+- `RETIRED_MODELS` keeps only `delisted` ids; `RetiredModelReason` is `'delisted'` and `SettingsHandler` words the log from a table.
+- Browser metadata: release dates (OpenRouter `created`) and narratives for all 19.
+
+#### Test infrastructure / coverage
+
+865 → 1,139 tests (48 → 55 suites).
+
+- Fixtures (`__tests__/fixtures/provider-contracts/`): `openrouter-image-chat-routes-2026-11-12.json` (chat endpoint records for the conversational set and Muse, plus the free routing probe of all 55 ids), `openrouter-image-endpoints-2026-11-12.json` (each id's Image API endpoints, intersected), `openrouter-image-live-2026-11-12.json` (paid-call metadata, no bytes).
+- `ImageGenerationModes.test.ts`: the conversational set against the chat fixture; the transport guard (every chat-blocked id is Single Shot over `/images` only, every chat-routed request is in the verified set, every catalog id has probe evidence); and every row's references, ratios, resolutions, seed and prices against the endpoint fixture (documented exceptions: Gemini 3 Pro's 4K union, standard-tier prices over `/flex`). Changing one row's reference bound fails 7 tests.
+- `OpenRouterImageClient.test.ts` (ported, Muse/Ming/project-frame cases replaced), `ImageConversationModes.test.ts` (ported; real orchestrator + client + store), `GlobalStorage.test.ts`, `imageHistoryPersistence.test.ts`, `useImageGenerationModes.test.tsx`, normalization and `referenceImageIssue` cases.
+- `integration/imageTabRoutes.test.tsx`: the real App through the real host, for PR #14 F-01's four witnesses (UI and host with the UI bypassed), the controls, and restart recovery. Mutations that drop the Generate gate, show Refine for a text-only thread, skip the host reference check, or loosen Flash's bound each fail it.
+- `OpenRouterImageLiveContract.test.ts`: the qualification's request and response shapes replayed.
+- Replaced: the per-prefix modality snapshot and the "nothing chat-blocked in the catalog" / "every row takes a reference" guards.
+- `setup.ts` mocks `workspace.fs.createDirectory`.
+
+#### Live qualification (2026-11-12)
+
+Through the real client with a proxy-injected key ([audit addendum](model-catalog-audit-2026-11-07.md#addendum-2--p3-transport-qualification-2026-11-12)). OpenRouter credit usage stayed at $0.16766: the key's workspace is now restricted to BYOK capacity, so only OpenAI calls reached a provider, billed $0.1222 to the BYOK key. Qualified: Single Shot `/images` text-to-image with Auto, a Single Shot follow-up with one `input_reference`, and a GPT-5 Image Mini Conversation turn plus a continuation restored from the transcript store. Blocked at routing (404, not billed): FLUX.3 Klein, Recraft V4.1 Flash (with and without a reference) and Nano Banana 2 Lite.
+
+#### Not done here (deferred)
+
+- Paid checks of Gemini Conversation (4K, reload between turns, signed vs unsigned replay), the non-OpenAI `/images` rows and a text-only model's own reference handling: blocked by the BYOK restriction; owner-run.
+- Observed, not acted on (one sample): GPT-5 Image Mini on chat returned 1024×1024 for `image_config.aspect_ratio: '3:2'`. The card shows the real shape.
+- BYOK turns report `cost: 0` (OpenRouter bills nothing; the spend is in `cost_details.upstream_inference_cost`), so the turn line and the balance strip show no spend for them. Family-wide (Frame parses the same way).
+- Inherited from Frame and documented: F-7 (whole-transcript rewrites, no expiry, tombstones never removed), F-10 (reloading mid-generation strands a Conversation; the error is explicit), F-11 (the latest image is sent as a user reference even when signed assistant images are replayed), R-4.
+- SVG native vector still uses chat (P5b).
+
+---
+
+
 ### Packaging (pre-merge cleanup)
 
 - `.vscodeignore` now excludes `docs/**`, `screenshots/**`, `AGENTS.md`, `tsconfig.webview.json`, `tsconfig.test.json`, `tailwind.config.js` and `postcss.config.js`. The VSIX shrinks from 21.2 MB / 89 files to 10.4 MB / 22 files. `vsce` already rewrites the README's relative image links to `github.com/…/raw/HEAD/…`, so the Marketplace page keeps its screenshots, and review-witness test files no longer ship.

@@ -16,7 +16,7 @@
 | --- | --- | --- | --- |
 | N-01 | P3 / low, nonblocking | Generic router `ERROR` responses cannot settle pending saves | ✅ Fixed in `fddaf41` |
 | S-13 | Inherited P2 | API-key replacement temporarily leaves the previous account's balance visible | ✅ Fixed in #13 (`b19a691`), merged here in `afba2aa` |
-| S-14 | Inherited P2 | Text-only Recraft V4.1 Flash still accepts reference-bearing generation and refinement | ↪ Deferred in #14 (`8e53acd`: row removed until capability gating, guard test added), merged here in `afba2aa` |
+| S-14 | Inherited P2 | Text-only Recraft V4.1 Flash still accepts reference-bearing generation and refinement | ✅ Fixed in P3 (`cfb0d34`): capability gating in UI and host (see the PR #14 review). Earlier: ↪ deferred in #14 (`8e53acd`), merged here in `afba2aa` |
 
 ## ✅ Fixed - N-01: include saves in generic-error ownership
 

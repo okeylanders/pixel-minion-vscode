@@ -46,11 +46,18 @@ Only this report is changed by re-review publication. No production changes, pro
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| F-01 | P2 / medium | Text-only Recraft V4.1 Flash is listed while Refine and attachments send it image input | ↪ Deferred (row removed until P3/P4 capability gating) in `8e53acd`; guard test added |
+| F-01 | P2 / medium | Text-only Recraft V4.1 Flash is listed while Refine and attachments send it image input | ✅ Fixed in P3 (`cfb0d34`, witnesses `a501ad5`): Flash is back with capability gating in the UI and the host. Earlier: ↪ deferred in `8e53acd` (row removed, guard added) |
 
-## ↪ Deferred - F-01: gate text-only Recraft Flash before exposing it in the conversational Image tab
+## ✅ Fixed (P3) - F-01: gate text-only Recraft Flash before exposing it in the conversational Image tab
 
-**Priority:** P2 / medium. **Status:** ↪ Deferred in `8e53acd` (row removed; returns with capability-aware controls).
+**Priority:** P2 / medium. **Status:** ✅ Fixed in P3 (`cfb0d34`, `a501ad5`). Earlier: ↪ deferred in `8e53acd` (row removed; returns with capability-aware controls).
+
+**P3 resolution.** The requested correction's gating option, in the UI and in the host:
+- *Prompt-only first turn:* Flash generates over `/images` with no `input_references` (tested end to end).
+- *Attached references:* the uploader is disabled for a model that takes none ("This model accepts text prompts only."); references attached before a model switch block Generate with a note ("Remove the reference images to generate."); the host refuses a request that carries one anyway (`OpenRouterImageClient` preflight: "This model accepts 0 reference images; received 1.") before any provider call.
+- *Model switch with references attached:* Generate stays blocked until the attachments fit the new model's bounds, both ways (too many, or none for a model that needs one).
+- *First turn to refinement:* a Single Shot thread on a text-only model shows no Refine input and says why; `continueChat` refuses it; the host refuses the follow-up because it would carry the previous image. Nothing is silently dropped.
+- Witnesses: `src/__tests__/integration/imageTabRoutes.test.tsx` drives the real App through the real host for all four, plus the UI-bypassed host refusals; removing the Generate gate, showing Refine for the text-only thread, skipping the host check, or loosening Flash's bound each fails it. The catalog guard is replaced by capability tests against the 2026-11-12 endpoint fixture.
 
 **Changed location:** `src/shared/models/ImageModels.ts:109`.
 
