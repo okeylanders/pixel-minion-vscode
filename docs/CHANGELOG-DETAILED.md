@@ -334,6 +334,12 @@ Lint unchanged (9 errors, 20 warnings, all pre-existing).
 
 ---
 
+
+### Packaging (pre-merge cleanup)
+
+- `.vscodeignore` now excludes `docs/**`, `screenshots/**`, `AGENTS.md`, `tsconfig.webview.json`, `tsconfig.test.json`, `tailwind.config.js` and `postcss.config.js`. The VSIX shrinks from 21.2 MB / 89 files to 10.4 MB / 22 files. `vsce` already rewrites the README's relative image links to `github.com/…/raw/HEAD/…`, so the Marketplace page keeps its screenshots, and review-witness test files no longer ship.
+- Not changed: `package.json` says `"license": "SEE LICENSE IN LICENSE"` but the repository has no `LICENSE` file (vsce warns; pre-existing). Adding one is the owner's call.
+
 ## [1.3.0] - 2026-05-20
 
 ### Overview

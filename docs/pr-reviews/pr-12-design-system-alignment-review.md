@@ -146,8 +146,8 @@ From code review, keep and upstream to Frame:
 
 ## Validation still owed
 
-- **Keyed smoke test (U3/O1–O3).** Needs the owner's OpenRouter key; about $0.12. One cheap generation each through Pixel's current chat path for `recraft/recraft-v4.1-vector`, `black-forest-labs/flux.2-klein-4b` and `openai/gpt-image-1-mini`, plus a 16:9 Recraft vector call. Result decides whether P3's `/images` transport is a hotfix for released v1.3.0.
-- **Installed-VSIX check.** 360 px in Dark, Light and High Contrast after PR A lands; the harness substitutes for a real host.
+- **Keyed smoke test (U3/O1–O3).** ✅ Done 2026-11-07 with the owner's key ($0.111); see the audit addendum.
+- **Installed-VSIX check.** 360 px in Dark, Light and High Contrast, plus SVG animation in the isolated preview (R16-M1; a Chromium proxy passed 2026-11-12). Owner-run; the harness substitutes for a real host.
 
 ## Resolution Status
 

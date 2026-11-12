@@ -15,7 +15,7 @@
 | --- | --- | --- | --- |
 | R16-1 | P1 | Repeated classification of a long open element name makes the scanner quadratic and blocks the host/webview | ✅ Fixed in `031477e`; independently verified at `ba8ad84` |
 | R16-2 | P2 | SVG hyperlink auditing (`a[ping]`) bypasses the no-external-requests policy for saved documents | ✅ Fixed in `b853fef`; independently verified at `ba8ad84` |
-| R16-M1 | Validation | CSS and SMIL animation in an installed VSIX | ⏳ Open; not completed in this review |
+| R16-M1 | Validation | CSS and SMIL animation in an installed VSIX | ◐ Chromium proxy passed 2026-11-12 (see below); installed-VSIX pass still owner-run |
 
 ## ✅ Fixed - R16-1: Cache the open element's local-name classification
 
@@ -158,3 +158,16 @@ Additional probes preserve CSS checking after a long parent, across sibling styl
 - Exact-head GitHub check runs, commit statuses, and PR-triggered workflow runs: all returned empty for `ba8ad84`. No remote CI pass is claimed.
 - **R16-M1 remains open:** no installed-VSIX CSS/SMIL animation smoke pass was performed.
 - This follow-up publishes only the review report and updated review verdict. It does not change production code or merge any PR.
+
+## R16-M1 proxy check (author side, 2026-11-12)
+
+An installed VS Code host isn't available in the author's cloud session, so the check was run against the same rendering path in Chromium, the engine VS Code webviews use. Three SVGs were rendered exactly as `SVGPreview` renders them, as `<img src="data:image/svg+xml;base64,…">`, in a page whose CSP has the webview's shape (`default-src 'none'; img-src data:`):
+
+| SVG | Two frames ~370 ms apart |
+| --- | --- |
+| CSS `@keyframes` rotation inside `<style>` | differ: **animates** |
+| SMIL `<animate attributeName="cx">` | differ: **animates** |
+| Static control (no animation) | identical: static |
+
+So isolating previews in an `<img>` does not stop CSS or SMIL animation (scripts, which the policy rejects anyway, don't run in image mode). This is evidence, not the installed-VSIX acceptance pass. That pass stays with the owner and is part of trying the packaged build.
+
