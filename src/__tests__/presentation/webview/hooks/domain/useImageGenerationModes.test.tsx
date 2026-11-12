@@ -400,6 +400,32 @@ describe('the Image tab', () => {
     expect(screen.getByText('Earlier threads')).toBeTruthy();
   });
 
+  it('moves focus to the prompt after starting from an image (the pressed button is gone)', () => {
+    render(<View initial={existing} />);
+    const start = screen.getByRole('button', { name: 'Start a conversation from this image' });
+    start.focus();
+    fireEvent.click(start);
+    expect(document.activeElement).toBe(screen.getByPlaceholderText('Describe the image you want to generate...'));
+  });
+
+  it('moves focus after Delete thread: the next thread down, else the heading, else the prompt', () => {
+    const thread = (id: string, prompt: string) => ({ id, settings, turns: [{ ...turn, id: `turn-${id}`, prompt }] });
+    // Oldest first; shown newest first: Third, Second, First.
+    render(<View initial={{ model, archivedThreads: [thread('img-1', 'First'), thread('img-2', 'Second'), thread('img-3', 'Third')] }} />);
+    const summary = (prompt: string) => screen.getByText(new RegExp(`· ${prompt} ·`)).closest('summary');
+    const deleteIn = (prompt: string) => within(summary(prompt)!.closest('details') as HTMLElement).getByRole('button', { name: 'Delete thread' });
+
+    fireEvent.click(deleteIn('Second'));
+    expect(document.activeElement).toBe(summary('First'));
+    fireEvent.click(deleteIn('First'));
+    // The last one in the list went: the heading, so the user knows where they are.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Earlier threads' }));
+    fireEvent.click(deleteIn('Third'));
+    // None left: the heading went too.
+    expect(screen.queryByRole('heading', { name: 'Earlier threads' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText('Describe the image you want to generate...'));
+  });
+
   it('switches harmlessly when no thread is on screen: nothing archived, nothing released', () => {
     render(<View initial={{ model }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));

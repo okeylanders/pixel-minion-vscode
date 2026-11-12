@@ -18,7 +18,7 @@
  * sprint-06 Image tab): stacked controls card, then an output card that
  * grows with the conversation, then the sticky refine bar.
  */
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UseImageGenerationReturn, referenceRequirementNote } from '../../hooks/domain/useImageGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
@@ -34,7 +34,7 @@ import {
   imageModeLabel,
   imageRouteCapabilities,
 } from '@shared/models';
-import type { ImageGenerationMode } from '@messages';
+import type { GeneratedImage, ImageGenerationMode } from '@messages';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -57,6 +57,11 @@ const TrashIcon: React.FC = () => (
 const CUSTOM_IMAGE_MODEL_HELP = `${OFF_LIST_MODEL_HELP} It runs as Single Shot through /images with automatic dimensions.`;
 
 const MODES: readonly ImageGenerationMode[] = ['conversation', 'edit'];
+
+const PROMPT_ID = 'image-generation-prompt';
+
+/** Where focus goes once an action removes the element that had it. */
+type FocusTarget = { kind: 'prompt' } | { kind: 'heading' } | { kind: 'thread'; id: string };
 
 /** Why the selected model sits outside the mode's list (helper text under the picker). */
 function unavailableModelHelp(model: string, mode: ImageGenerationMode): string {
@@ -131,8 +136,34 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   // The thread on screen keeps its own mode; the toggle sets the next one's.
   const activeMode = threadSettings?.mode ?? mode;
   const supportedModels = OPENROUTER_IMAGE_MODELS.filter(entry => imageRouteCapabilities(entry.id, mode));
+  // "Start … from this image" and Delete thread remove the button that was
+  // pressed (the thread it sat in moves or goes), so focus is moved on
+  // purpose once the change renders, instead of falling to <body>.
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  const archivedHeadingRef = useRef<HTMLHeadingElement>(null);
+  const archivedSummaries = useRef(new Map<string, HTMLElement>());
+  useEffect(() => {
+    if (!focusTarget) return;
+    const element = focusTarget.kind === 'heading' ? archivedHeadingRef.current
+      : focusTarget.kind === 'thread' ? archivedSummaries.current.get(focusTarget.id)
+        : null;
+    (element ?? document.getElementById(PROMPT_ID))?.focus();
+    setFocusTarget(null);
+  }, [focusTarget]);
+  const shownArchivedThreads = [...archivedThreads].reverse();
+  /** Delete an Earlier thread, then focus the next one down, else the heading, else the prompt. */
+  const deleteArchivedThread = (id: string) => {
+    const index = shownArchivedThreads.findIndex(thread => thread.id === id);
+    const next = shownArchivedThreads[index + 1];
+    removeArchivedThread(id);
+    setFocusTarget(next ? { kind: 'thread', id: next.id } : shownArchivedThreads.length > 1 ? { kind: 'heading' } : { kind: 'prompt' });
+  };
   // Starting from an image attaches it to the next thread, which a text-only model can't take.
-  const onStartFromImage = busy || referenceLimits?.max === 0 ? undefined : startFromImage;
+  const onStartFromImage = busy || referenceLimits?.max === 0 ? undefined : (image: GeneratedImage) => {
+    startFromImage(image);
+    // The image waits in the uploader; the prompt is the next thing to fill in.
+    setFocusTarget({ kind: 'prompt' });
+  };
   const startFromImageLabel = `Start a ${imageModeLabel(mode).toLowerCase()} from this image`;
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
@@ -227,6 +258,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         {/* Prompt input */}
         <div className="generation-prompt-section">
           <Textarea
+            id={PROMPT_ID}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the image you want to generate..."
@@ -373,10 +405,15 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           {/* Earlier threads: browse, save, start again; they don't continue */}
           {archivedThreads.length > 0 && (
             <section className="image-archived-threads" aria-labelledby="image-archived-threads-title">
-              <h3 id="image-archived-threads-title" className="image-archived-threads-title">Earlier threads</h3>
-              {[...archivedThreads].reverse().map(thread => (
+              <h3 id="image-archived-threads-title" className="image-archived-threads-title" ref={archivedHeadingRef} tabIndex={-1}>
+                Earlier threads
+              </h3>
+              {shownArchivedThreads.map(thread => (
                 <details key={thread.id} className="image-archived-thread">
-                  <summary>
+                  <summary ref={(element) => {
+                    if (element) archivedSummaries.current.set(thread.id, element);
+                    else archivedSummaries.current.delete(thread.id);
+                  }}>
                     {imageModeLabel(thread.settings.mode)} · {thread.turns[0]?.prompt.slice(0, 40)} · {thread.turns.length} {thread.turns.length === 1 ? 'turn' : 'turns'}
                   </summary>
                   <p className="generation-note">{imageModeDescription(thread.settings.mode)}</p>
@@ -388,7 +425,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
                     savingImageIds={savingImageIds}
                     savedImageIds={savedImageIds}
                   />
-                  <Button variant="secondary" onClick={() => removeArchivedThread(thread.id)} disabled={busy}>
+                  <Button variant="secondary" onClick={() => deleteArchivedThread(thread.id)} disabled={busy}>
                     Delete thread
                   </Button>
                 </details>

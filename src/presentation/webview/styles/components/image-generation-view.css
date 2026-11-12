@@ -162,6 +162,13 @@
   text-transform: uppercase;
 }
 
+/* Focus lands here after deleting the last Earlier thread in the list
+   (tabindex -1: reachable by script only). Same ring as every control. */
+.image-archived-threads-title:focus-visible {
+  outline: 2px solid var(--px-focus-ring);
+  outline-offset: 2px;
+}
+
 .image-archived-thread {
   padding: 8px 0;
   border-top: 1px solid var(--px-border-soft);
