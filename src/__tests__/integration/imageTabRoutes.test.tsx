@@ -459,6 +459,39 @@ describe('Conversation restart recovery', () => {
   });
 });
 
+describe('Earlier threads on the host (review P4-n3)', () => {
+  it('archiving tombstones the transcript once; Delete thread clears again without writing', async () => {
+    await renderImageTab('google/gemini-3-pro-image');
+    await generate('Keep the knight blue');
+    const [file] = [...storage.files.keys()];
+    // A mode switch archives the thread and releases it on the host.
+    fireEvent.click(screen.getByRole('button', { name: 'Single Shot' }));
+    await waitFor(() => expect(JSON.parse(Buffer.from(storage.files.get(file)!).toString('utf8'))).toEqual({ version: 1, deleted: true }));
+    const writes = storage.storage.write.mock.calls.length;
+
+    // Delete posts the clear again (idempotent): the tombstone is final, so nothing is written.
+    const clears = () => fromWebview.filter(message => message.type === MessageType.IMAGE_GENERATION_CLEAR).length;
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    await waitFor(() => expect(clears()).toBe(2));
+    await act(async () => { await Promise.resolve(); });
+    expect(storage.storage.write.mock.calls.length).toBe(writes);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('Earlier threads')).toBeNull();
+  });
+
+  it('Delete of a Single Shot thread (no transcript) writes nothing', async () => {
+    await renderImageTab('recraft/recraft-v4.1');
+    await generate('A poster');
+    fireEvent.click(screen.getByRole('button', { name: 'Start a single shot from this image' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    await waitFor(() => expect(fromWebview.filter(message => message.type === MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(2));
+    await act(async () => { await Promise.resolve(); });
+    expect(storage.storage.write).not.toHaveBeenCalled();
+    expect(storage.files.size).toBe(0);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
 describe('empty state', () => {
   it('names the next step for each mode and for a text-only model', async () => {
     const { unmount } = await renderImageTab('google/gemini-3-pro-image');
