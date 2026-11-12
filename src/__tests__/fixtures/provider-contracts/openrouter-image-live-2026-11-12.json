@@ -1,0 +1,568 @@
+{
+ "capturedAt": "2026-11-12",
+ "note": "Response metadata from paid calls made through Pixel's real OpenRouterImageClient / ImageOrchestrator / transcript store (roadmap P3 qualification). Image bytes, encrypted reasoning, reasoning text and generation ids are replaced by their lengths or placeholders. The workspace key is restricted to BYOK capacity: only the OpenAI calls reached a provider (billed to the BYOK key, so OpenRouter reports cost 0 and the spend in cost_details.upstream_inference_cost); the others stopped at routing with 404 before any generation.",
+ "totalUpstreamCostUsd": 0.1221735,
+ "calls": [
+  {
+   "step": "A: Single Shot text-to-image, FLUX.3 Image Klein @768 1:1 seed 42",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 404,
+   "request": {
+    "model": "black-forest-labs/flux-3-image-klein",
+    "prompt": "A small red lighthouse on a rock, flat illustration",
+    "seed": 42,
+    "aspect_ratio": "1:1",
+    "resolution": "768"
+   },
+   "response": {
+    "error": {
+     "message": "No endpoints found that can be served by your own provider keys. This workspace is restricted to BYOK capacity. Add provider keys at https://openrouter.ai/workspaces/<workspace>/byok",
+     "code": 404,
+     "metadata": {
+      "routing_funnel": [
+       {
+        "step": "Initial Endpoints",
+        "endpoint_count": 1
+       }
+      ],
+      "failed_routing_step": "Add BYOK Endpoints"
+     }
+    }
+   },
+   "upstreamCostUsd": null
+  },
+  {
+   "step": "D: text-only model, prompt only, Recraft V4.1 Flash, aspect auto",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 404,
+   "request": {
+    "model": "recraft/recraft-v4.1-flash",
+    "prompt": "A minimalist mountain logo, two colors",
+    "aspect_ratio": "auto"
+   },
+   "response": {
+    "error": {
+     "message": "No endpoints found that can be served by your own provider keys. This workspace is restricted to BYOK capacity. Add provider keys at https://openrouter.ai/workspaces/<workspace>/byok",
+     "code": 404,
+     "metadata": {
+      "routing_funnel": [
+       {
+        "step": "Initial Endpoints",
+        "endpoint_count": 1
+       }
+      ],
+      "failed_routing_step": "Add BYOK Endpoints"
+     }
+    }
+   },
+   "upstreamCostUsd": null
+  },
+  {
+   "step": "F: Conversation turn 1, Nano Banana 2 Lite (gemini-3.1-flash-lite-image) 1:1 1K",
+   "url": "https://openrouter.ai/api/v1/chat/completions",
+   "status": 404,
+   "request": {
+    "model": "google/gemini-3.1-flash-lite-image",
+    "messages": [
+     {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "A blue knight on a white background, simple flat style"
+       }
+      ]
+     }
+    ],
+    "modalities": [
+     "image",
+     "text"
+    ],
+    "stream": false,
+    "seed": "<random seed>",
+    "image_config": {
+     "aspect_ratio": "1:1",
+     "image_size": "1K"
+    }
+   },
+   "response": {
+    "error": {
+     "message": "No endpoints found that can be served by your own provider keys. This workspace is restricted to BYOK capacity. Add provider keys at https://openrouter.ai/workspaces/<workspace>/byok",
+     "code": 404,
+     "metadata": {
+      "routing_funnel": [
+       {
+        "step": "Initial Endpoints",
+        "endpoint_count": 2
+       }
+      ],
+      "failed_routing_step": "Add BYOK Endpoints"
+     }
+    }
+   },
+   "upstreamCostUsd": null
+  },
+  {
+   "step": "H: Single Shot, token-billed OpenAI row, GPT Image 1 Mini 1:1",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 200,
+   "request": {
+    "model": "openai/gpt-image-1-mini",
+    "prompt": "A ceramic coffee mug, studio photo",
+    "aspect_ratio": "1:1"
+   },
+   "response": {
+    "created": 1794484254,
+    "data": [
+     {
+      "media_type": "image/png",
+      "keys": [
+       "b64_json",
+       "media_type"
+      ],
+      "base64Length": 1642624,
+      "sniffedMime": "image/png",
+      "dimensions": {
+       "width": 1024,
+       "height": 1024
+      }
+     }
+    ],
+    "usage": {
+     "prompt_tokens": 13,
+     "completion_tokens": 1056,
+     "total_tokens": 1069,
+     "cost": 0,
+     "is_byok": true,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     },
+     "cost_details": {
+      "upstream_inference_cost": 0.008474,
+      "upstream_inference_prompt_cost": 2.6e-05,
+      "upstream_inference_completions_cost": 0.008448
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 1056
+     }
+    }
+   },
+   "upstreamCostUsd": 0.008474
+  },
+  {
+   "step": "I1: Single Shot text-to-image with an explicit Auto ratio, GPT Image 1 Mini",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 200,
+   "request": {
+    "model": "openai/gpt-image-1-mini",
+    "prompt": "A red paper boat on a white background, simple",
+    "aspect_ratio": "auto"
+   },
+   "response": {
+    "created": 1794484338,
+    "data": [
+     {
+      "media_type": "image/png",
+      "keys": [
+       "b64_json",
+       "media_type"
+      ],
+      "base64Length": 2365256,
+      "sniffedMime": "image/png",
+      "dimensions": {
+       "width": 1536,
+       "height": 1024
+      }
+     }
+    ],
+    "usage": {
+     "prompt_tokens": 16,
+     "completion_tokens": 1568,
+     "total_tokens": 1584,
+     "cost": 0,
+     "is_byok": true,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     },
+     "cost_details": {
+      "upstream_inference_cost": 0.012576,
+      "upstream_inference_prompt_cost": 3.2e-05,
+      "upstream_inference_completions_cost": 0.012544
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 1568
+     }
+    }
+   },
+   "upstreamCostUsd": 0.012576
+  },
+  {
+   "step": "I2: Single Shot follow-up (latest image as one input_reference), GPT Image 1 Mini",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 200,
+   "request": {
+    "model": "openai/gpt-image-1-mini",
+    "prompt": "Make the boat blue",
+    "aspect_ratio": "auto",
+    "input_references": [
+     {
+      "type": "image_url",
+      "image_url": {
+       "url": "data:image/png;base64,iVBORw0K\u2026 (2365278 chars)"
+      }
+     }
+    ]
+   },
+   "response": {
+    "created": 1794484357,
+    "data": [
+     {
+      "media_type": "image/png",
+      "keys": [
+       "b64_json",
+       "media_type"
+      ],
+      "base64Length": 2337308,
+      "sniffedMime": "image/png",
+      "dimensions": {
+       "width": 1536,
+       "height": 1024
+      }
+     }
+    ],
+    "usage": {
+     "prompt_tokens": 1546,
+     "completion_tokens": 1568,
+     "total_tokens": 3114,
+     "cost": 0,
+     "is_byok": true,
+     "prompt_tokens_details": {
+      "cached_tokens": 0
+     },
+     "cost_details": {
+      "upstream_inference_cost": 0.016404,
+      "upstream_inference_prompt_cost": 0.00386,
+      "upstream_inference_completions_cost": 0.012544
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 1568
+     }
+    }
+   },
+   "upstreamCostUsd": 0.016404
+  },
+  {
+   "step": "K: text-only model sent a reference (raw fetch past Pixel's preflight), Recraft V4.1 Flash",
+   "url": "https://openrouter.ai/api/v1/images",
+   "status": 404,
+   "request": {
+    "model": "recraft/recraft-v4.1-flash",
+    "prompt": "A logo",
+    "input_references": [
+     {
+      "type": "image_url",
+      "image_url": {
+       "url": "data:image/png;base64,iVBORw0K\u2026 (118 chars)"
+      }
+     }
+    ]
+   },
+   "response": {
+    "error": {
+     "message": "No endpoints found that can be served by your own provider keys. This workspace is restricted to BYOK capacity. Add provider keys at https://openrouter.ai/workspaces/<workspace>/byok",
+     "code": 404,
+     "metadata": {
+      "routing_funnel": [
+       {
+        "step": "Initial Endpoints",
+        "endpoint_count": 1
+       }
+      ],
+      "failed_routing_step": "Add BYOK Endpoints"
+     }
+    }
+   },
+   "upstreamCostUsd": null
+  },
+  {
+   "step": "J1: Conversation turn 1, GPT-5 Image Mini (chat) 3:2",
+   "url": "https://openrouter.ai/api/v1/chat/completions",
+   "status": 200,
+   "request": {
+    "model": "openai/gpt-5-image-mini",
+    "messages": [
+     {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "A blue knight on a white background, simple flat style"
+       }
+      ]
+     }
+    ],
+    "modalities": [
+     "image",
+     "text"
+    ],
+    "stream": false,
+    "seed": "<random seed>",
+    "image_config": {
+     "aspect_ratio": "3:2"
+    }
+   },
+   "response": {
+    "id": "<generation id>",
+    "object": "chat.completion",
+    "created": 1794484358,
+    "model": "openai/gpt-5-image-mini",
+    "provider": "OpenAI",
+    "system_fingerprint": null,
+    "service_tier": "default",
+    "choices": [
+     {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "completed",
+      "message": {
+       "role": "assistant",
+       "content": null,
+       "refusal": null,
+       "reasoning": null,
+       "reasoning_details": [
+        {
+         "type": "reasoning.encrypted",
+         "keys": [
+          "type",
+          "data",
+          "format",
+          "id",
+          "index"
+         ],
+         "dataLength": 10920
+        }
+       ],
+       "images": [
+        {
+         "keys": [
+          "type",
+          "image_url"
+         ],
+         "imageUrlKeys": [
+          "url"
+         ],
+         "declaredMime": "image/png",
+         "base64Length": 1502104,
+         "sniffedMime": "image/png",
+         "dimensions": {
+          "width": 1024,
+          "height": 1024
+         },
+         "hasThoughtSignature": false
+        }
+       ],
+       "keys": [
+        "role",
+        "content",
+        "refusal",
+        "reasoning",
+        "reasoning_details",
+        "images"
+       ]
+      }
+     }
+    ],
+    "usage": {
+     "prompt_tokens": 2486,
+     "completion_tokens": 5066,
+     "total_tokens": 7552,
+     "cost": 0,
+     "is_byok": true,
+     "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+     },
+     "cost_details": {
+      "upstream_inference_cost": 0.041397,
+      "upstream_inference_prompt_cost": 0.006215,
+      "upstream_inference_completions_cost": 0.035182
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 640,
+      "image_tokens": 4175,
+      "audio_tokens": 0
+     }
+    }
+   },
+   "upstreamCostUsd": 0.041397
+  },
+  {
+   "step": "J2: Conversation turn 2 after a simulated host restart (from the transcript store)",
+   "url": "https://openrouter.ai/api/v1/chat/completions",
+   "status": 200,
+   "request": {
+    "model": "openai/gpt-5-image-mini",
+    "messages": [
+     {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "A blue knight on a white background, simple flat style"
+       }
+      ]
+     },
+     {
+      "role": "assistant",
+      "content": null,
+      "refusal": null,
+      "reasoning": null,
+      "reasoning_details": [
+       {
+        "type": "reasoning.encrypted",
+        "data": "<10920 chars>",
+        "format": "openai-responses-v1",
+        "id": "<reasoning item id>",
+        "index": 0
+       }
+      ],
+      "images": [
+       {
+        "type": "image_url",
+        "image_url": {
+         "url": "data:image/png;base64,iVBORw0K\u2026 (1502126 chars)"
+        }
+       }
+      ]
+     },
+     {
+      "role": "user",
+      "content": [
+       {
+        "type": "text",
+        "text": "Now give the knight a red shield"
+       },
+       {
+        "type": "image_url",
+        "image_url": {
+         "url": "data:image/png;base64,iVBORw0K\u2026 (1502126 chars)"
+        }
+       }
+      ]
+     }
+    ],
+    "modalities": [
+     "image",
+     "text"
+    ],
+    "stream": false,
+    "seed": "<random seed>",
+    "image_config": {
+     "aspect_ratio": "3:2"
+    }
+   },
+   "response": {
+    "id": "<generation id>",
+    "object": "chat.completion",
+    "created": 1794484402,
+    "model": "openai/gpt-5-image-mini",
+    "provider": "OpenAI",
+    "system_fingerprint": null,
+    "service_tier": "default",
+    "choices": [
+     {
+      "index": 0,
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "completed",
+      "message": {
+       "role": "assistant",
+       "content": null,
+       "refusal": null,
+       "reasoning": "<1072 chars of reasoning text>",
+       "reasoning_details": [
+        {
+         "type": "reasoning.summary",
+         "keys": [
+          "type",
+          "summary",
+          "format",
+          "index"
+         ]
+        },
+        {
+         "type": "reasoning.encrypted",
+         "keys": [
+          "type",
+          "data",
+          "format",
+          "id",
+          "index"
+         ],
+         "dataLength": 9040
+        }
+       ],
+       "images": [
+        {
+         "keys": [
+          "type",
+          "image_url"
+         ],
+         "imageUrlKeys": [
+          "url"
+         ],
+         "declaredMime": "image/png",
+         "base64Length": 1387096,
+         "sniffedMime": "image/png",
+         "dimensions": {
+          "width": 1024,
+          "height": 1024
+         },
+         "hasThoughtSignature": false
+        }
+       ],
+       "keys": [
+        "role",
+        "content",
+        "refusal",
+        "reasoning",
+        "reasoning_details",
+        "images"
+       ]
+      }
+     }
+    ],
+    "usage": {
+     "prompt_tokens": 3465,
+     "completion_tokens": 4805,
+     "total_tokens": 8270,
+     "cost": 0,
+     "is_byok": true,
+     "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+     },
+     "cost_details": {
+      "upstream_inference_cost": 0.0433225,
+      "upstream_inference_prompt_cost": 0.0086625,
+      "upstream_inference_completions_cost": 0.03466
+     },
+     "completion_tokens_details": {
+      "reasoning_tokens": 512,
+      "image_tokens": 4175,
+      "audio_tokens": 0
+     }
+    }
+   },
+   "upstreamCostUsd": 0.0433225
+  }
+ ]
+}
