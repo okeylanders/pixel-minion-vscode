@@ -18,6 +18,8 @@ import * as vscode from 'vscode';
 import { App } from '../../presentation/webview/App';
 import { MessageHandler } from '../../application/handlers/MessageHandler';
 import { FileImageConversationStore } from '../../infrastructure/ai/orchestration/ImageConversationStore';
+import { ImageOrchestrator } from '../../infrastructure/ai/orchestration/ImageOrchestrator';
+import { OpenRouterImageClient } from '../../infrastructure/ai/clients/OpenRouterImageClient';
 import { MessageEnvelope, MessageType, OpenRouterBalancePayload, createEnvelope } from '@messages';
 import { memoryGlobalStorage } from '../helpers/memoryGlobalStorage';
 import { __resetOverlayStateForTests } from '../../presentation/webview/hooks/useOverlayDismiss';
@@ -54,8 +56,11 @@ const mockConfig = {
 let storage = memoryGlobalStorage();
 let host: MessageHandler;
 const toWebview: MessageEnvelope[] = [];
+/** A fresh extension host: a new orchestrator (empty memory) over the same storage. */
 function startHost(): void {
   host?.dispose();
+  const orchestrator = new ImageOrchestrator(logger as never, new FileImageConversationStore(storage.storage, ['file:///project']));
+  orchestrator.setClient(new OpenRouterImageClient(secrets as never, logger as never));
   host = new MessageHandler(
     (message) => {
       toWebview.push(message);
@@ -64,7 +69,7 @@ function startHost(): void {
     secrets as never,
     logger as never,
     balances as never,
-    new FileImageConversationStore(storage.storage, ['file:///project'])
+    orchestrator
   );
 }
 

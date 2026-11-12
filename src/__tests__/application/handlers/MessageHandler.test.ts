@@ -108,7 +108,8 @@ describe('MessageHandler', () => {
       postMessage,
       mockSecretStorage as never,
       mockLogger as never,
-      balanceService as never
+      balanceService as never,
+      {} as never // image orchestrator: ImageGenerationHandler is mocked
     );
   });
 

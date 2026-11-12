@@ -16,7 +16,7 @@ import { LoggingService } from '@logging';
 import { MessageType, createEnvelope } from '@messages';
 import { buildWebviewHtml } from './webviewHtml';
 import { AccountBalanceService } from '../../infrastructure/account';
-import type { ImageConversationStore } from '@ai';
+import type { ImageOrchestrator } from '@ai';
 
 export class WebviewViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'pixelMinion.mainView';
@@ -29,7 +29,8 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     private readonly secretStorage: SecretStorageService,
     private readonly logger: LoggingService,
     private readonly accountBalanceService: AccountBalanceService,
-    private readonly imageConversationStore?: ImageConversationStore
+    /** Shared by every MessageHandler this provider builds (one per resolved view). */
+    private readonly imageOrchestrator: ImageOrchestrator
   ) {}
 
   public resolveWebviewView(
@@ -55,7 +56,7 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
       this.secretStorage,
       this.logger,
       this.accountBalanceService,
-      this.imageConversationStore
+      this.imageOrchestrator
     );
 
     // Handle messages from webview

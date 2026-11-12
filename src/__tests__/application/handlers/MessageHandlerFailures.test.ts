@@ -6,6 +6,7 @@
  * Uses the real domain handlers, unlike MessageHandler.test.ts.
  */
 import { MessageHandler } from '../../../application/handlers/MessageHandler';
+import { ImageOrchestrator } from '../../../infrastructure/ai/orchestration/ImageOrchestrator';
 import { MessageEnvelope, MessageType, createEnvelope } from '@messages';
 
 const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
@@ -32,7 +33,7 @@ const errors = () => post.mock.calls
 beforeEach(() => {
   jest.clearAllMocks();
   post = jest.fn();
-  handler = new MessageHandler(post, secretStorage as never, logger as never, balanceService as never);
+  handler = new MessageHandler(post, secretStorage as never, logger as never, balanceService as never, new ImageOrchestrator(logger as never));
 });
 
 describe('MessageHandler failure containment', () => {

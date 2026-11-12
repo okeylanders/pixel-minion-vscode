@@ -16,6 +16,8 @@ import { OpenRouterAccountClient } from './infrastructure/ai/clients/OpenRouterA
 import { AccountBalanceService } from './infrastructure/account';
 import { VsCodeGlobalStorage } from './infrastructure/storage';
 import { FileImageConversationStore } from './infrastructure/ai/orchestration/ImageConversationStore';
+import { ImageOrchestrator } from './infrastructure/ai/orchestration/ImageOrchestrator';
+import { OpenRouterImageClient } from './infrastructure/ai/clients/OpenRouterImageClient';
 
 // Module-level reference to logging service for deactivate()
 let logger: LoggingService | undefined;
@@ -57,6 +59,12 @@ export function activate(context: vscode.ExtensionContext): void {
     new VsCodeGlobalStorage(context.globalStorageUri),
     (vscode.workspace.workspaceFolders ?? []).map(folder => folder.uri.toString())
   );
+  // One image orchestrator for the extension's lifetime, like the balance
+  // service: its threads and its one-request-per-thread lock must hold across
+  // re-resolved views, or a new view could clear a thread the old one is
+  // still generating.
+  const imageOrchestrator = new ImageOrchestrator(loggingService, imageConversationStore);
+  imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, loggingService));
 
   // Create and register the webview view provider
   const provider = new WebviewViewProvider(
@@ -64,7 +72,7 @@ export function activate(context: vscode.ExtensionContext): void {
     secretStorage,
     loggingService,
     accountBalanceService,
-    imageConversationStore
+    imageOrchestrator
   );
 
   // Register the webview view provider
