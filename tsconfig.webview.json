@@ -22,5 +22,6 @@
   "include": [
     "src/presentation/webview/**/*",
     "src/shared/**/*"
-  ]
+  ],
+  "exclude": ["node_modules", ".vscode-test", "dist"]
 }

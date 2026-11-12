@@ -1,0 +1,301 @@
+/**
+ * OpenRouter balance pill (header) and expanded account card.
+ *
+ * Moved out of global.css with the `px-` prefix. Uses only `--px-*` design
+ * tokens; the provider dot stays a literal oklch brand color on purpose
+ * (matches Frame Minion's OpenRouter dot).
+ *
+ * Text that carries meaning (states, labels, failure notes) is
+ * `--px-text-muted`; `--px-text-dim` (~2.1:1 on Light Modern) is kept for
+ * decoration only: the chevron and the "…" placeholder. Nothing is set
+ * below the 10.5 px text floor.
+ */
+
+/* Collapsed pill: disclosure button in the header. */
+.px-balance-summary {
+  display: grid;
+  min-width: 125px;
+  grid-template-columns: auto 1fr auto;
+  gap: 2px 7px;
+  align-items: center;
+  padding: 6px 8px;
+  color: var(--px-text-muted);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--px-radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+}
+
+.px-balance-summary:hover,
+.px-balance-summary.is-expanded {
+  background: var(--px-card);
+  border-color: var(--px-border-soft);
+}
+
+.px-balance-summary-amount {
+  grid-column: 1 / 3;
+  padding-left: 14px;
+  color: var(--px-text);
+  font-family: var(--px-mono);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Not an amount ("no key", "offline", "—"): quiet, not bold mono money. */
+.px-balance-summary-amount.is-muted {
+  color: var(--px-text-muted);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.px-balance-summary-amount.is-zero {
+  color: var(--px-err);
+}
+
+.px-balance-summary.is-refreshing .px-balance-summary-amount {
+  opacity: 0.6;
+}
+
+.px-balance-summary-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.px-balance-summary-chevron {
+  display: inline-flex;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  color: var(--px-text-dim);
+}
+
+.px-provider-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: oklch(0.72 0.16 220);
+  box-shadow: 0 0 0 2px color-mix(in oklab, oklch(0.72 0.16 220) 25%, transparent);
+}
+
+/* Expanded strip */
+.px-balances-strip {
+  padding: 12px 14px 14px;
+}
+
+.px-balances-strip[hidden] {
+  display: none;
+}
+
+.px-balances-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.px-balances-strip-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--px-text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.px-balances-strip-title:hover {
+  color: var(--px-text);
+}
+
+.px-balances-refresh {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--px-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--px-radius-sm);
+  cursor: pointer;
+}
+
+.px-balances-refresh:hover:not([aria-disabled="true"]) {
+  color: var(--px-text);
+  background: var(--px-field-hover);
+}
+
+/* Busy: aria-disabled (it keeps focus). Dim the glyph, not the button, so a
+   keyboard user's focus ring stays at full strength. */
+.px-balances-refresh[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.px-balances-refresh[aria-disabled="true"] svg {
+  opacity: 0.5;
+}
+
+.px-balances-refresh.spinning svg {
+  animation: px-balances-spin 0.9s linear infinite;
+}
+
+@keyframes px-balances-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Account card */
+.px-balance-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-left: 2px solid var(--px-accent);
+  border-radius: var(--px-radius);
+}
+
+.px-balance-provider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--px-text);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.px-balance-amount {
+  margin-top: 2px;
+  color: var(--px-text);
+  font-family: var(--px-mono);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.px-balance-amount.is-zero {
+  color: var(--px-err);
+}
+
+.px-balance-amount.is-muted {
+  color: var(--px-text-dim);
+}
+
+/* Refresh in flight: keep the figure, just dim it. */
+.px-balance-card.is-refreshing .px-balance-amount {
+  opacity: 0.6;
+}
+
+/* Last known figure (the latest refresh failed): keep it, but not as current.
+   A zero balance keeps its warning colour. */
+.px-balance-card.is-stale .px-balance-amount:not(.is-zero),
+.px-balance-summary-amount.is-stale:not(.is-zero) {
+  color: var(--px-text-muted);
+}
+
+.px-balance-of {
+  margin-left: 4px;
+  color: var(--px-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.px-balance-label {
+  color: var(--px-text-muted);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.px-balance-sub {
+  margin-top: 4px;
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 10.5px;
+}
+
+.px-balance-sub.is-zero {
+  color: var(--px-err);
+  font-weight: 600;
+}
+
+.px-balance-bar {
+  height: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+  background: var(--px-field);
+  border-radius: 999px;
+}
+
+.px-balance-bar span {
+  display: block;
+  height: 100%;
+  background: oklch(0.72 0.16 220);
+  border-radius: inherit;
+  transition: width 200ms ease;
+}
+
+/* No-key / unavailable / partial-data notes. */
+.px-balance-note {
+  margin: 4px 0;
+  color: var(--px-text-muted);
+  font-size: 11px;
+}
+
+/* Label / value rows. The rows dissolve into one two-column grid so the
+   values line up whatever width the labels take at 10.5 px. */
+.px-balance-meta {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 8px;
+  align-items: baseline;
+  margin-top: 7px;
+  padding-top: 7px;
+  color: var(--px-text-muted);
+  border-top: 1px solid var(--px-border-soft);
+  font-size: 10.5px;
+}
+
+.px-balance-meta span {
+  display: contents;
+}
+
+.px-balance-meta b {
+  color: var(--px-text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 520px) {
+  .px-balance-summary { min-width: 118px; }
+}
+
+/* Reduced motion: the OS query, or VS Code's workbench.reduceMotion that App
+   stamps as data-reduced-motion (see global.css). The spinner slows rather
+   than stops so "busy" stays visible. */
+@media (prefers-reduced-motion: reduce) {
+  .px-balances-refresh.spinning svg { animation-duration: 2.4s; }
+  .px-balance-bar span { transition: none; }
+}
+
+.app-container[data-reduced-motion] .px-balances-refresh.spinning svg {
+  animation-duration: 2.4s;
+}
+
+.app-container[data-reduced-motion] .px-balance-bar span {
+  transition: none;
+}

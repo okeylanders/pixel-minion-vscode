@@ -1,30 +1,40 @@
 /**
- * Input Styles
+ * Input Styles — the family field.
  *
- * VSCode-themed inputs using CSS variables.
+ * One warm field surface for every input, textarea and select (code and
+ * preview wells use --px-inset; fields never do), one control height, the
+ * 5px field radius, and an accent focus ring. Light themes get tan fields
+ * like Frame's rather than grey ones that read as disabled.
  */
 
 .input {
   width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  color: var(--vscode-input-foreground);
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, transparent);
-  border-radius: var(--radius-sm);
+  min-width: 0;
+  height: var(--px-control-h);
+  padding: 0 11px;
+  font-family: var(--px-sans);
+  font-size: 13px;
+  color: var(--px-text-input);
+  background: var(--px-field);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-field);
+  transition: border-color 100ms, box-shadow 100ms;
 }
 
-.input:focus {
+.input:focus,
+.textarea:focus {
   outline: none;
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
-.input::placeholder {
-  color: var(--vscode-input-placeholderForeground);
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--vscode-input-placeholderForeground, var(--px-text-dim));
 }
 
-.input:disabled {
+.input:disabled,
+.textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -32,51 +42,83 @@
 /* Input with label */
 .input-group {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: 6px;
 }
 
 .input-label {
-  font-size: var(--vscode-font-size);
-  color: var(--vscode-foreground);
+  color: var(--px-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 .input-description {
-  font-size: calc(var(--vscode-font-size) - 1px);
-  color: var(--vscode-descriptionForeground);
+  color: var(--px-text-muted);
+  font-size: 12px;
 }
 
 /* Input with inline button */
 .input-with-button {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: 8px;
 }
 
 .input-with-button .input {
   flex: 1;
 }
 
-/* Textarea */
+/* Textarea — the prompt field: mono, Frame's 12.5/1.55 rhythm. */
 .textarea {
   width: 100%;
-  min-height: 100px;
-  padding: var(--spacing-md);
-  font-family: var(--vscode-editor-font-family);
-  font-size: var(--vscode-editor-font-size);
-  color: var(--vscode-input-foreground);
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border, transparent);
-  border-radius: var(--radius-sm);
+  min-height: 96px;
+  padding: 8px 11px;
+  font-family: var(--px-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--px-text-input);
+  background: var(--px-field);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-field);
   resize: vertical;
+  transition: border-color 100ms, box-shadow 100ms;
 }
 
-.textarea:focus {
-  outline: none;
-  border-color: var(--vscode-focusBorder);
+/* Select on the family field: the native arrow is replaced by the family's
+   line chevron (the model trigger's glyph), so the value text lands on the
+   same inset as the text fields instead of Chromium's extra ~4px. */
+.select-control {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.select-control > select {
+  appearance: none;
+  padding-right: 32px;
+}
+
+.select-control::after {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  content: "";
+  color: var(--px-text-muted);
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
+.select-control:has(> select:disabled)::after {
+  opacity: 0.5;
 }
 
 /* Secret input (password masked) */
 .input-secret {
-  font-family: monospace;
+  font-family: var(--px-mono);
   letter-spacing: 0.1em;
 }

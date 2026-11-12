@@ -1,49 +1,14 @@
 /**
  * OpenRouter Provider Configuration
  *
- * Curated model lists for image and SVG generation via OpenRouter API.
+ * Infrastructure-shaped provider config (baseUrl + capability flags).
+ * The pure static model catalogs, defaults and retired-id map live in
+ * `src/shared/models` so the webview can import them without crossing into
+ * the infrastructure layer.
  */
 
-import { ProviderConfig, ModelDefinition } from '../../../shared/types/providers';
-
-export const OPENROUTER_IMAGE_MODELS: ModelDefinition[] = [
-  { id: 'google/gemini-3.1-flash-image-preview', displayName: '⭐ Nano Banana 2 (Google: Gemini 3.1 Flash Image Preview) - Recommended', inputCost: 0.50, outputCost: 3.00 },
-  { id: 'google/gemini-2.5-flash-image', displayName: 'Nano Banana 10/25 (Google: Gemini 2.5 Flash Image)', inputCost: 0.30, outputCost: 2.50 },
-  { id: 'google/gemini-3-pro-image-preview', displayName: 'Nano Banana Pro (Google: Gemini 3 Pro Image Preview)', inputCost: 2.00, outputCost: 12.00 },
-  { id: 'openai/gpt-5.4-image-2', displayName: 'GPT-5.4 Image 2', inputCost: 8.00, outputCost: 15.00 },
-  { id: 'openai/gpt-5-image-mini', displayName: 'GPT-5 Image Mini', inputCost: 2.50, outputCost: 2.00 },
-  { id: 'openai/gpt-5-image', displayName: 'GPT-5 Image', inputCost: 10.00, outputCost: 10.00 },
-  { id: 'black-forest-labs/flux.2-klein-4b', displayName: 'FLUX.2 Klein 4B', outputCost: 0.014 },
-  { id: 'black-forest-labs/flux.2-pro', displayName: 'FLUX.2 Pro', inputCost: 3.66, outputCost: 3.66 },
-  { id: 'black-forest-labs/flux.2-flex', displayName: 'FLUX.2 Flex', inputCost: 14.64, outputCost: 14.64 },
-  { id: 'black-forest-labs/flux.2-max', displayName: 'FLUX.2 Max', inputCost: 30.00, outputCost: 70.00 },
-  { id: 'sourceful/riverflow-v2-pro', displayName: 'Riverflow V2 Pro', outputCost: 0.15 },
-  { id: 'sourceful/riverflow-v2-fast', displayName: 'Riverflow V2 Fast', outputCost: 0.02 },
-  { id: 'sourceful/riverflow-v2-max-preview', displayName: 'Riverflow V2 Max Preview', outputCost: 75.00 },
-  { id: 'sourceful/riverflow-v2-standard-preview', displayName: 'Riverflow V2 Standard Preview', outputCost: 35.00 },
-  { id: 'sourceful/riverflow-v2-fast-preview', displayName: 'Riverflow V2 Fast Preview', outputCost: 30.00 },
-  { id: 'bytedance-seed/seedream-4.5', displayName: 'Seedream 4.5', outputCost: 0.04 },
-  { id: 'recraft/recraft-v4.1-pro', displayName: 'Recraft V4.1 Pro', outputCost: 0.06 },
-  { id: 'recraft/recraft-v4-pro', displayName: 'Recraft V4 Pro', outputCost: 0.06 },
-  { id: 'recraft/recraft-v4', displayName: 'Recraft V4', outputCost: 0.04 },
-  { id: 'recraft/recraft-v3', displayName: 'Recraft V3', outputCost: 0.04 },
-  { id: 'x-ai/grok-imagine-image-quality', displayName: 'Grok Imagine (Image Quality)', outputCost: 0.05 },
-];
-
-export const OPENROUTER_SVG_MODELS: ModelDefinition[] = [
-  { id: 'anthropic/claude-opus-4.7', displayName: '⭐ Claude Opus 4.7 - Recommended', inputCost: 5.00, outputCost: 25.00 },
-  { id: 'recraft/recraft-v4.1-pro-vector', displayName: '⭐ Recraft V4.1 Pro Vector (native SVG, 1:1 only) - Recommended', outputCost: 0.08 },
-  { id: 'recraft/recraft-v4-vector', displayName: 'Recraft V4 Vector (native SVG, budget, 1:1 only)', outputCost: 0.02 },
-  { id: 'google/gemini-3.1-pro-preview', displayName: 'Gemini Pro 3.1', inputCost: 2.00, outputCost: 12.00 },
-  { id: 'google/gemini-3.5-flash', displayName: 'Gemini Flash 3.5', inputCost: 1.50, outputCost: 9.00 },
-  { id: 'google/gemini-3-flash-preview', displayName: 'Gemini Flash 3.0', inputCost: 0.50, outputCost: 3.00 },
-  { id: 'anthropic/claude-opus-4.6', displayName: 'Claude Opus 4.6', inputCost: 5.00, outputCost: 25.00 },
-  { id: 'anthropic/claude-opus-4', displayName: 'Claude Opus 4', inputCost: 15.00, outputCost: 75.00 },
-  { id: 'openai/gpt-5.4', displayName: 'OpenAI: GPT-5.4', inputCost: 2.50, outputCost: 15.00 },
-  { id: 'openai/gpt-5.3-codex', displayName: 'OpenAI: GPT-5.3 Codex', inputCost: 1.75, outputCost: 14.00 },
-  { id: 'openai/gpt-5.2-codex', displayName: 'OpenAI: GPT-5.2 Codex', inputCost: 1.75, outputCost: 14.00 },
-  { id: 'openai/gpt-5.1-codex', displayName: 'OpenAI: GPT-5.1 Codex' },
-];
+import { ProviderConfig } from '../../../shared/types/providers';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../shared/models';
 
 export const OPENROUTER_CONFIG: ProviderConfig = {
   id: 'openrouter',
@@ -56,9 +21,3 @@ export const OPENROUTER_CONFIG: ProviderConfig = {
     svg: OPENROUTER_SVG_MODELS,
   },
 };
-
-/** Default model for image generation */
-export const DEFAULT_IMAGE_MODEL = 'google/gemini-3.1-flash-image-preview';
-
-/** Default model for SVG generation */
-export const DEFAULT_SVG_MODEL = 'recraft/recraft-v4.1-pro-vector';

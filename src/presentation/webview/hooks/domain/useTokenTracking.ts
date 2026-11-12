@@ -1,15 +1,14 @@
 /**
- * useTokenTracking - Token usage tracking hook
+ * useTokenTracking - usage of the most recent AI request
  *
- * Pattern: Tripartite Interface (State, Actions, Persistence)
- * Tracks accumulated token usage and costs across AI operations.
+ * Pattern: Tripartite Interface (State, Handlers, Persistence)
+ * Feeds the balance card's "Last request" row. Persisted, so after a reload
+ * the row can show a request from an earlier session; the UI dates it.
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback } from 'react';
-import { useVSCodeApi } from '../useVSCodeApi';
+import { useState, useCallback, useMemo } from 'react';
 import {
   MessageType,
-  createEnvelope,
   TokenUsage,
   TokenUsageUpdatePayload,
   MessageEnvelope,
@@ -17,12 +16,8 @@ import {
 
 // 1. State Interface
 export interface TokenTrackingState {
-  usage: TokenUsage;
-}
-
-// 2. Actions Interface
-export interface TokenTrackingActions {
-  resetTokens: () => void;
+  lastRequest?: TokenUsage;
+  requestedAt?: number;
 }
 
 // 2b. Message Handlers Interface (for App-level routing)
@@ -32,59 +27,41 @@ export interface TokenTrackingHandlers {
 
 // 3. Persistence Interface
 export interface TokenTrackingPersistence {
-  tokenTracking: TokenUsage;
+  lastRequest?: TokenUsage;
+  requestedAt?: number;
 }
 
 export type UseTokenTrackingReturn = TokenTrackingState &
-  TokenTrackingActions &
   TokenTrackingHandlers & {
     persistedState: TokenTrackingPersistence;
   };
 
-const DEFAULT_USAGE: TokenUsage = {
-  promptTokens: 0,
-  completionTokens: 0,
-  totalTokens: 0,
-  costUsd: 0,
-};
-
 export function useTokenTracking(
   initialState?: Partial<TokenTrackingPersistence>
 ): UseTokenTrackingReturn {
-  const vscode = useVSCodeApi();
-
-  // State - initialize from persisted state
-  const [usage, setUsage] = useState<TokenUsage>({
-    ...DEFAULT_USAGE,
-    ...(initialState?.tokenTracking ?? {}),
-  });
+  const [lastRequest, setLastRequest] = useState<TokenUsage | undefined>(initialState?.lastRequest);
+  const [requestedAt, setRequestedAt] = useState<number | undefined>(initialState?.requestedAt);
 
   // Message handlers (exposed for App-level routing)
   const handleTokenUsageUpdate = useCallback((message: MessageEnvelope) => {
     if (message.type === MessageType.TOKEN_USAGE_UPDATE) {
-      const { totals } = message.payload as TokenUsageUpdatePayload;
-      setUsage(totals);
+      const payload = message.payload as TokenUsageUpdatePayload;
+      setLastRequest(payload.lastRequest);
+      setRequestedAt(payload.requestedAt);
     }
   }, []);
 
-  // Reset tokens to zero
-  const resetTokens = useCallback(() => {
-    setUsage(DEFAULT_USAGE);
-    vscode.postMessage(
-      createEnvelope(MessageType.RESET_TOKEN_USAGE, 'webview.settings', {})
-    );
-  }, [vscode]);
-
   // Persistence
-  const persistedState: TokenTrackingPersistence = {
-    tokenTracking: usage,
-  };
+  // Memoized: App writes webview state whenever this identity changes.
+  const persistedState = useMemo<TokenTrackingPersistence>(() => ({
+    lastRequest,
+    requestedAt,
+  }), [lastRequest, requestedAt]);
 
   return {
     // State
-    usage,
-    // Actions
-    resetTokens,
+    lastRequest,
+    requestedAt,
     // Message Handlers (for App-level routing)
     handleTokenUsageUpdate,
     // Persistence

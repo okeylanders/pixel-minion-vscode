@@ -12,6 +12,8 @@ import { WebviewViewProvider } from './application/providers/WebviewViewProvider
 import { SecretStorageService } from './infrastructure/secrets/SecretStorageService';
 import { LoggingService } from './infrastructure/logging/LoggingService';
 import { PromptLoader } from './infrastructure/resources/PromptLoader';
+import { OpenRouterAccountClient } from './infrastructure/ai/clients/OpenRouterAccountClient';
+import { AccountBalanceService } from './infrastructure/account';
 
 // Module-level reference to logging service for deactivate()
 let logger: LoggingService | undefined;
@@ -39,8 +41,21 @@ export function activate(context: vscode.ExtensionContext): void {
   const secretStorage = new SecretStorageService(context.secrets, loggingService);
   const promptLoader = new PromptLoader(context.extensionUri, loggingService);
 
+  // One balance cache + refresh timer for the extension's lifetime, shared by
+  // every MessageHandler (a re-resolved webview gets a new handler, not a new cache).
+  const accountBalanceService = new AccountBalanceService(
+    new OpenRouterAccountClient(secretStorage, loggingService),
+    loggingService
+  );
+  context.subscriptions.push({ dispose: () => accountBalanceService.dispose() });
+
   // Create and register the webview view provider
-  const provider = new WebviewViewProvider(context.extensionUri, secretStorage, loggingService);
+  const provider = new WebviewViewProvider(
+    context.extensionUri,
+    secretStorage,
+    loggingService,
+    accountBalanceService
+  );
 
   // Register the webview view provider
   const viewDisposable = vscode.window.registerWebviewViewProvider(

@@ -16,13 +16,10 @@ export interface TokenUsage {
 }
 
 /**
- * Payload for TOKEN_USAGE_UPDATE messages
+ * Payload for TOKEN_USAGE_UPDATE messages: the usage of one completed request.
  */
 export interface TokenUsageUpdatePayload {
-  totals: TokenUsage;
+  lastRequest: TokenUsage;
+  /** Epoch ms when the host reported the request complete. */
+  requestedAt: number;
 }
-
-/**
- * Alias for accumulated totals (same structure as TokenUsage)
- */
-export type TokenUsageTotals = TokenUsage;

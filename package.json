@@ -134,13 +134,13 @@
         },
         "pixelMinion.imageModel": {
           "type": "string",
-          "default": "google/gemini-3.1-flash-image-preview",
-          "description": "Selected model for image generation (recommended: Nano Banana 2)"
+          "default": "google/gemini-3.1-flash-image",
+          "description": "Selected model for image generation (default: Nano Banana 2; Nano Banana 2.1 is a recommended lower-cost alternative)"
         },
         "pixelMinion.svgModel": {
           "type": "string",
           "default": "recraft/recraft-v4.1-pro-vector",
-          "description": "Selected model for SVG generation (recommended: Claude Opus 4.7 for quality; Recraft V4.1 Pro Vector is the default for native vector output)"
+          "description": "Selected model for SVG generation (default: Recraft V4.1 Pro Vector for native vector output; for code-based SVG, Claude Opus 5.5, Claude Fable 5.1 or GPT-6.1 Sol are recommended)"
         }
       }
     }

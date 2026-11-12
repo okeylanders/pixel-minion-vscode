@@ -6,6 +6,70 @@
 
 For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHANGELOG-DETAILED.md).
 
+## [Unreleased]
+
+### Added
+
+- **A new look that matches Frame Minion and Prose Minion**
+  - Pixel's own brand colours (ember and oxblood, from the logo), and the full-colour logo in the header.
+  - Cleaner Image and SVG tabs: controls stack neatly, and generated images and SVGs have room to breathe even in a narrow sidebar.
+  - One consistent style for fields and buttons, a refreshed Settings panel, and friendlier empty states.
+- **New model browser** - The Image, SVG and Settings model pickers open the same browser as Frame Minion: search, three ways to group models (by provider, by family, by release date), and a card for each model showing its price, what the estimate assumes, badges and a short description. The current model is scrolled into view when the browser opens, and the browser works from the keyboard and with screen readers.
+- **OpenRouter balance in the header.**
+  - See your remaining credit at a glance and expand it for details.
+  - It refreshes automatically after each generation and whenever you change your API key.
+  - Switching to a different API key clears the old account's balance straight away while the new one loads.
+  - If a refresh can't reach OpenRouter, the last known balance stays on screen, marked as last known.
+  - It tells you clearly when the balance can't be read, the key is invalid, or you're offline.
+- **Accessibility**
+  - Full keyboard support for tabs and dialogs: arrow keys move between tabs, focus stays inside an open dialog and returns when it closes, and Escape closes only the top dialog.
+  - High-contrast theme support.
+  - Respects "reduce motion".
+- **New image models**
+  - ⭐ Nano Banana 2.1 - Google's newest Flash-tier image model, at half Nano Banana 2's output price
+  - Seedream 5.0 Pro, Seedream 5.0 Lite and Seedream 5.0 Flash
+  - MAI-Image 2.6 and MAI-Image 2.6 Flash
+  - Riverflow V2.6 Pro
+  - Grok Imagine Image 2.0
+- **New SVG code models**
+  - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
+  - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
+
+### Changed
+
+- **Honest price estimates** - Each model's price now follows how it is actually billed: per image, per megapixel or per token. Per-image estimates for token-billed models come from each model's own reference, so GPT-5.4 Image 2 now reads ≈ $0.211 per image at 1K high quality instead of ≈ $0.039. This corrects the estimate; OpenRouter's prices did not go up. Extra charges for reference images are shown where OpenRouter lists them.
+- **SVG models are grouped by how they make SVG** - "Native SVG" (Recraft) or "SVG code". Code models show their per-token price, with an approximate cost per SVG and a note when the model reasons by default.
+- **Older SVG models keep working** - Claude Opus 5, Claude Fable 5, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
+- **GPT-5 Image Mini** is labelled "retiring Dec 1, 2026", the date OpenRouter has announced.
+- **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log: Grok Imagine (Image Quality) → Grok Imagine Image 2.0, Claude Opus 4 and Claude Opus 5 Fast → Claude Opus 5.5, and the Riverflow V2 preview tiers → Riverflow V2.5.
+- The model picker in each tab is the same height and style as the fields beside it.
+
+### Fixed
+
+- Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
+- **Long SVGs from code models could come back cut off** - Most code models reason before they answer, and that reasoning counts against the response limit. SVG requests now allow up to 32,000 tokens (was 16,384).
+- The SVG model browser grouped Gemini text models with the image models.
+- **Answers land where they belong.** Every generation, refinement, prompt enhancement and save now carries its own request id. A late or repeated answer can no longer replace a newer result, and an Enhance Prompt error in one tab no longer stops the other tab's spinner or appears in both tabs.
+- **A failed turn is not sent again.** When a generation or refinement fails, its prompt is dropped instead of being resent with your next refinement. Starting a second refinement of the same conversation while one is running is refused instead of mixing the two.
+- **An attached SVG reaches the model once.** On the Image tab, an attached SVG's markup was sent twice with the first prompt. It is now sent once and stays with the turn it was attached to, including after VS Code restarts.
+- **Refine keeps the conversation's own settings.** A refinement always uses the model and aspect ratio the conversation started with, also after a restart, and no longer picks up attachments added afterwards: those apply to your next Generate, and a note says so.
+- **"Saved" means saved.** The checkmark now waits until the file is written. Cancelling the save dialog or a failed write no longer shows "Saved", and a cancel is no longer reported as an error. A save the extension couldn't handle at all stops spinning and says why, without interrupting a generation in progress.
+- **WebP and GIF images keep their format when saved.** Files are named after the image's real format (`.png`, `.jpg`, `.webp`, `.gif`) instead of always `.jpg`. Data that isn't a supported image is refused instead of being saved under the wrong name.
+- A failed settings change now shows its error in the tab you are looking at, without stopping a generation in progress.
+- The panel no longer re-saves all of its state, including every generated image, each time it redraws.
+- **Enhance Prompt no longer rewrites a prompt you have moved on from.** If you press Generate or clear the conversation while an enhancement is still running, the enhancement is discarded, and a change you type while it runs is kept.
+- **A request that fails unexpectedly no longer spins forever.** It now ends with an error, and an error that can't be matched to a request is shown in the tab you are looking at instead of being lost.
+- **Refine on the SVG tab follows the conversation's model.** A Recraft conversation can no longer be "refined" by switching the picker to a text model (which sent the whole conversation to Recraft), and a text-model conversation can still be refined after you pick Recraft for your next Generate.
+- After VS Code restarts, refining an SVG that was generated from a reference image still sends that image.
+- SVG previews keep the conversation's aspect ratio when you change the picker.
+
+### Security
+
+- **Generated SVGs are previewed in isolation.** The SVG tab no longer inserts generated markup into the panel, so an SVG's styles can't restyle or hide the panel (including Settings and the API key field), and nothing in it can run. Animated SVGs still animate.
+- **Unsafe SVGs are neither previewed nor saved.** An SVG that would run code or load something from the internet when opened, or that reports to a tracking address when one of its links is clicked, or that isn't a well-formed SVG under 2 MB, shows a short explanation and its code instead, and Save is turned off for it. SVGs that use unexpected XML namespaces or declare a character encoding other than UTF-8 are refused too. A saved `.svg` can't run script when you open it in a browser. Recraft's vector SVGs, including their content-credentials metadata, are unaffected.
+- **Checking an SVG is quick whatever it contains.** A very large or deliberately malformed SVG no longer stalls the extension while it is checked.
+- **Saving stays in your workspace.** If the Output Directory setting (which a project's `.vscode/settings.json` can set) points outside the workspace folder, saving is refused with an explanation instead of writing there. A file name that points anywhere else, that Windows treats as a device (such as `CON` or `NUL.svg`), that ends in a dot or that hides its real extension with right-to-left characters is refused.
+
 ## [1.3.0] - 2026-05-20
 
 ### Added

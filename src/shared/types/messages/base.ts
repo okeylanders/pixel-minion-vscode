@@ -35,7 +35,11 @@ export enum MessageType {
 
   // Token usage
   TOKEN_USAGE_UPDATE = 'TOKEN_USAGE_UPDATE',
-  RESET_TOKEN_USAGE = 'RESET_TOKEN_USAGE',
+
+  // OpenRouter account
+  REQUEST_OPENROUTER_BALANCE = 'REQUEST_OPENROUTER_BALANCE',
+  OPENROUTER_BALANCE_DATA = 'OPENROUTER_BALANCE_DATA',
+  OPENROUTER_BALANCE_RESET = 'OPENROUTER_BALANCE_RESET',
 
   // Image Generation
   IMAGE_GENERATION_REQUEST = 'IMAGE_GENERATION_REQUEST',
@@ -65,12 +69,15 @@ export type MessageSource =
   | 'extension.imageGeneration'
   | 'extension.svgGeneration'
   | 'extension.enhance'
+  | 'extension.account'
+  | 'extension.router'
   | 'webview.helloWorld'
   | 'webview.settings'
   | 'webview.ai'
   | 'webview.imageGeneration'
   | 'webview.svgGeneration'
-  | 'webview.enhance';
+  | 'webview.enhance'
+  | 'webview.account';
 
 /**
  * Message Envelope - wraps all messages with metadata

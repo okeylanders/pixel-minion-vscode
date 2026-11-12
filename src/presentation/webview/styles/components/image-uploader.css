@@ -1,39 +1,38 @@
+/**
+ * ImageUploader — reference images (Frame's fm-refs pattern).
+ *
+ * The Add / Clear buttons are family buttons (`.btn .btn-secondary`) on one
+ * row; the parent's actions row places Enhance beside them. Thumbnails wrap
+ * below the row.
+ */
+
 .image-uploader {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: contents; /* let the buttons + thumbnails lay out in the parent flex row */
 }
 
 .image-uploader-header {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
 }
 
-.add-image-button,
-.clear-images-button {
-  padding: 4px 8px;
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-  border: none;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 12px;
+/* Clear is the quieter of the two. */
+.btn.clear-images-button {
+  color: var(--px-text-muted);
+  background: transparent;
 }
 
-.add-image-button:hover:not(:disabled),
-.clear-images-button:hover:not(:disabled) {
-  background: var(--vscode-button-secondaryHoverBackground);
+.btn.clear-images-button:hover:not(:disabled) {
+  color: var(--px-text);
+  background: var(--px-btn-hover);
 }
 
-.add-image-button:disabled,
-.clear-images-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+/* Thumbnails wrap below the actions row (the uploader is display:contents). */
 .image-thumbnails {
   display: flex;
+  width: 100%;
+  flex-basis: 100%;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -48,29 +47,37 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid var(--vscode-panel-border);
+  background: var(--px-field);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-field);
 }
 
 .remove-thumbnail {
   position: absolute;
   top: -6px;
   right: -6px;
+  display: flex;
   width: 18px;
   height: 18px;
-  padding: 0;
-  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
-  color: var(--vscode-inputValidation-errorForeground, #fff);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  color: var(--px-on-accent);
+  background: var(--px-err);
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px var(--px-shadow);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.remove-thumbnail:hover {
-  background: var(--vscode-inputValidation-errorBorder, #be1100);
+.remove-thumbnail:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.remove-thumbnail:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

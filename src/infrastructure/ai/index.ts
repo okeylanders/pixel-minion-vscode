@@ -27,7 +27,7 @@ export type {
   ImageMessageContent,
   ImageConversationMessage,
 } from './clients';
-export { OpenRouterImageClient } from './clients';
+export { OpenRouterImageClient, OpenRouterAccountClient } from './clients';
 
 // Text orchestration
 export { TextOrchestrator, TextConversationManager } from './orchestration';

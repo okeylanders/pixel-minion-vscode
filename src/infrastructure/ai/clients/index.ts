@@ -21,3 +21,5 @@ export type {
   ImageConversationMessage,
 } from './ImageGenerationClient';
 export { OpenRouterImageClient } from './OpenRouterImageClient';
+export { OpenRouterAccountClient } from './OpenRouterAccountClient';
+export type { OpenRouterAccountCallResult } from './OpenRouterAccountClient';

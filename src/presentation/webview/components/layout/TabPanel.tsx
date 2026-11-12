@@ -1,10 +1,12 @@
 /**
  * TabPanel - Individual tab panel wrapper
  *
- * Pattern: Accessible tab panel with proper ARIA attributes
+ * Pattern: Accessible tab panel, labelled by its tab in TabBar (the ids come
+ * from the shared tabDomId / panelDomId helpers so they can't drift).
  */
 import React from 'react';
 import { TabId } from '@messages';
+import { panelDomId, tabDomId } from './TabBar';
 
 export interface TabPanelProps {
   id: TabId;
@@ -18,8 +20,8 @@ export function TabPanel({ id, activeTab, children }: TabPanelProps): JSX.Elemen
   return (
     <div
       role="tabpanel"
-      id={`panel-${id}`}
-      aria-labelledby={`tab-${id}`}
+      id={panelDomId(id)}
+      aria-labelledby={tabDomId(id)}
       hidden={!isActive}
       className="tab-panel"
     >

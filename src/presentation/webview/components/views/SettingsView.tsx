@@ -1,5 +1,5 @@
 /**
- * SettingsView - Settings panel with card sections (Prose Minion style)
+ * SettingsView - Settings panel with card sections (Frame Minion settings view)
  *
  * Features:
  * - Card sections for API key, models, general settings
@@ -8,14 +8,17 @@
  */
 import React from 'react';
 import { SecretInput } from '../common';
-import { UseSettingsReturn, UseTokenTrackingReturn } from '@hooks';
+import { ModelSelector } from '../image/ModelSelector';
+import { SVGModelSelector } from '../svg/SVGModelSelector';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
+import { UseSettingsReturn } from '@hooks';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '@shared/models';
 
 export interface SettingsViewProps {
   settings: UseSettingsReturn;
-  tokenTracking: UseTokenTrackingReturn;
 }
 
-export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JSX.Element {
+export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
   const {
     maxConversationTurns,
     imageModel,
@@ -39,10 +42,12 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
     <>
       {/* API Key Section */}
       <section className="settings-section">
-        <h3 className="settings-section-title">🔐 OpenRouter API Key (Secure Storage)</h3>
+        <div className="settings-section-heading">
+          <span className="settings-section-kicker">Provider</span>
+          <h3 className="settings-section-title">OpenRouter</h3>
+        </div>
         <p className="settings-description mb-sm">
-          Your API key is stored securely using OS-level encryption (Keychain/Credential Manager).
-          It will never appear in settings files or be synced to the cloud.
+          Your API key is stored in VS Code Secret Storage using OS-level encryption.
         </p>
         <SecretInput
           isConfigured={apiKeyConfigured}
@@ -63,40 +68,36 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
 
       {/* Models Section */}
       <section className="settings-section">
-        <h3 className="settings-section-title">Models</h3>
-
-        <label className="settings-label">
-          <span className="settings-label-title">Image Model</span>
-          <input
-            type="text"
-            className="settings-input"
-            value={imageModel}
-            onChange={(e) => updateSetting('imageModel', e.target.value)}
-            placeholder="google/gemini-2.5-flash-image"
+        <div className="settings-section-heading">
+          <span className="settings-section-kicker">Generation</span>
+          <h3 className="settings-section-title">Default models</h3>
+        </div>
+        <div className="settings-model-grid">
+          <ModelSelector
+            label="Image model"
+            subtitle="Choose the default raster image generator."
+            models={OPENROUTER_IMAGE_MODELS}
+            selectedModel={imageModel}
+            onModelChange={model => updateSetting('imageModel', model)}
+            unavailableLabel={OFF_LIST_MODEL_HELP}
           />
-          <span className="settings-description">
-            Powers text-to-image and image-to-image generation. Recommended: Nano Banana 10/25.
-          </span>
-        </label>
-
-        <label className="settings-label">
-          <span className="settings-label-title">SVG Model</span>
-          <input
-            type="text"
-            className="settings-input"
-            value={svgModel}
-            onChange={(e) => updateSetting('svgModel', e.target.value)}
-            placeholder="openai/gpt-5.2-codex"
+          <SVGModelSelector
+            label="SVG model"
+            subtitle="Choose native vector generation or an editable SVG-code model."
+            models={OPENROUTER_SVG_MODELS}
+            selectedModel={svgModel}
+            onModelChange={model => updateSetting('svgModel', model)}
+            unavailableLabel={OFF_LIST_MODEL_HELP}
           />
-          <span className="settings-description">
-            Powers SVG code generation from text prompts. Recommended: GPT-5.2 Codex or Gemini Pro 3.
-          </span>
-        </label>
+        </div>
       </section>
 
       {/* General Section */}
       <section className="settings-section">
-        <h3 className="settings-section-title">General</h3>
+        <div className="settings-section-heading">
+          <span className="settings-section-kicker">Conversations</span>
+          <h3 className="settings-section-title">Context</h3>
+        </div>
 
         <label className="settings-label">
           <span className="settings-label-title">Max Conversation Turns</span>
@@ -114,21 +115,6 @@ export function SettingsView({ settings, tokenTracking }: SettingsViewProps): JS
             Maximum turns before a conversation resets. Higher values use more context.
           </span>
         </label>
-      </section>
-
-      {/* Token Usage Section */}
-      <section className="settings-section">
-        <h3 className="settings-section-title">Token Usage</h3>
-        <p className="settings-description mb-sm">
-          Displays running token totals in the header. Resets manually or on reload.
-        </p>
-        <button
-          type="button"
-          className="reset-token-button"
-          onClick={tokenTracking.resetTokens}
-        >
-          Reset Token Usage
-        </button>
       </section>
     </>
   );

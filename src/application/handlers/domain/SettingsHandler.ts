@@ -16,9 +16,15 @@ import {
 } from '@messages';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
+import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS } from '../../../shared/models';
+
+/** Settings that hold a catalog model id and must never point at a retired one. */
+const MODEL_SETTING_KEYS = ['imageModel', 'svgModel'] as const;
+type ModelSettingKey = typeof MODEL_SETTING_KEYS[number];
 
 export class SettingsHandler {
   private readonly configSection = 'pixelMinion';
+  private retiredModelMigration?: Promise<void>;
 
   constructor(
     private readonly postMessage: (message: MessageEnvelope) => void,
@@ -33,6 +39,7 @@ export class SettingsHandler {
    */
   async handleRequestSettings(message: MessageEnvelope): Promise<void> {
     this.logger.debug('Fetching current settings');
+    await this.migrateRetiredModelSelections();
     const settings = this.getCurrentSettings();
 
     this.postMessage(createEnvelope<SettingsPayload>(
@@ -158,8 +165,82 @@ export class SettingsHandler {
     return {
       maxConversationTurns: config.get<number>('maxConversationTurns', legacyConfig.get('maxConversationTurns', 10)),
       openRouterModel: config.get<string>('openRouterModel', legacyConfig.get('openRouterModel', 'openai/gpt-5.1')),
-      imageModel: config.get<string>('imageModel', 'google/gemini-3.1-flash-image-preview'),
-      svgModel: config.get<string>('svgModel', 'recraft/recraft-v4.1-pro-vector'),
+      imageModel: replaceRetiredModel(config.get<string>('imageModel', 'google/gemini-3.1-flash-image')),
+      svgModel: replaceRetiredModel(config.get<string>('svgModel', 'recraft/recraft-v4.1-pro-vector')),
     };
   }
+
+  /**
+   * Rewrite saved model selections that OpenRouter has delisted. Runs once per
+   * handler (the webview's first settings request). `getCurrentSettings()`
+   * already substitutes on read, so a failed write never sends a dead id to a
+   * request; this just stops the stale value lingering in settings.json.
+   */
+  private migrateRetiredModelSelections(): Promise<void> {
+    this.retiredModelMigration ??= this.runRetiredModelMigration();
+    return this.retiredModelMigration;
+  }
+
+  private async runRetiredModelMigration(): Promise<void> {
+    try {
+      const config = vscode.workspace.getConfiguration(this.configSection);
+      for (const key of MODEL_SETTING_KEYS) {
+        const inspected = config.inspect<string>(key);
+        // User settings fall back to the contributed (package.json) default;
+        // workspace settings fall back to the user value, once migrated.
+        const userValue = await this.migrateRetiredModel(
+          config, key, inspected?.globalValue, vscode.ConfigurationTarget.Global, inspected?.defaultValue
+        );
+        await this.migrateRetiredModel(
+          config, key, inspected?.workspaceValue, vscode.ConfigurationTarget.Workspace,
+          userValue ?? inspected?.defaultValue
+        );
+      }
+    } catch (error) {
+      // Never block the settings response on housekeeping.
+      this.logger.error('Retired model migration failed', error);
+    }
+  }
+
+  /**
+   * Move one scope off a retired id. When the replacement is what the scope
+   * would fall back to anyway (for user settings, the contributed default),
+   * the saved value is cleared instead of rewritten: writing today's default
+   * explicitly would pin the user to it after the default moves on.
+   *
+   * Returns the value this scope now contributes (undefined when unset), for
+   * the next scope's fallback.
+   */
+  private async migrateRetiredModel(
+    config: vscode.WorkspaceConfiguration,
+    key: ModelSettingKey,
+    saved: string | undefined,
+    target: vscode.ConfigurationTarget,
+    fallback: string | undefined
+  ): Promise<string | undefined> {
+    const retired = saved ? RETIRED_MODELS[saved] : undefined;
+    if (!saved || !retired) return saved;
+    const { replacement } = retired;
+    const clear = replacement === fallback;
+
+    const why = retired.reason === 'delisted'
+      ? 'is no longer available on OpenRouter'
+      : "is only served by OpenRouter's Image API, which Pixel Minion does not use yet";
+    const scope = target === vscode.ConfigurationTarget.Global ? 'user' : 'workspace';
+    this.logger.info(clear
+      ? `Model ${saved} ${why}; clearing the ${scope} ${key} setting so it falls back to ${replacement}`
+      : `Model ${saved} ${why}; switching ${key} to ${replacement}`);
+    try {
+      await config.update(key, clear ? undefined : replacement, target);
+    } catch (error) {
+      this.logger.error(`Failed to migrate retired ${key} selection`, error);
+      // Still saved, so still read (and substituted) as the replacement.
+      return replacement;
+    }
+    return clear ? undefined : replacement;
+  }
+}
+
+function replaceRetiredModel(model: string): string {
+  return RETIRED_MODEL_REPLACEMENTS[model] ?? model;
 }
