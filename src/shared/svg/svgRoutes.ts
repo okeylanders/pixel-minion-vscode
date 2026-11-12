@@ -24,20 +24,34 @@
  * raster and the host refuses them before any provider call: the Image
  * catalog's ids, and an unlisted `recraft/` id without a `-vector` name
  * (Recraft publishes only image models).
+ *
+ * Every rule classifies the *model* an id names: its base before any
+ * `:variant` (`:nitro`, `:floor`, …, which pick a provider or price, not a
+ * different model), compared case-insensitively (catalog ids are
+ * lower-case; the Settings field stores a curated id's casing for an exact
+ * match). The full id is what gets dispatched. Classifying the whole
+ * string let `black-forest-labs/flux.2-pro:nitro` pass as an unknown text
+ * model (PR #18 R18-1).
  */
 import { OPENROUTER_SVG_MODELS } from '../models/SVGModels';
 import { OPENROUTER_IMAGE_MODELS } from '../models/ImageModels';
 import type { SvgModelDefinition } from '../types/providers';
 
+/** The model an id names: lower-cased, without its `:variant`. */
+function modelKey(modelId: string): string {
+  return modelId.split(':')[0].toLowerCase();
+}
+
 const CATALOG_KIND = new Map<string, SvgModelDefinition['kind']>(
-  OPENROUTER_SVG_MODELS.map((model) => [model.id, model.kind])
+  OPENROUTER_SVG_MODELS.map((model) => [modelKey(model.id), model.kind])
 );
-const RASTER_IMAGE_IDS = new Set(OPENROUTER_IMAGE_MODELS.map((model) => model.id));
+const RASTER_IMAGE_KEYS = new Set(OPENROUTER_IMAGE_MODELS.map((model) => modelKey(model.id)));
 
 export function isNativeVectorSvgModel(modelId: string): boolean {
-  const kind = CATALOG_KIND.get(modelId);
+  const key = modelKey(modelId);
+  const kind = CATALOG_KIND.get(key);
   if (kind !== undefined) return kind === 'native-vector';
-  return modelId.split(':')[0].endsWith('-vector');
+  return key.endsWith('-vector');
 }
 
 export function svgModelSupportsRefinement(modelId: string): boolean {
@@ -49,8 +63,9 @@ export function svgModelSupportsRefinement(modelId: string): boolean {
  * be billed on either SVG route and then fail on the raster it returns.
  */
 export function svgModelRefusal(modelId: string): string | null {
-  if (CATALOG_KIND.has(modelId) || isNativeVectorSvgModel(modelId)) return null;
-  if (RASTER_IMAGE_IDS.has(modelId) || modelId.startsWith('recraft/')) {
+  const key = modelKey(modelId);
+  if (CATALOG_KIND.has(key) || isNativeVectorSvgModel(modelId)) return null;
+  if (RASTER_IMAGE_KEYS.has(key) || key.startsWith('recraft/')) {
     return `${modelId} makes raster images, not SVG. Use it on the Image tab, or choose a vector (-vector) or text model for SVG.`;
   }
   return null;

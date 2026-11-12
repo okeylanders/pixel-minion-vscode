@@ -83,6 +83,20 @@ describe('SettingsView custom model ids', () => {
     fireEvent.change(field, { target: { value: 'recraft/recraft-v9-vector' } });
     fireEvent.keyDown(field, { key: 'Enter' });
     expect(value.updateSetting).toHaveBeenCalledWith('svgModel', 'recraft/recraft-v9-vector');
+    // A :variant or other casing doesn't change what the model makes (PR #18 R18-1).
+    for (const variant of ['black-forest-labs/flux.2-pro:nitro', 'Black-Forest-Labs/FLUX.2-Pro', 'recraft/recraft-v4.1:floor', 'recraft/recraft-v9:free']) {
+      fireEvent.change(field, { target: { value: variant } });
+      fireEvent.keyDown(field, { key: 'Enter' });
+      expect({ variant, alert: screen.getByRole('alert').textContent }).toEqual({ variant, alert: expect.stringMatching(/makes raster images, not SVG/) });
+    }
+    expect(value.updateSetting).toHaveBeenCalledTimes(1);
+    // A vector or text model with a variant is still accepted, under its curated id's casing.
+    fireEvent.change(field, { target: { value: 'Recraft/Recraft-V4.1-Vector:floor' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(value.updateSetting).toHaveBeenLastCalledWith('svgModel', 'recraft/recraft-v4.1-vector:floor');
+    fireEvent.change(field, { target: { value: 'openai/gpt-6.1-sol:nitro' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(value.updateSetting).toHaveBeenLastCalledWith('svgModel', 'openai/gpt-6.1-sol:nitro');
     // The same raster id is fine as the Image default.
     fireEvent.change(screen.getByLabelText('Custom image model id'), { target: { value: 'recraft/recraft-v4.1' } });
     fireEvent.keyDown(screen.getByLabelText('Custom image model id'), { key: 'Enter' });
@@ -132,6 +146,12 @@ describe('customModelIdFor (review P4-n1)', () => {
   it('turns a case-insensitive copy of a curated id into the curated id, and keeps other ids as typed', () => {
     expect(customModelIdFor('GOOGLE/gemini-3-PRO-image', catalog)).toEqual({ id: 'google/gemini-3-pro-image' });
     expect(customModelIdFor('Acme/Pixel-V9', catalog)).toEqual({ id: 'Acme/Pixel-V9' });
+  });
+
+  it('turns the model part of a curated id with a :variant into the curated id, keeping the variant (PR #18 R18-1)', () => {
+    expect(customModelIdFor('Recraft/Recraft-V4.1:nitro', catalog)).toEqual({ id: 'recraft/recraft-v4.1:nitro' });
+    expect(customModelIdFor('google/gemini-3-pro-image:floor', catalog)).toEqual({ id: 'google/gemini-3-pro-image:floor' });
+    expect(customModelIdFor('Acme/Pixel-V9:Free', catalog)).toEqual({ id: 'Acme/Pixel-V9:Free' });
   });
 
   it('refuses a huge paste by its length before matching it', () => {

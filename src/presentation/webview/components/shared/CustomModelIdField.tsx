@@ -41,7 +41,8 @@ const FORMAT_ERROR = 'Enter an OpenRouter model id such as vendor/model-name: le
  * The id to store for what was typed, or why it can't be one. Surrounding
  * spaces are dropped; a case-insensitive match for a curated id becomes
  * that id, so it keeps the curated routes and pricing instead of running as
- * a permissive custom id.
+ * a permissive custom id. The same holds for the model part of a
+ * `model:variant` id; the variant is kept as typed.
  */
 export function customModelIdFor(
   input: string,
@@ -52,8 +53,11 @@ export function customModelIdFor(
     return { error: `Model ids are at most ${MAX_CUSTOM_MODEL_ID_LENGTH} characters.` };
   }
   if (!MODEL_ID.test(id)) return { error: FORMAT_ERROR };
-  const lower = id.toLowerCase();
-  return { id: catalogIds.find(curated => curated.toLowerCase() === lower) ?? id };
+  const [model, variant] = id.split(':');
+  const lower = model.toLowerCase();
+  const curated = catalogIds.find(candidate => candidate.toLowerCase() === lower);
+  if (!curated) return { id };
+  return { id: variant === undefined ? curated : `${curated}:${variant}` };
 }
 
 export const CustomModelIdField: React.FC<CustomModelIdFieldProps> = ({ label, help, catalogIds, refusal, onUse }) => {

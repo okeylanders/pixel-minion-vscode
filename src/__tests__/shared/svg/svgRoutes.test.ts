@@ -36,6 +36,26 @@ describe('svgRoutes', () => {
     }
   });
 
+  it('classifies the model an id names, whatever its :variant or casing (PR #18 R18-1)', () => {
+    for (const model of OPENROUTER_IMAGE_MODELS) {
+      for (const id of [`${model.id}:nitro`, `${model.id}:floor`, model.id.toUpperCase(), `${model.id.toUpperCase()}:free`]) {
+        expect({ id, refusal: svgModelRefusal(id) }).toEqual({ id, refusal: `${id} makes raster images, not SVG. Use it on the Image tab, or choose a vector (-vector) or text model for SVG.` });
+      }
+    }
+    expect(svgModelRefusal('Recraft/Recraft-V9:nitro')).toMatch(/makes raster images/);
+    for (const model of OPENROUTER_SVG_MODELS) {
+      for (const id of [`${model.id}:nitro`, model.id.toUpperCase()]) {
+        expect({ id, refusal: svgModelRefusal(id), nativeVector: isNativeVectorSvgModel(id) })
+          .toEqual({ id, refusal: null, nativeVector: model.kind === 'native-vector' });
+      }
+    }
+    for (const ok of ['recraft/recraft-v9-vector:floor', 'Acme/Logo-Vector', 'openai/gpt-6.1-sol:nitro', 'acme/svg-writer:free']) {
+      expect({ ok, refusal: svgModelRefusal(ok) }).toEqual({ ok, refusal: null });
+    }
+    expect(isNativeVectorSvgModel('Recraft/Recraft-V9-Vector:floor')).toBe(true);
+    expect(isNativeVectorSvgModel('recraft/recraft-v4.1:floor')).toBe(false);
+  });
+
   it('follows the catalog kind, not the id prefix, for a curated model', () => {
     jest.isolateModules(() => {
       jest.doMock('../../../shared/models/SVGModels', () => ({
