@@ -195,7 +195,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('SVG context takes no reference slot: it goes in the prompt, on a text-only model and beside a full raster slot', async () => {
-    const { container } = await renderImageTab('recraft/recraft-v4.1-flash');
+    const { container } = await renderImageTab('recraft/recraft-v4.1-flash', 'edit');
     await attachSvg(container);
     expect(screen.getByRole('img', { name: 'SVG text context' })).toBeTruthy();
     fireEvent.change(promptBox(), { target: { value: 'A poster' } });
@@ -220,7 +220,7 @@ describe('capability gating (PR #14 F-01)', () => {
   });
 
   it('tells assistive tech why Generate is disabled', async () => {
-    const { container } = await renderImageTab('recraft/recraft-v4.1');
+    const { container } = await renderImageTab('recraft/recraft-v4.1', 'edit');
     // Nothing typed yet: no warning on screen, but the button says what's missing.
     expect(generateButton().disabled).toBe(true);
     expect(description(generateButton())).toBe('Enter a prompt to generate.');
@@ -326,7 +326,7 @@ describe('Single Shot restart recovery', () => {
   }
 
   it('continues after the extension host restarts, from the latest image alone', async () => {
-    await renderImageTab('recraft/recraft-v4.1');
+    await renderImageTab('recraft/recraft-v4.1', 'edit');
     await generate('A blue knight');
     mockFetch.mockImplementationOnce(async () => ({ ok: true, json: async () => ({ data: [{ b64_json: PNG_B, media_type: 'image/png' }] }) }));
     await refine('Make it red');

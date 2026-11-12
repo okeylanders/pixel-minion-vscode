@@ -154,7 +154,8 @@ describe('thread-owned settings', () => {
   });
 
   it('normalizes the ratio and resolution when a model change removes them', () => {
-    const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', aspectRatio: '21:9', resolution: '4K' }));
+    // Single Shot: every catalog model has a route there, so each change normalizes.
+    const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', mode: 'edit', aspectRatio: '21:9', resolution: '4K' }));
     expect(result.current.aspectRatio).toBe('21:9');
     act(() => result.current.setModel('recraft/recraft-v4.1'));
     expect(result.current.aspectRatio).toBe('1:1');
@@ -264,7 +265,8 @@ describe('a reload during a first Generate', () => {
 
     render(<View initial={saved} />);
     expect(screen.getByText('Your images appear here')).toBeTruthy();
-    expect(screen.queryByText('Uses previous messages and images as context.')).toBeNull();
+    // The mode's description stays (it describes the next thread); a thread's own settings line doesn't.
+    expect(document.querySelector('.image-thread-settings')).toBeNull();
   });
 
   it('ignores thread settings saved without a conversation id (written by an earlier build)', () => {

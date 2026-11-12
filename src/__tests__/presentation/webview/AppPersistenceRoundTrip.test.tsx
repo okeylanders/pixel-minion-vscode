@@ -42,6 +42,8 @@ const sent = (type: MessageType): MessageEnvelope[] =>
 const deliver = (message: MessageEnvelope) =>
   act(() => { window.dispatchEvent(new MessageEvent('message', { data: message })); });
 const promptBox = () => screen.getByPlaceholderText('Describe the image you want to generate...');
+// A fresh install opens in Conversation (the default model has a chat route).
+const generateButton = () => screen.getByRole('button', { name: /⚡ (Generate|Start Conversation)/ });
 // 1.5M base64 characters: about 3 MiB as counted, so one fits the lowered budget and two don't.
 const bigImage = (turn: number): GeneratedImage => ({
   id: `image-${turn}`, data: `data:image/png;base64,${'A'.repeat(1_500_000)}`,
@@ -64,7 +66,7 @@ beforeEach(() => {
 it('warns while the snapshot drops images, explains restored turns after a reload, and clears with the thread', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [bigImage(1)]);
   // One large image fits: nothing to warn about.
   expect(screen.queryByText(IMAGE_HISTORY_STORAGE_WARNING)).toBeNull();
@@ -86,7 +88,7 @@ it('warns while the snapshot drops images, explains restored turns after a reloa
   expect(screen.getByText(IMAGE_HISTORY_RESTORED_WARNING)).toBeTruthy();
   expect(savedImage().persistenceWarning).toBeUndefined();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Clear conversation' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear thread' }));
   expect(screen.queryByText(IMAGE_HISTORY_RESTORED_WARNING)).toBeNull();
   expect(savedImage().conversationHistory).toEqual([]);
   second.unmount();
@@ -100,7 +102,7 @@ it('warns while the snapshot drops images, explains restored turns after a reloa
 it('shows no warning when nothing was dropped, before or after a reload', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [smallImage]);
   expect(screen.queryAllByRole('status').map(element => element.textContent).join('')).not.toMatch(/local history|local storage/);
   first.unmount();
@@ -114,7 +116,7 @@ it('shows no warning when nothing was dropped, before or after a reload', () => 
 it('keeps the shortened-draft note to one sentence, in its own field, without re-bounding the history per keystroke', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [smallImage]);
 
   const long = 'x'.repeat(40_000);
