@@ -3,16 +3,19 @@
  * ResolutionSelector - output tier for models whose route publishes tiers.
  * Auto leaves the size to the provider (the request omits `resolution`).
  *
- * Pixel delta: the select sits in Pixel's `.select-control` wrapper.
+ * Pixel deltas: the select sits in Pixel's `.select-control` wrapper, and
+ * `mode` is required (Frame's optional mode fell back to the catalog row,
+ * bypassing the route; no caller used it).
  */
 import React from 'react';
-import { OPENROUTER_IMAGE_MODELS, imageRouteCapabilities } from '@shared/models';
+import { imageRouteCapabilities } from '@shared/models';
 import { ImageResolution, ImageGenerationMode } from '@messages';
 import '../../styles/components/aspect-ratio-selector.css';
 
 export interface ResolutionSelectorProps {
   model: string;
-  mode?: ImageGenerationMode;
+  /** Required: the tiers come from the model's route in this mode. */
+  mode: ImageGenerationMode;
   selectedResolution: ImageResolution;
   onResolutionChange: (resolution: ImageResolution) => void;
   disabled?: boolean;
@@ -25,7 +28,7 @@ export const ResolutionSelector: React.FC<ResolutionSelectorProps> = ({
   onResolutionChange,
   disabled = false,
 }) => {
-  const resolutions = (mode ? imageRouteCapabilities(model, mode)?.supportedResolutions : OPENROUTER_IMAGE_MODELS.find(entry => entry.id === model)?.supportedResolutions) ?? [];
+  const resolutions = imageRouteCapabilities(model, mode)?.supportedResolutions ?? [];
   const value = selectedResolution === 'auto' || resolutions.includes(selectedResolution)
     ? selectedResolution
     : 'auto';

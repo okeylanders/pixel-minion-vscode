@@ -36,7 +36,6 @@ import {
 } from '@messages';
 import {
   DEFAULT_IMAGE_MODEL,
-  OPENROUTER_IMAGE_MODELS,
   defaultImageMode,
   imageModeLabel,
   imageRouteCapabilities,
@@ -59,15 +58,19 @@ export function isSourcefulModel(modelId: string): boolean {
   return modelId.startsWith('sourceful/');
 }
 
-/** The ratio to keep when the model (or mode) changes: the current one if the route lists it. */
-export function normalizeAspectRatioForModel(modelId: string, current: AspectRatio, mode?: ImageGenerationMode): AspectRatio {
-  const supported = mode ? imageRouteCapabilities(modelId, mode)?.supportedAspectRatios : OPENROUTER_IMAGE_MODELS.find(entry => entry.id === modelId)?.supportedAspectRatios;
+/**
+ * The ratio to keep when the model (or mode) changes: the current one if the
+ * route lists it. The mode is required: what a model takes depends on the
+ * route (imageRouteCapabilities), never on its catalog row alone.
+ */
+export function normalizeAspectRatioForModel(modelId: string, current: AspectRatio, mode: ImageGenerationMode): AspectRatio {
+  const supported = imageRouteCapabilities(modelId, mode)?.supportedAspectRatios;
   return !supported || supported.includes(current) ? current : supported[0];
 }
 
-/** The resolution to keep when the model (or mode) changes; anything unlisted falls back to Auto. */
-export function normalizeResolutionForModel(modelId: string, current: ImageResolution, mode?: ImageGenerationMode): ImageResolution {
-  const supported = mode ? imageRouteCapabilities(modelId, mode)?.supportedResolutions : OPENROUTER_IMAGE_MODELS.find(entry => entry.id === modelId)?.supportedResolutions;
+/** The resolution to keep when the model (or mode) changes; anything the route doesn't list falls back to Auto. */
+export function normalizeResolutionForModel(modelId: string, current: ImageResolution, mode: ImageGenerationMode): ImageResolution {
+  const supported = imageRouteCapabilities(modelId, mode)?.supportedResolutions;
   if (!supported) return 'auto';
   return current === 'auto' || supported.includes(current) ? current : 'auto';
 }

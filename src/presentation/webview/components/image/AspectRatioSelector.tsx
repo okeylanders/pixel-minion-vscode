@@ -6,19 +6,21 @@
  * included where the route advertises it. The SVG tab has its own fixed list
  * (svg/SVGAspectRatioSelector.tsx).
  *
- * Pixel delta: the select sits in Pixel's `.select-control` wrapper (the
- * family chevron).
+ * Pixel deltas: the select sits in Pixel's `.select-control` wrapper (the
+ * family chevron), and `mode` is required (Frame's optional mode fell back to
+ * the catalog row, bypassing the route; no caller used it).
  */
 import React from 'react';
 import { AspectRatio, ImageGenerationMode } from '@messages';
-import { OPENROUTER_IMAGE_MODELS, imageRouteCapabilities } from '@shared/models';
+import { imageRouteCapabilities } from '@shared/models';
 import '../../styles/components/aspect-ratio-selector.css';
 
 export interface AspectRatioSelectorProps {
   selectedRatio: AspectRatio;
   onRatioChange: (ratio: AspectRatio) => void;
   model: string;
-  mode?: ImageGenerationMode;
+  /** Required: the ratios come from the model's route in this mode. */
+  mode: ImageGenerationMode;
   disabled?: boolean;
 }
 
@@ -29,7 +31,7 @@ export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({
   mode,
   disabled = false,
 }) => {
-  const aspectRatios = (mode ? imageRouteCapabilities(model, mode)?.supportedAspectRatios : OPENROUTER_IMAGE_MODELS.find(entry => entry.id === model)?.supportedAspectRatios) ?? [selectedRatio];
+  const aspectRatios = imageRouteCapabilities(model, mode)?.supportedAspectRatios ?? [selectedRatio];
   const value = aspectRatios.includes(selectedRatio) ? selectedRatio : aspectRatios[0];
 
   return (

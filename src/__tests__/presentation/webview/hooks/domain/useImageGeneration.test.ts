@@ -94,24 +94,34 @@ describe('calculateBase64Size', () => {
 
 // Ported from frame-minion@40e7949 useImageGeneration.test.ts ("model capability
 // normalization"); Muse cases use a custom id, which Pixel no longer lists.
+// Pixel requires the mode, so every case names the route it checks.
 describe('model capability normalization', () => {
-  it('resets an unsupported aspect ratio to the model default', () => {
-    expect(normalizeAspectRatioForModel('openai/gpt-image-1', '16:9')).toBe('1:1');
+  it('resets an unsupported aspect ratio to the route’s first ratio', () => {
+    expect(normalizeAspectRatioForModel('openai/gpt-image-1', '16:9', 'edit')).toBe('1:1');
     expect(normalizeAspectRatioForModel('recraft/recraft-v4.1', '21:9', 'edit')).toBe('1:1');
+    // The chat route lists the same ratios as the model's Image API record.
+    expect(normalizeAspectRatioForModel('openai/gpt-5-image', '16:9', 'conversation')).toBe('1:1');
   });
 
   it('keeps a supported extended aspect ratio', () => {
-    expect(normalizeAspectRatioForModel('bytedance-seed/seedream-5-0-pro', '9:21')).toBe('9:21');
+    expect(normalizeAspectRatioForModel('bytedance-seed/seedream-5-0-pro', '9:21', 'edit')).toBe('9:21');
+    expect(normalizeAspectRatioForModel('google/gemini-3.1-flash-image', '1:8', 'conversation')).toBe('1:8');
   });
 
   it('resets an unsupported resolution to auto', () => {
-    expect(normalizeResolutionForModel('bytedance-seed/seedream-5-0-lite', '1K')).toBe('auto');
+    expect(normalizeResolutionForModel('bytedance-seed/seedream-5-0-lite', '1K', 'edit')).toBe('auto');
     expect(normalizeResolutionForModel('vendor/custom', '4K', 'edit')).toBe('auto');
     expect(normalizeAspectRatioForModel('vendor/custom', '16:9', 'edit')).toBe('auto');
   });
 
+  it('keeps the current value where the route is unknown (a custom id in Conversation)', () => {
+    expect(normalizeAspectRatioForModel('vendor/custom', '16:9', 'conversation')).toBe('16:9');
+    expect(normalizeResolutionForModel('vendor/custom', '4K', 'conversation')).toBe('auto');
+  });
+
   it('keeps a supported high-resolution tier', () => {
-    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '4K')).toBe('4K');
+    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '4K', 'conversation')).toBe('4K');
+    expect(normalizeResolutionForModel('google/gemini-3.1-flash-image', '4K', 'edit')).toBe('4K');
   });
 
   it('uses the route’s own lists: Gemini’s 512 tier is Single Shot only', () => {
