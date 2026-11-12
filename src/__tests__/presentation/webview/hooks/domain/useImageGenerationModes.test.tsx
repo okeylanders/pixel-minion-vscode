@@ -60,9 +60,11 @@ describe('modes and Earlier threads', () => {
     // Shown under Earlier threads while the new one runs, but not released yet.
     expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
     expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
-    // Deleting it is refused while it still belongs to the running Generate.
+    // Deleting it is refused while it still belongs to the running Generate:
+    // a failure must bring it back with its host transcript intact.
     act(() => result.current.removeArchivedThread('img-existing'));
     expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
     act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
       { conversationId: 'img-new', images: [image], turnNumber: 1, settings }, ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
     expect(result.current.archivedThreads.map(thread => thread.id)).toEqual(['img-existing']);
@@ -75,23 +77,49 @@ describe('modes and Earlier threads', () => {
     expect(posted().correlationId).toMatch(/^image-clear-/);
   });
 
-  it('captures prompt/context once, refuses a mode switch while generating, and ignores stale responses and errors', () => {
-    const { result } = renderHook(() => useImageGeneration({ model }));
-    act(() => { result.current.setPrompt('A knight'); result.current.addReferenceImage(image.data, '<svg />'); });
+  it('captures prompt/context once, refuses a mode switch or a new start while generating, and ignores stale responses and errors', () => {
+    // A preview distinct from the image a "start from" would attach, so an
+    // ignored call and an obeyed one can't look the same (review P4-m4).
+    const svgPreview = 'data:image/svg+xml;base64,PHN2ZyAvPg==';
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A knight' }));
+    act(() => result.current.addReferenceImage(svgPreview, '<svg />'));
     act(() => result.current.generate());
     const request = posted();
     expect(request.payload).toMatchObject({ mode: 'conversation', prompt: 'A knight', referenceSvgText: '<svg />' });
     expect(request.payload.referenceImages).toBeUndefined();
+    const during = () => ({
+      mode: result.current.mode, prompt: result.current.prompt, referenceImages: result.current.referenceImages,
+      threadSettings: result.current.threadSettings, archived: result.current.archivedThreads.map(thread => thread.id),
+    });
+    const before = during();
+    expect(before).toEqual({ mode: 'conversation', prompt: 'A knight', referenceImages: [svgPreview], threadSettings: settings, archived: ['img-existing'] });
+
     act(() => result.current.setMode('edit'));
-    expect(result.current.mode).toBe('conversation');
     act(() => result.current.startFromImage(image));
-    expect(result.current.referenceImages).toEqual([image.data]); // unchanged: the SVG attachment's preview
+    expect(during()).toEqual(before);
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+
     act(() => { result.current.handleError(createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: 'stale' })); });
     expect(result.current.isLoading).toBe(true);
     act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration', { conversationId: 'img-new', images: [image], turnNumber: 1 }, request.correlationId)));
     expect(result.current.conversationHistory[0].prompt).toBe('A knight');
     expect(result.current.conversationHistory[0].referenceSvgText).toBe('<svg />');
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('refuses a mode switch or a new start while an enhance runs, keeping the thread on screen', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A knight' }));
+    act(() => result.current.enhancePrompt());
+    expect(result.current.isEnhancing).toBe(true);
+    act(() => result.current.setMode('edit'));
+    act(() => result.current.startFromImage(image));
+    expect(result.current.mode).toBe('conversation');
+    expect(result.current.conversationId).toBe('img-existing');
+    expect(result.current.threadSettings).toEqual(settings);
+    expect(result.current.archivedThreads).toEqual([]);
+    expect(result.current.referenceImages).toEqual([]);
+    expect(result.current.prompt).toBe('A knight');
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
   });
 
   it('migrates untagged persisted history to Single Shot and can start a fresh conversation from an existing image', () => {
