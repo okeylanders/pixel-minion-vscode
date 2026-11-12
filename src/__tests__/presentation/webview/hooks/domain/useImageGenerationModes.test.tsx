@@ -517,6 +517,25 @@ describe('the Image tab', () => {
     expect(screen.queryByRole('button', { name: /from this image/ })).toBeNull();
   });
 
+  it('offers start-from-image only when the draft model has a route in the mode that takes the image (review P4-n5)', () => {
+    const offered = () => screen.queryAllByRole('button', { name: /from this image/ }).length;
+    // Recraft V4.1 has no Conversation route: starting a conversation from an image would only be blocked.
+    const { unmount } = render(<View initial={{ ...existing, mode: 'conversation', model: 'recraft/recraft-v4.1' }} />);
+    expect(offered()).toBe(0);
+    unmount();
+    // A route whose references must be PNG, JPEG or WebP: offered on a PNG, not on a GIF.
+    const gif = { ...image, id: 'image-gif', mimeType: 'image/gif', data: 'data:image/gif;base64,R0lG', prompt: 'Animated knight' };
+    const both = { ...existing, mode: 'edit' as const, model: 'recraft/recraft-v4-styles', conversationHistory: [{ ...turn, images: [image, gif] }] };
+    const second = render(<View initial={both} />);
+    const card = (alt: string) => screen.getByAltText(alt).closest('.image-card') as HTMLElement;
+    expect(within(card(image.prompt)).queryAllByRole('button', { name: /from this image/ })).toHaveLength(1);
+    expect(within(card(gif.prompt)).queryAllByRole('button', { name: /from this image/ })).toHaveLength(0);
+    second.unmount();
+    // The same thread with a model that takes any image format: both.
+    render(<View initial={{ ...both, model: 'google/gemini-3.1-flash-image' }} />);
+    expect(offered()).toBe(2);
+  });
+
   it('keeps custom ids visible and usable in Single Shot while Conversation stays strict', () => {
     const { unmount } = render(<View initial={{ mode: 'edit', model: 'vendor/unknown', prompt: 'A tree' }} />);
     expect(screen.getByRole('button', { name: /Current model: Custom: vendor\/unknown/ })).toBeTruthy();

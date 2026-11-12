@@ -158,12 +158,19 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     removeArchivedThread(id);
     setFocusTarget(next ? { kind: 'thread', id: next.id } : shownArchivedThreads.length > 1 ? { kind: 'heading' } : { kind: 'prompt' });
   };
-  // Starting from an image attaches it to the next thread, which a text-only model can't take.
-  const onStartFromImage = busy || referenceLimits?.max === 0 ? undefined : (image: GeneratedImage) => {
+  // Starting from an image attaches it as the next thread's reference, so it
+  // is offered only when the draft model has a route in the selected mode
+  // that takes a reference (not text-only), and per image only in a format
+  // that route accepts.
+  const acceptsReference = !!referenceLimits && referenceLimits.max > 0;
+  const onStartFromImage = busy || !acceptsReference ? undefined : (image: GeneratedImage) => {
     startFromImage(image);
     // The image waits in the uploader; the prompt is the next thing to fill in.
     setFocusTarget({ kind: 'prompt' });
   };
+  const referenceMimeTypes = capabilities?.referenceMimeTypes;
+  const canStartFromImage = (image: GeneratedImage) => !referenceMimeTypes
+    || (referenceMimeTypes as readonly string[]).includes(image.mimeType === 'image/jpg' ? 'image/jpeg' : image.mimeType);
   const startFromImageLabel = `Start a ${imageModeLabel(mode).toLowerCase()} from this image`;
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
@@ -397,6 +404,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             turns={conversationHistory}
             onSaveImage={saveImage}
             onStartFromImage={onStartFromImage}
+            canStartFromImage={canStartFromImage}
             startFromImageLabel={startFromImageLabel}
             savingImageIds={savingImageIds}
             savedImageIds={savedImageIds}
@@ -421,6 +429,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
                     turns={thread.turns}
                     onSaveImage={saveImage}
                     onStartFromImage={onStartFromImage}
+                    canStartFromImage={canStartFromImage}
                     startFromImageLabel={startFromImageLabel}
                     savingImageIds={savingImageIds}
                     savedImageIds={savedImageIds}
