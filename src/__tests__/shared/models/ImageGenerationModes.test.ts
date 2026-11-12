@@ -69,6 +69,15 @@ describe('conversational routes', () => {
     }
     expect(defaultImageMode('vendor/custom')).toBe('edit');
   });
+
+  it('does not infer a Conversation route from a variant or differently cased base id', () => {
+    for (const model of conversational) {
+      for (const id of [`${model.id}:nitro`, `${model.id}:floor`, model.id.toUpperCase()]) {
+        expect({ id, capabilities: imageRouteCapabilities(id, 'conversation'), mode: defaultImageMode(id) })
+          .toEqual({ id, capabilities: undefined, mode: 'edit' });
+      }
+    }
+  });
 });
 
 describe('transport guard', () => {
@@ -95,6 +104,15 @@ describe('transport guard', () => {
 });
 
 describe('Single Shot capabilities', () => {
+  it('keeps curated constraints for variants and case differences instead of treating them as unknown models', () => {
+    for (const model of OPENROUTER_IMAGE_MODELS) {
+      for (const id of [`${model.id}:nitro`, `${model.id.toUpperCase()}:floor`, model.id.toUpperCase()]) {
+        expect({ id, capabilities: imageRouteCapabilities(id, 'edit') })
+          .toEqual({ id, capabilities: imageRouteCapabilities(model.id, 'edit') });
+      }
+    }
+  });
+
   it('keeps every catalog model eligible for Single Shot and omits unverified chat size tiers', () => {
     expect(OPENROUTER_IMAGE_MODELS.every(model => imageRouteCapabilities(model.id, 'edit'))).toBe(true);
     expect(imageRouteCapabilities('google/gemini-3.1-flash-image', 'conversation')?.supportedResolutions).toEqual(['1K', '2K', '4K']);

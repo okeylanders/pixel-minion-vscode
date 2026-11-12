@@ -54,7 +54,7 @@ const TrashIcon: React.FC = () => (
 );
 
 /** Helper under the picker for an id the catalog doesn't list. */
-const CUSTOM_IMAGE_MODEL_HELP = `${OFF_LIST_MODEL_HELP} It runs as Single Shot through /images with automatic dimensions.`;
+const CUSTOM_IMAGE_MODEL_HELP = `${OFF_LIST_MODEL_HELP} It runs as Single Shot with the options shown above.`;
 
 const MODES: readonly ImageGenerationMode[] = ['conversation', 'edit'];
 

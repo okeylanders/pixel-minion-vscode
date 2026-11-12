@@ -11,9 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-12
+
 ### Overview
 
-Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (warm surface ramp, card-grid tabs, balance strip, first model-browser port, catalog refresh). The stacked **design pass 02** (PR A) addresses its round-1 review. Review ledger: [docs/pr-reviews/pr-12-design-system-alignment-review.md](pr-reviews/pr-12-design-system-alignment-review.md). Roadmap: [docs/plans/frame-parity-roadmap.md](plans/frame-parity-roadmap.md).
+PRs #12–20 bring Pixel Minion onto the Frame Minion design system, add the dedicated OpenRouter Image API, preserve image conversations across restarts, refresh the model catalogs, and replace the earlier-thread list with results-pane navigation. Request ownership, balance account isolation, and SVG preview/save safety are hardened throughout. The implementation history below records the staged work and its review fixes. Review ledger: [PR #12](pr-reviews/pr-12-design-system-alignment-review.md). Roadmap: [Frame parity](plans/frame-parity-roadmap.md).
+
+### Final catalog and navigation updates (PRs #19–20)
+
+- `SVGModels.ts`, model-browser metadata and settings help now include Claude Fable 5.2 alongside Claude Opus 5.5 and GPT-6.1 Sol. Saved older code-model selections remain usable as custom IDs. GPT-5 Image Mini and GPT-5 Image display their announced retirement dates.
+- `ImageGenerationView.tsx` shows one thread at a time, using Previous/Next buttons and a position counter in the results pane's top-right corner. Navigation is chronological and stops at either end. Visible metadata, save and delete actions follow the displayed thread.
+- Browsing is presentation state only. It never resumes or releases the active conversation; the current refine draft remains mounted, hidden and unable to submit while an archive is displayed. New generations select the pending result and lock navigation. Existing persistence and failed-generation recovery are unchanged.
+- The previous expandable Earlier threads layout described in the P4 implementation history below is superseded by this navigation. Deleting selects a neighboring thread and focuses its heading, or the prompt when none remain.
+- Regression coverage includes navigation boundaries, draft preservation, stale hidden submission, save/delete ownership, pending generation, failure recovery and saved-state round trips. Review: [PR #20](pr-reviews/pr-20-thread-navigation-review.md).
+
+### Upgrade notes
+
+- Existing untagged image history opens as Single Shot, using the latest image for refinements; there is no persisted opaque conversation transcript to reconstruct from older versions.
+- Saved delisted model IDs migrate to catalog replacements. Older but still listed provider models removed only from the curated picker keep their saved selection.
+- Saved history retains the newest five archives within the 48 MiB snapshot budget; omitted images or threads are reported. Conversation transcripts are stored per workspace with a 64 MiB limit.
+- Unsafe SVG documents and output directories outside the workspace are refused. Existing settings keys and the VS Code minimum version are unchanged.
+
+### Release review: image-model variants
+
+The release review found that a custom ID such as `recraft/recraft-v4.1-flash:nitro` was classified as unknown and inherited permissive Single Shot capabilities, bypassing the known model's zero-reference limit. With owner approval, `imageRouteCapabilities` now resolves a lower-cased base ID before `:variant` for catalog constraints, while the client still dispatches the original full ID. Conversation eligibility remains limited to exact verified IDs; no variant is promoted to chat by inference.
+
+Regression tests cover maximum and required references, accepted MIME types, dimensions, seed handling, full-ID dispatch and strict Conversation routing. Dependency audit and applicability: [v1.4.0 audit](release-audit-v1.4.0.md). No dependency versions were upgraded during release preparation.
 
 ### Design system (PR A)
 

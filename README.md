@@ -37,17 +37,17 @@
 
 ---
 
-## 🎉 What's New in v1.3.0
+## 🎉 What's New in v1.4.0
 
-> **🎨 Native Vector SVG with Recraft** - New default SVG model produces real `<svg>` markup natively (no more code-generation). Recraft V4.1 Pro Vector + V4 Vector added.
+> **🎨 Refreshed design** - A new look shared with Frame Minion and Prose Minion, with a searchable model browser, OpenRouter balance, keyboard navigation and high-contrast support.
 >
-> **⭐ Claude Opus 4.7** - Promoted to the top SVG recommendation for high-quality code-based SVG generation
+> **🖼️ More ways to generate** - Choose Conversation for full-context refinements or Single Shot for a prompt and reference images. The dedicated Image API unlocks GPT Image, FLUX.3, Qwen, Krea and more, with controls matched to each model.
 >
-> **🖼️ More Image Models** - Recraft raster lineup (V4.1 Pro, V4 Pro, V4, V3) and xAI's Grok Imagine added to the image dropdown
+> **↔️ Browse your threads** - Back/forward arrows in the results pane show earlier threads without losing your current refine draft. New conversations can resume after VS Code restarts, and a failed generation keeps your previous result.
 >
-> **🔤 More SVG Text Models** - OpenAI GPT-5.4 and Google Gemini Flash 3.5 added for code-based SVG generation
+> **⭐ Updated SVG models** - Claude Opus 5.5, Claude Fable 5.2 and GPT-6.1 Sol join the code-model recommendations. Recraft V4.1 Pro Vector remains the default for native SVG.
 >
-> **🐛 Seedream 4.5 Fix** - Now generates successfully (was 404'ing due to a modality bug)
+> **🛡️ Safer SVGs and reliable saves** - Previews are isolated from the panel, unsafe SVGs are refused, and the saved checkmark appears only after the file is written.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
@@ -98,9 +98,9 @@ Pixel Minion provides two powerful generation tabs in a dedicated sidebar panel:
 
 1. **Choose a tab** - Image or SVG generation
 2. **Enter a prompt** - Describe what you want to create
-3. **Select options** - Model, aspect ratio, seed (optional)
+3. **Select options** - For images, choose Conversation or Single Shot, then a model and its supported aspect ratio, resolution and seed options
 4. **Generate** - Click the Generate button
-5. **Refine** - Use the chat input to iterate on results
+5. **Refine** - Use the follow-up input where the model supports it; use the results-pane arrows to browse earlier image threads
 
 **Accessing Settings:**
 
@@ -123,7 +123,7 @@ Click the **gear icon** in the Pixel Minion panel header to open settings.
    - Click the **gear icon** in Pixel Minion's panel header
    - Paste your key in the "OpenRouter API Key" field
    - Your key is securely stored in your OS keychain
-   - Changes save automatically
+   - Click Save to apply the key
 
 <p align="center">
   <img src="screenshots/settings-apikey.png" alt="Image Generation Controls" width="500"/>
@@ -148,9 +148,10 @@ Generate images from text prompts or refine existing images with AI.
 - **Text-to-Image** - Describe what you want, get an image
 - **Image-to-Image** - Upload reference images for context
 - **SVG Context** - Attach SVG files in Image-to-Image
-- **Multi-Turn Conversations** - Refine results through iterative prompts
-- **Aspect Ratio Control** - Choose from 1:1, 16:9, 9:16, 4:3, 3:4
-- **Seed Control** - Set a seed for reproducible results
+- **Conversation or Single Shot** - Keep the full conversation with compatible models, or send a prompt and references for each generation
+- **Thread Navigation** - Browse previous threads with the arrows in the results pane; save images or start a new thread from one
+- **Aspect Ratio and Resolution** - Choose from the selected model's supported sizes, including Auto where available
+- **Seed Control** - Set a seed when the model supports one
 - **Enhance Prompt** - AI-powered prompt enhancement button
 - **Token Usage** - See tokens and cost per generation
 
@@ -158,15 +159,17 @@ Generate images from text prompts or refine existing images with AI.
 
 | Model | Description |
 |-------|-------------|
-| **Nano Banana 2** | Recommended - Gemini 3.1 Flash Image Preview |
-| **Nano Banana 10/25** | Gemini 2.5 Flash Image |
-| **Nano Banana 8/25** | Gemini 2.5 Flash Image Preview |
-| **Nano Banana Pro** | Gemini 3 Pro Image Preview |
-| **GPT-5.4 Image 2** | OpenAI's latest premium image model |
-| **GPT-5 Image Mini** | OpenAI's efficient image model |
-| **GPT-5 Image** | OpenAI's premium image model |
-| **FLUX.2** | Black Forest Labs models |
-| **Riverflow V2** | Sourceful fast and pro image models |
+| **Nano Banana 2 / 2.1 / Pro** | Google's image models, with Conversation support; Nano Banana 2 is the default |
+| **GPT Image 2 / 2.5 / 2.6** | OpenAI image generation through Single Shot |
+| **GPT-5 image models** | Conversation support; the browser shows retirement notices where applicable |
+| **FLUX.3 / FLUX.3 Klein** | Black Forest Labs image models |
+| **Qwen Image 3 / 3 Pro / 2.1 Turbo** | Qwen image generation |
+| **Krea K3 Edit / Recraft Styles** | Models that require reference images |
+| **Seedream / MAI-Image / Riverflow / Grok Imagine** | Additional image families in the model browser |
+
+Search the model browser or group it by provider, family or release date. Each card shows the model's supported options and pricing basis. The list is filtered by the selected mode.
+
+The newest five earlier threads are retained across reloads, subject to the saved-history size limit. Save images you want to keep; a note explains when previews or older threads will be omitted. Threads created before v1.4.0 open as Single Shot because they have no stored conversation transcript.
 
 **Best Practices:**
 
@@ -193,7 +196,7 @@ Generate images from text prompts or refine existing images with AI.
 
 ### ✏️ SVG Generation
 
-Generate vector graphics as code using powerful text models.
+Generate native vector graphics with Recraft or SVG markup with text models.
 
 <p align="center">
   <img src="screenshots/svg-generation-result.png" alt="SVG Generation" width="500"/>
@@ -206,7 +209,8 @@ Generate vector graphics as code using powerful text models.
 - **Reference Image** - Upload an image for the AI to vectorize or reference. ( this is not perfect - ha )
 - **Multi-Size Preview** - See your SVG at 32px, 64px, and 128px
 - **Code View** - View and copy the raw SVG code
-- **Multi-Turn Conversations** - Refine your SVG through iteration
+- **Multi-Turn Conversations** - Refine code-model SVGs through iteration; native Recraft SVGs use a new generation for each change
+- **Isolated Previews** - Generated SVG cannot restyle the panel; documents that contain unsafe content cannot be previewed or saved
 - **Token Usage** - See tokens and cost per generation
 - **Easy Debug View** - Click "Bug" in top right corner to launch output and view errors or console messages.
 
@@ -214,9 +218,13 @@ Generate vector graphics as code using powerful text models.
 
 | Model | Description |
 |-------|-------------|
-| **GPT-5.1 Codex** | Default - OpenAI's code-optimized model / **Recommended** |
-| **Gemini Pro 3.0** | Google's latest text model / *Runner up* |
-| **Claude Opus 4.5** | Anthropic's frontier model / Ok |
+| **Recraft V4.1 Pro Vector** | Default — native SVG, 1:1 output |
+| **Recraft V4.1 Vector** | Lower-cost native SVG, 1:1 output |
+| **Claude Opus 5.5 / Fable 5.2** | Recommended for SVG code generation |
+| **GPT-6.1 Sol** | Recommended for SVG code generation |
+| **Gemini 4 Argon / Gemini 3.8 Flash** | Additional SVG code models |
+
+The model browser separates Native SVG from SVG code models and includes additional Anthropic, OpenAI and xAI options.
 
 **Best Practices:**
 
@@ -280,9 +288,9 @@ Click the **gear icon** in the Pixel Minion header for settings:
 ### Model Selection
 
 - **Image Model** - Model for image generation (recommended: Nano Banana 2)
-- **SVG Model** - Model for SVG generation (recommended: GPT-5.3 Codex)
+- **SVG Model** - Model for SVG generation (default: Recraft V4.1 Pro Vector; code recommendations include Claude Opus 5.5, Claude Fable 5.2 and GPT-6.1 Sol)
 
-All settings save automatically and sync with your VS Code preferences.
+Picker selections save automatically and sync with your VS Code preferences. To enter a custom model ID, use the field beneath the picker and press Use or Enter. API keys have explicit Save and Clear controls.
 
 <a id="settings-model-override"></a>
 <p align="center">
@@ -307,10 +315,7 @@ All settings save automatically and sync with your VS Code preferences.
 </p>
 <p align="center"><em>Keep Track of Tokens & Cost</em></p>
 
-<p align="center">
-  <img src="screenshots/settings-token-usage.png" alt="SVG Multi-Size Preview" width="500"/>
-</p>
-<p align="center"><em>Reset Token Usage In Settings</em></p>
+The header shows your OpenRouter balance. Expand it for account and key-limit details, the latest request's usage, and a refresh control. A failed refresh keeps the last known figures marked as stale; changing API keys clears the previous account's figures immediately.
 
 ---
 

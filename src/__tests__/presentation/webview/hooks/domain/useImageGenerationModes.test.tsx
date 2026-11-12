@@ -556,7 +556,7 @@ describe('the Image tab', () => {
   it('keeps custom ids visible and usable in Single Shot while Conversation stays strict', () => {
     const { unmount } = render(<View initial={{ mode: 'edit', model: 'vendor/unknown', prompt: 'A tree' }} />);
     expect(screen.getByRole('button', { name: /Current model: Custom: vendor\/unknown/ })).toBeTruthy();
-    expect(screen.getByText(/runs as Single Shot through \/images with automatic dimensions/)).toBeTruthy();
+    expect(screen.getByText(/runs as Single Shot with the options shown above/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /⚡ Generate/ }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: /⚡ Generate/ }));
     expect(posted().payload).toMatchObject({ mode: 'edit', model: 'vendor/unknown', aspectRatio: 'auto' });
