@@ -16,7 +16,7 @@
  * grows with the conversation, then the sticky refine bar.
  */
 import React from 'react';
-import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration';
+import { UseImageGenerationReturn, referenceRequirementNote } from '../../hooks/domain/useImageGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { ResolutionSelector } from '../image/ResolutionSelector';
@@ -75,6 +75,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
+    followUpSizeWarning,
     referenceIssue,
     addReferenceImage,
     removeReferenceImage,
@@ -98,6 +99,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   } = imageGeneration;
   const capabilities = imageRouteCapabilities(model, mode);
   const referenceLimits = capabilities?.referenceImages;
+  const requirementNote = referenceRequirementNote(capabilities);
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
     && imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0;
@@ -217,13 +219,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
               ⚠️ {referenceImageSizeWarning}
             </div>
           )}
-          {referenceLimits && referenceLimits.min > 0 && (
-            <div className="generation-note">
-              {capabilities?.referenceMimeTypes
-                ? `Requires ${referenceLimits.min}–${referenceLimits.max} PNG, JPEG, or WebP style references, each at least 256 px on its shortest edge.`
-                : `Requires ${referenceLimits.min}–${referenceLimits.max} reference images: this model edits the images you attach.`}
-            </div>
-          )}
+          {requirementNote && <div className="generation-note">{requirementNote}</div>}
           {referenceIssue && (
             <div className="generation-warning" role="status">
               {referenceIssue}
@@ -325,6 +321,10 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             defaultMessage="Generating image..."
           />
         </div>
+        {/* Beside the refine bar: what a follow-up would send */}
+        {followUpSizeWarning && !threadIsTextOnly && (
+          <div className="generation-warning" role="status">⚠️ {followUpSizeWarning}</div>
+        )}
       </div>
 
       {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}

@@ -36,10 +36,12 @@ import {
 } from '@messages';
 import {
   DEFAULT_IMAGE_MODEL,
+  OPENROUTER_IMAGE_MODELS,
   defaultImageMode,
   imageModeLabel,
   imageRouteCapabilities,
 } from '@shared/models';
+import type { ImageRouteCapabilities } from '@shared/models';
 import { imageExtensionForMime } from '../../../../shared/media/imageFormats';
 import { newRequestId } from '../../utils/requestId';
 import {
@@ -49,14 +51,6 @@ import {
   IMAGE_HISTORY_DRAFT_RESERVE_BYTES,
   IMAGE_HISTORY_RESTORED_WARNING,
 } from './imageHistoryPersistence';
-
-// Sourceful models have a 4.5MB request size limit for reference images
-const SOURCEFUL_SIZE_LIMIT_BYTES = 4.5 * 1024 * 1024; // 4.5MB
-
-/** Check if a model ID belongs to Sourceful provider */
-export function isSourcefulModel(modelId: string): boolean {
-  return modelId.startsWith('sourceful/');
-}
 
 /**
  * The ratio to keep when the model (or mode) changes: the current one if the
@@ -85,8 +79,65 @@ export function calculateBase64Size(dataUrls: string[]): number {
   }, 0);
 }
 
-function referenceCountText(limits: { min: number; max: number }): string {
-  return limits.min === limits.max ? `${limits.min}` : `${limits.min}–${limits.max}`;
+/** "exactly 1 reference image", "0–3 reference images": how many a route takes. */
+function referenceCountText(limits: { min: number; max: number }, noun = 'reference image'): string {
+  const count = limits.min === limits.max ? `exactly ${limits.min}` : `${limits.min}–${limits.max}`;
+  return `${count} ${noun}${limits.min === 1 && limits.max === 1 ? '' : 's'}`;
+}
+
+const MIME_LABELS: Record<string, string> = { 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/webp': 'WebP' };
+
+/** "PNG", "PNG or JPEG", "PNG, JPEG, or WebP". */
+function formatList(words: readonly string[]): string {
+  if (words.length < 3) return words.join(' or ');
+  return `${words.slice(0, -1).join(', ')}, or ${words[words.length - 1]}`;
+}
+
+/**
+ * The note under the uploader for a route that requires references, or null.
+ * Its wording comes from catalog fields only: the count bounds, the format
+ * list, and `referenceRole` for what the model does with them.
+ */
+export function referenceRequirementNote(capabilities: ImageRouteCapabilities | undefined): string | null {
+  const limits = capabilities?.referenceImages;
+  if (!limits || limits.min === 0) return null;
+  const formats = capabilities?.referenceMimeTypes?.length
+    ? `${formatList(capabilities.referenceMimeTypes.map(mime => MIME_LABELS[mime] ?? mime))} `
+    : '';
+  switch (capabilities?.referenceRole) {
+    case 'style':
+      return `Requires ${referenceCountText(limits, `${formats}style reference`)}: this model makes a new image in their style.`;
+    case 'edit':
+      return `Requires ${referenceCountText(limits, `${formats}reference image`)}: this model edits the images you attach.`;
+    default:
+      return `Requires ${referenceCountText(limits, `${formats}reference image`)}.`;
+  }
+}
+
+/** Megabytes with one decimal, for size warnings. */
+function megabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
+/**
+ * How far the images one request carries exceed the route's request-size
+ * limit (`maxRequestBytes`, a catalog field), or null when they fit or the
+ * route states no limit. Pass only what the request sends as images: an SVG
+ * attachment goes as text.
+ */
+export function imagesOverRequestLimit(
+  modelId: string,
+  mode: ImageGenerationMode,
+  images: readonly string[]
+): { totalBytes: number; limitBytes: number } | null {
+  const limitBytes = imageRouteCapabilities(modelId, mode)?.maxRequestBytes;
+  if (!limitBytes || images.length === 0) return null;
+  const totalBytes = calculateBase64Size([...images]);
+  return totalBytes > limitBytes ? { totalBytes, limitBytes } : null;
+}
+
+function modelName(modelId: string): string {
+  return OPENROUTER_IMAGE_MODELS.find(entry => entry.id === modelId)?.displayName ?? modelId;
 }
 
 /**
@@ -110,7 +161,7 @@ export function referenceImageIssue(
       return `This model needs at least ${limits.min} reference ${limits.min === 1 ? 'image' : 'images'}. Add one to generate.`;
     }
     if (count > limits.max) {
-      return `This model accepts ${referenceCountText(limits)} reference images; ${count} attached. Remove ${count - limits.max} to generate.`;
+      return `This model accepts ${referenceCountText(limits)}; ${count} attached. Remove ${count - limits.max} to generate.`;
     }
   }
   const mimeTypes = capabilities?.referenceMimeTypes;
@@ -211,7 +262,10 @@ export interface ImageGenerationState {
   /** Index in `referenceImages` of the SVG attachment's preview (sent as text, not as an image), or null. */
   referenceSvgIndex: number | null;
   referenceSvgWarning: string | null;
-  referenceImageSizeWarning: string | null; // Warning for Sourceful 4.5MB limit
+  /** The references Generate would send exceed the model's request-size limit (a warning; Generate stays enabled). */
+  referenceImageSizeWarning: string | null;
+  /** A Single Shot follow-up re-sends the latest output, which exceeds the thread model's request-size limit. */
+  followUpSizeWarning: string | null;
   /** Why the attached references can't go to the selected model (Generate is blocked), or null. */
   referenceIssue: string | null;
   seedInput: string;          // seed input field (empty = auto-generate)
@@ -324,7 +378,6 @@ export function useImageGeneration(
   const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
   const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
   const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
-  const [referenceImageSizeWarning, setReferenceImageSizeWarning] = useState<string | null>(null);
   const [seedInput, setSeedInput] = useState('');
   // The bounded snapshot stores the latest images once, in the history.
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
@@ -378,24 +431,6 @@ export function useImageGeneration(
     }
   }, [selectedModel, applyModel]);
 
-  // Check reference image size for Sourceful models (4.5MB limit)
-  useEffect(() => {
-    if (!isSourcefulModel(model) || referenceImages.length === 0) {
-      setReferenceImageSizeWarning(null);
-      return;
-    }
-
-    const totalBytes = calculateBase64Size(referenceImages);
-    if (totalBytes > SOURCEFUL_SIZE_LIMIT_BYTES) {
-      const sizeMB = (totalBytes / (1024 * 1024)).toFixed(1);
-      setReferenceImageSizeWarning(
-        `Reference images total ${sizeMB}MB, exceeding Sourceful's 4.5MB limit. Generation may fail.`
-      );
-    } else {
-      setReferenceImageSizeWarning(null);
-    }
-  }, [model, referenceImages]);
-
   // The SVG attachment's preview is not sent as an image: its markup goes
   // as `referenceSvgText`, which the host appends to the prompt once.
   const imagesForApi = useMemo(
@@ -406,6 +441,23 @@ export function useImageGeneration(
     () => referenceImageIssue(model, mode, imagesForApi),
     [model, mode, imagesForApi]
   );
+  // Request-size limits (Sourceful's 4.5 MB) come from the catalog, and are
+  // checked against what each request actually sends as images.
+  const referenceImageSizeWarning = useMemo(() => {
+    const over = imagesOverRequestLimit(model, mode, imagesForApi);
+    return over
+      ? `Reference images total ${megabytes(over.totalBytes)} MB, over ${modelName(model)}’s ${megabytes(over.limitBytes)} MB request limit. Generation may fail.`
+      : null;
+  }, [model, mode, imagesForApi]);
+  const followUpSizeWarning = useMemo(() => {
+    // Only a Single Shot follow-up re-sends images: the latest output.
+    if (!conversationId || threadSettings?.mode !== 'edit') return null;
+    const latest = conversationHistory[conversationHistory.length - 1]?.images.map(image => image.data) ?? [];
+    const over = imagesOverRequestLimit(threadSettings.model, 'edit', latest);
+    return over
+      ? `The latest image is ${megabytes(over.totalBytes)} MB, over ${modelName(threadSettings.model)}’s ${megabytes(over.limitBytes)} MB request limit. A follow-up sends it again, so it may fail.`
+      : null;
+  }, [conversationId, threadSettings, conversationHistory]);
 
   /** Release a thread the user can no longer reach: host memory and its saved transcript. */
   const releaseThread = useCallback((id: string) => {
@@ -804,6 +856,7 @@ export function useImageGeneration(
     referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
+    followUpSizeWarning,
     referenceIssue,
     seedInput,
     generatedImages,

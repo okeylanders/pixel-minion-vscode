@@ -36,6 +36,10 @@ export interface ImageRouteCapabilities {
   supportsSeed: boolean;
   referenceImages?: { min: number; max: number };
   referenceMimeTypes?: readonly ('image/png' | 'image/jpeg' | 'image/webp')[];
+  /** From the catalog row: what the model does with its references (wording only). */
+  referenceRole?: 'style' | 'edit';
+  /** From the catalog row: the provider's request-size limit (a warning, not a gate). */
+  maxRequestBytes?: number;
 }
 
 // Chat endpoint records and the routing probe checked 2026-11-07 / 2026-11-12.
@@ -67,6 +71,8 @@ export function imageRouteCapabilities(modelId: string, mode: ImageGenerationMod
       supportsSeed: model.supportsSeed !== false,
       referenceImages: model.referenceImages,
       referenceMimeTypes: model.referenceMimeTypes,
+      referenceRole: model.referenceRole,
+      maxRequestBytes: model.maxRequestBytes,
     };
   }
   if (mode !== 'conversation') return undefined;
@@ -82,6 +88,8 @@ export function imageRouteCapabilities(modelId: string, mode: ImageGenerationMod
     supportsSeed: true,
     referenceImages: model.referenceImages,
     referenceMimeTypes: model.referenceMimeTypes,
+    referenceRole: model.referenceRole,
+    maxRequestBytes: model.maxRequestBytes,
   };
 }
 

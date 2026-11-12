@@ -271,6 +271,43 @@ describe('bounded webview history', () => {
   });
 });
 
+describe('request-size warnings (from the catalog’s maxRequestBytes)', () => {
+  const riverflow = 'sourceful/riverflow-v2-pro';
+  const bigPng = `data:image/png;base64,${'A'.repeat(Math.ceil((5 * 1024 * 1024) / 0.75))}`;
+
+  it('counts only the images Generate sends, never the SVG preview', () => {
+    const { result } = renderHook(() => useImageGeneration({ model: riverflow, prompt: 'A poster' }));
+    // A big SVG goes as text: its preview is not part of the request's images.
+    act(() => result.current.addReferenceImage(`data:image/svg+xml;base64,${'A'.repeat(7 * 1024 * 1024)}`, '<svg/>'));
+    act(() => result.current.addReferenceImage('data:image/png;base64,QUJD'));
+    expect(result.current.referenceImageSizeWarning).toBeNull();
+    act(() => result.current.addReferenceImage(bigPng));
+    expect(result.current.referenceImageSizeWarning).toBe('Reference images total 5.0 MB, over Riverflow V2 Pro’s 4.5 MB request limit. Generation may fail.');
+    // A model whose route states no limit gets no warning for the same images.
+    act(() => result.current.setModel('google/gemini-3.1-flash-image'));
+    expect(result.current.referenceImageSizeWarning).toBeNull();
+  });
+
+  it('warns beside the refine bar when a Single Shot follow-up would re-send an oversized latest image', () => {
+    const big = { ...turn, images: [{ ...image, data: bigPng }] };
+    const thread: Partial<ImageGenerationPersistence> = {
+      model: riverflow, conversationId: 'img-river', conversationHistory: [big],
+      threadSettings: { mode: 'edit', model: riverflow, aspectRatio: '1:1', resolution: 'auto' },
+    };
+    const { result } = renderHook(() => useImageGeneration(thread));
+    expect(result.current.followUpSizeWarning).toMatch(/^The latest image is 5\.0 MB, over Riverflow V2 Pro’s 4\.5 MB request limit/);
+    // Draft controls don't move it: the thread's model owns the follow-up.
+    act(() => result.current.setModel('google/gemini-3.1-flash-image'));
+    expect(result.current.followUpSizeWarning).not.toBeNull();
+    render(<View initial={thread} />);
+    expect(screen.getByText(/A follow-up sends it again, so it may fail/)).toBeTruthy();
+
+    // A Conversation follow-up sends no images from the webview's history.
+    const conversation = renderHook(() => useImageGeneration({ ...existing, conversationHistory: [big] }));
+    expect(conversation.result.current.followUpSizeWarning).toBeNull();
+  });
+});
+
 describe('thread description in the output card', () => {
   it('names the thread’s mode and settings, and says when the controls only apply to a new thread', () => {
     render(<View initial={existing} />);

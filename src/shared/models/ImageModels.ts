@@ -27,7 +27,11 @@
  * `provider-contracts/openrouter-image-endpoints-2026-11-12.json` pins them in
  * a test. Every row is reachable through the Image API (Single Shot); which
  * rows also have a conversational `/chat/completions` route is decided in
- * ImageGenerationModes.ts, not here.
+ * ImageGenerationModes.ts, not here. Two fields are not in those records and
+ * drive only the Image tab's wording and warnings: `referenceRole` (what a
+ * model does with its references, from its description) and
+ * `maxRequestBytes` (Sourceful's 4.5 MB request limit, carried over from the
+ * v1.1.0 size warning).
  *
  * Re-audited 2026-11-07 (prices, capabilities, OpenRouter's media benchmarks;
  * docs/model-catalog-audit-2026-11-07.md) and re-checked 2026-11-12 (no drift).
@@ -53,6 +57,11 @@
  *     GPT Image 2 gets one as the audited OpenAI pick (audit §1e).
  *   - Recraft `*-vector` models live in the SVG catalog (SVGModels.ts):
  *     Pixel's SVG tab is where SVG output belongs.
+ *   - `referenceRole` and `maxRequestBytes` are Pixel fields: Frame infers
+ *     "style reference" wording from `referenceMimeTypes` and keys the
+ *     Sourceful size warning on the `sourceful/` prefix. The Recraft Styles
+ *     descriptions drop Frame's "at least 256 px on its shortest edge": no
+ *     endpoint record states it and nothing checks it.
  */
 
 import type { ImageModelDefinition } from '../types/providers';
@@ -78,8 +87,10 @@ const ASPECT_RATIOS = {
   qwen: ['1:1', '1:2', '1:4', '2:1', '2:3', '3:2', '3:4', '4:1', '4:3', '4:5', '5:4', '9:16', '16:9'],
 } satisfies Record<string, readonly AspectRatio[]>;
 
-/** Recraft Styles accepts only these reference formats (each at least 256 px on its shortest edge). */
+/** Recraft Styles accepts only these reference formats. */
 const RECRAFT_STYLE_REF_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const;
+/** Sourceful's request-size limit (from Pixel v1.1.0's size warning; not in the endpoint records). */
+const SOURCEFUL_MAX_REQUEST_BYTES = 4.5 * 1024 * 1024;
 
 export const OPENROUTER_IMAGE_MODELS: ImageModelDefinition[] = [
   // ── Google Gemini image family (token-billed) ───────────────────────────
@@ -120,7 +131,7 @@ export const OPENROUTER_IMAGE_MODELS: ImageModelDefinition[] = [
   // ── Krea (per-image; the endpoints API now publishes these prices) ──────
   // K3 Edit requires 1–8 references: the Image tab blocks Generate until one is attached and the host
   // refuses a request without one (ImageGenerationModes / OpenRouterImageClient).
-  { id: 'krea/k3-edit', referenceImages: { min: 1, max: 8 }, displayName: 'Krea K3 Edit', description: 'Instruction-following image editing from 1–8 reference images. A reference image is required; this model does not generate from a prompt alone.', imagePricing: { unit: 'image', input: 0.02, output: 0.03, approxUsdPerImage: 0.05, approxNote: '@ 1K · one reference', approxBasis: '$0.03 per 1K output plus $0.02 per 1K input reference (one reference assumed). 2K rates are $0.06 / $0.07. An optional high-thinking surcharge of $0.02 per request applies. OpenRouter’s benchmark measured $0.01, below list; re-check.' }, supportedResolutions: ['1K', '2K'], supportedAspectRatios: ASPECT_RATIOS.krea }, // NEW 2026-10-15 [endpoints]; seed ✓
+  { id: 'krea/k3-edit', referenceImages: { min: 1, max: 8 }, referenceRole: 'edit', displayName: 'Krea K3 Edit', description: 'Instruction-following image editing from 1–8 reference images. A reference image is required; this model does not generate from a prompt alone.', imagePricing: { unit: 'image', input: 0.02, output: 0.03, approxUsdPerImage: 0.05, approxNote: '@ 1K · one reference', approxBasis: '$0.03 per 1K output plus $0.02 per 1K input reference (one reference assumed). 2K rates are $0.06 / $0.07. An optional high-thinking surcharge of $0.02 per request applies. OpenRouter’s benchmark measured $0.01, below list; re-check.' }, supportedResolutions: ['1K', '2K'], supportedAspectRatios: ASPECT_RATIOS.krea }, // NEW 2026-10-15 [endpoints]; seed ✓
   { id: 'krea/krea-2-large', referenceImages: { min: 0, max: 1 }, displayName: 'Krea 2 Large', imagePricing: { unit: 'image', output: 0.06 }, supportedResolutions: ['1K'], supportedAspectRatios: ASPECT_RATIOS.krea }, // ✓ $0.06 (+$0.005 style refs / +$0.01 moodboards) [endpoints]
   { id: 'krea/krea-2-medium', referenceImages: { min: 0, max: 1 }, displayName: 'Krea 2 Medium', imagePricing: { unit: 'image', output: 0.03 }, supportedResolutions: ['1K'], supportedAspectRatios: ASPECT_RATIOS.krea }, // ✓ [endpoints]
   { id: 'krea/krea-2-medium-turbo', referenceImages: { min: 0, max: 1 }, displayName: 'Krea 2 Medium Turbo', imagePricing: { unit: 'image', output: 0.015 }, supportedResolutions: ['1K'], supportedAspectRatios: ASPECT_RATIOS.krea }, // ✓ [endpoints]
@@ -128,12 +139,12 @@ export const OPENROUTER_IMAGE_MODELS: ImageModelDefinition[] = [
   // ── Sourceful Riverflow (per-image) ─────────────────────────────────────
   // [bench] measured V2.6 Pro / V2.5 Pro / V2.5 Fast above list at 1024² with no references (audit O6);
   // the bases say so rather than changing the list price.
-  { id: 'sourceful/riverflow-v2.6-pro', supportsSeed: false, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2.6 Pro', description: 'Flagship Riverflow 2.6: a unified text-to-image and image-to-image workflow with an integrated planning step.', imagePricing: { unit: 'image', output: 0.13, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.15, 4K $0.17. OpenRouter’s benchmark paid a $0.157 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow26 }, // NEW 2026-10-29 [endpoints]
-  { id: 'sourceful/riverflow-v2.5-pro', supportsSeed: false, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2.5 Pro', imagePricing: { unit: 'image', output: 0.13, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.15, 4K $0.17. OpenRouter’s benchmark paid a $0.248 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
-  { id: 'sourceful/riverflow-v2.5-fast', supportsSeed: false, referenceImages: { min: 0, max: 4 }, displayName: 'Riverflow V2.5 Fast', imagePricing: { unit: 'image', output: 0.019, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.021. OpenRouter’s benchmark paid a $0.029 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
+  { id: 'sourceful/riverflow-v2.6-pro', supportsSeed: false, maxRequestBytes: SOURCEFUL_MAX_REQUEST_BYTES, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2.6 Pro', description: 'Flagship Riverflow 2.6: a unified text-to-image and image-to-image workflow with an integrated planning step.', imagePricing: { unit: 'image', output: 0.13, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.15, 4K $0.17. OpenRouter’s benchmark paid a $0.157 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow26 }, // NEW 2026-10-29 [endpoints]
+  { id: 'sourceful/riverflow-v2.5-pro', supportsSeed: false, maxRequestBytes: SOURCEFUL_MAX_REQUEST_BYTES, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2.5 Pro', imagePricing: { unit: 'image', output: 0.13, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.15, 4K $0.17. OpenRouter’s benchmark paid a $0.248 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
+  { id: 'sourceful/riverflow-v2.5-fast', supportsSeed: false, maxRequestBytes: SOURCEFUL_MAX_REQUEST_BYTES, referenceImages: { min: 0, max: 4 }, displayName: 'Riverflow V2.5 Fast', imagePricing: { unit: 'image', output: 0.019, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.021. OpenRouter’s benchmark paid a $0.029 median per 1024×1024 image, above list.' }, supportedResolutions: ['1K', '2K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
   // input_reference $0.20 per reference image (input_font $0.03) [endpoints].
-  { id: 'sourceful/riverflow-v2-pro', supportsSeed: false, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2 Pro', imagePricing: { unit: 'image', input: 0.2, output: 0.15, approxNote: '@ 1K', approxBasis: '1K list rate; 4K $0.33. Each reference image adds $0.20.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
-  { id: 'sourceful/riverflow-v2-fast', supportsSeed: false, referenceImages: { min: 0, max: 4 }, displayName: 'Riverflow V2 Fast', imagePricing: { unit: 'image', input: 0.2, output: 0.02, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.04. Each reference image adds $0.20.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
+  { id: 'sourceful/riverflow-v2-pro', supportsSeed: false, maxRequestBytes: SOURCEFUL_MAX_REQUEST_BYTES, referenceImages: { min: 0, max: 10 }, displayName: 'Riverflow V2 Pro', imagePricing: { unit: 'image', input: 0.2, output: 0.15, approxNote: '@ 1K', approxBasis: '1K list rate; 4K $0.33. Each reference image adds $0.20.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
+  { id: 'sourceful/riverflow-v2-fast', supportsSeed: false, maxRequestBytes: SOURCEFUL_MAX_REQUEST_BYTES, referenceImages: { min: 0, max: 4 }, displayName: 'Riverflow V2 Fast', imagePricing: { unit: 'image', input: 0.2, output: 0.02, approxNote: '@ 1K', approxBasis: '1K list rate; 2K $0.04. Each reference image adds $0.20.' }, supportedResolutions: ['1K', '2K', '4K'], supportedAspectRatios: ASPECT_RATIOS.riverflow },
 
   // ── xAI Grok Image (per-image) ──────────────────────────────────────────
   // Replaces the delisted grok-imagine-image-quality. Variants low_1k $0.04 … medium_2k $0.08, input image $0.01 [endpoints]; [bench] $0.06.
@@ -143,8 +154,8 @@ export const OPENROUTER_IMAGE_MODELS: ImageModelDefinition[] = [
   // Styles / Styles Pro require 1–10 PNG, JPEG or WebP style references (Generate is blocked until one
   // is attached). V4.1 Flash accepts none: its uploader is disabled and a Single Shot follow-up, which
   // would send the previous image, is not offered. The host refuses both mismatches before a request.
-  { id: 'recraft/recraft-v4-styles-pro', supportsSeed: false, referenceImages: { min: 1, max: 10 }, referenceMimeTypes: RECRAFT_STYLE_REF_MIME, displayName: 'Recraft V4 Styles Pro', description: 'Create a new ~2K raster image in the style of 1–10 reference images. This reproduces style rather than editing the references; each must be PNG, JPEG, or WebP and at least 256 px on its shortest edge.', imagePricing: { unit: 'image', output: 0.1, approxUsdPerImage: 0.105, approxNote: '· one image', approxBasis: '$0.10 per image plus $0.005 style creation per request; the fee is shared across images in a multi-image request.' }, supportedAspectRatios: ASPECT_RATIOS.recraftStyles }, // ✓ [endpoints]; [bench] $0.105
-  { id: 'recraft/recraft-v4-styles', supportsSeed: false, referenceImages: { min: 1, max: 10 }, referenceMimeTypes: RECRAFT_STYLE_REF_MIME, displayName: 'Recraft V4 Styles', description: 'Create a new ~1K raster image in the style of 1–10 reference images. This reproduces style rather than editing the references; each must be PNG, JPEG, or WebP and at least 256 px on its shortest edge.', imagePricing: { unit: 'image', output: 0.035, approxUsdPerImage: 0.04, approxNote: '· one image', approxBasis: '$0.035 per image plus $0.005 style creation per request; the fee is shared across images in a multi-image request.' }, supportedAspectRatios: ASPECT_RATIOS.recraftStyles }, // ✓ [endpoints]; [bench] $0.04
+  { id: 'recraft/recraft-v4-styles-pro', supportsSeed: false, referenceImages: { min: 1, max: 10 }, referenceMimeTypes: RECRAFT_STYLE_REF_MIME, referenceRole: 'style', displayName: 'Recraft V4 Styles Pro', description: 'Create a new ~2K raster image in the style of 1–10 reference images. This reproduces style rather than editing the references; each must be PNG, JPEG, or WebP.', imagePricing: { unit: 'image', output: 0.1, approxUsdPerImage: 0.105, approxNote: '· one image', approxBasis: '$0.10 per image plus $0.005 style creation per request; the fee is shared across images in a multi-image request.' }, supportedAspectRatios: ASPECT_RATIOS.recraftStyles }, // ✓ [endpoints]; [bench] $0.105
+  { id: 'recraft/recraft-v4-styles', supportsSeed: false, referenceImages: { min: 1, max: 10 }, referenceMimeTypes: RECRAFT_STYLE_REF_MIME, referenceRole: 'style', displayName: 'Recraft V4 Styles', description: 'Create a new ~1K raster image in the style of 1–10 reference images. This reproduces style rather than editing the references; each must be PNG, JPEG, or WebP.', imagePricing: { unit: 'image', output: 0.035, approxUsdPerImage: 0.04, approxNote: '· one image', approxBasis: '$0.035 per image plus $0.005 style creation per request; the fee is shared across images in a multi-image request.' }, supportedAspectRatios: ASPECT_RATIOS.recraftStyles }, // ✓ [endpoints]; [bench] $0.04
   { id: 'recraft/recraft-v4.1-flash', supportsSeed: false, referenceImages: { min: 0, max: 0 }, displayName: 'Recraft V4.1 Flash', description: 'Fast text-to-image generation for quick visual drafts. This route does not accept reference images.', imagePricing: { unit: 'image', output: 0.007 }, supportedAspectRatios: ASPECT_RATIOS.recraft }, // ✓ [endpoints]
   { id: 'recraft/recraft-v4.1-pro', supportsSeed: false, referenceImages: { min: 0, max: 1 }, displayName: 'Recraft V4.1 Pro', imagePricing: { unit: 'image', output: 0.21 }, supportedAspectRatios: ASPECT_RATIOS.recraft },
   { id: 'recraft/recraft-v4.1', supportsSeed: false, referenceImages: { min: 0, max: 1 }, displayName: 'Recraft V4.1', imagePricing: { unit: 'image', output: 0.035 }, supportedAspectRatios: ASPECT_RATIOS.recraft },

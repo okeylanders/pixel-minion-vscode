@@ -2,45 +2,66 @@
  * Tests for useImageGeneration utility functions
  */
 import {
-  isSourcefulModel,
   calculateBase64Size,
+  imagesOverRequestLimit,
   normalizeAspectRatioForModel,
   normalizeResolutionForModel,
   referenceImageIssue,
+  referenceRequirementNote,
 } from '../../../../../presentation/webview/hooks/domain/useImageGeneration';
+import { imageRouteCapabilities } from '@shared/models';
+import type { ImageRouteCapabilities } from '@shared/models';
 
-describe('isSourcefulModel', () => {
-  it('returns true for Sourceful Riverflow V2 Max Preview', () => {
-    expect(isSourcefulModel('sourceful/riverflow-v2-max-preview')).toBe(true);
+/** A data URL whose base64 payload decodes to about `bytes` bytes. */
+const dataUrlOf = (bytes: number) => `data:image/png;base64,${'A'.repeat(Math.ceil(bytes / 0.75))}`;
+const MB = 1024 * 1024;
+
+describe('imagesOverRequestLimit (the request-size limit is a catalog field)', () => {
+  it('reports images over a Sourceful route’s 4.5 MB limit', () => {
+    expect(imagesOverRequestLimit('sourceful/riverflow-v2-pro', 'edit', [dataUrlOf(3 * MB), dataUrlOf(2 * MB)]))
+      .toEqual({ totalBytes: expect.any(Number), limitBytes: 4.5 * MB });
+    expect(imagesOverRequestLimit('sourceful/riverflow-v2-pro', 'edit', [dataUrlOf(4 * MB)])).toBeNull();
   });
 
-  it('returns true for Sourceful Riverflow V2 Standard Preview', () => {
-    expect(isSourcefulModel('sourceful/riverflow-v2-standard-preview')).toBe(true);
+  it('says nothing for a route that states no limit, whatever its id', () => {
+    expect(imagesOverRequestLimit('google/gemini-2.5-flash-image', 'edit', [dataUrlOf(20 * MB)])).toBeNull();
+    // An id the catalog doesn't list states no limit, even under sourceful/.
+    expect(imagesOverRequestLimit('sourceful/riverflow-v9-unlisted', 'edit', [dataUrlOf(20 * MB)])).toBeNull();
   });
 
-  it('returns true for Sourceful Riverflow V2 Fast Preview', () => {
-    expect(isSourcefulModel('sourceful/riverflow-v2-fast-preview')).toBe(true);
+  it('says nothing when the request carries no images', () => {
+    expect(imagesOverRequestLimit('sourceful/riverflow-v2-pro', 'edit', [])).toBeNull();
+  });
+});
+
+describe('referenceRequirementNote (wording from catalog fields only)', () => {
+  it('names style references, their formats and count for a style route', () => {
+    expect(referenceRequirementNote(imageRouteCapabilities('recraft/recraft-v4-styles', 'edit')))
+      .toBe('Requires 1–10 PNG, JPEG, or WebP style references: this model makes a new image in their style.');
   });
 
-  it('returns false for Google Gemini models', () => {
-    expect(isSourcefulModel('google/gemini-2.5-flash-image')).toBe(false);
+  it('says an edit route edits what you attach', () => {
+    expect(referenceRequirementNote(imageRouteCapabilities('krea/k3-edit', 'edit')))
+      .toBe('Requires 1–8 reference images: this model edits the images you attach.');
   });
 
-  it('returns false for OpenAI models', () => {
-    expect(isSourcefulModel('openai/gpt-5-image')).toBe(false);
+  it('says “exactly” for a fixed count, and claims nothing it wasn’t told', () => {
+    const fixed: ImageRouteCapabilities = {
+      transport: 'images', supportedAspectRatios: ['auto'], supportedResolutions: [], supportsSeed: false,
+      referenceImages: { min: 1, max: 1 },
+    };
+    expect(referenceRequirementNote(fixed)).toBe('Requires exactly 1 reference image.');
+    expect(referenceRequirementNote({ ...fixed, referenceImages: { min: 2, max: 2 }, referenceMimeTypes: ['image/png'] }))
+      .toBe('Requires exactly 2 PNG reference images.');
+    // A format list alone no longer implies style references.
+    expect(referenceRequirementNote({ ...fixed, referenceImages: { min: 1, max: 4 }, referenceMimeTypes: ['image/png', 'image/webp'] }))
+      .toBe('Requires 1–4 PNG or WebP reference images.');
   });
 
-  it('returns false for Black Forest Labs models', () => {
-    expect(isSourcefulModel('black-forest-labs/flux.2-max')).toBe(false);
-  });
-
-  it('returns false for empty string', () => {
-    expect(isSourcefulModel('')).toBe(false);
-  });
-
-  it('is case-sensitive (lowercase only)', () => {
-    expect(isSourcefulModel('Sourceful/riverflow-v2-max-preview')).toBe(false);
-    expect(isSourcefulModel('SOURCEFUL/riverflow-v2-max-preview')).toBe(false);
+  it('has no note where references are optional or the route is unknown', () => {
+    expect(referenceRequirementNote(imageRouteCapabilities('recraft/recraft-v4.1', 'edit'))).toBeNull();
+    expect(referenceRequirementNote(imageRouteCapabilities('vendor/custom', 'edit'))).toBeNull();
+    expect(referenceRequirementNote(undefined)).toBeNull();
   });
 });
 
