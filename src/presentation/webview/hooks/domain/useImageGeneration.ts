@@ -58,6 +58,7 @@ import {
 import type { ImageRouteCapabilities } from '@shared/models';
 import { imageExtensionForMime } from '../../../../shared/media/imageFormats';
 import { newRequestId } from '../../utils/requestId';
+import { restoredImageState } from './restoredImageState';
 import {
   boundedImageHistory,
   mergeImageHistoryDraft,
@@ -413,19 +414,24 @@ export function useImageGeneration(
 ): UseImageGenerationReturn {
   const vscode = useVSCodeApi();
 
+  // Saved state is read once, and only what the tab can render: a malformed
+  // value would otherwise crash every reload (restoredImageState).
+  const [restored] = useState(() => restoredImageState(initialState));
+  const saved = restored.state;
+
   // State
-  const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
-  const [model, setModelState] = useState(initialState?.model ?? (sync?.selectedModel ?? DEFAULT_IMAGE_MODEL));
+  const [prompt, setPrompt] = useState(saved.prompt ?? '');
+  const [model, setModelState] = useState(saved.model ?? (sync?.selectedModel ?? DEFAULT_IMAGE_MODEL));
   const [threadSettings, setThreadSettings] = useState<ImageThreadSettings | null>(
-    () => restoredThreadSettings(initialState, model)
+    () => restoredThreadSettings(saved, model)
   );
   // The saved toggle wins. State from before the toggle keeps the restored
   // thread's mode; an untagged history opens as Single Shot (no transcript to
   // continue a conversation from); otherwise the mode follows the model.
   const [mode, setModeState] = useState<ImageGenerationMode>(() =>
-    initialState?.mode
+    saved.mode
     ?? threadSettings?.mode
-    ?? (initialState?.conversationHistory?.length ? 'edit' : defaultImageMode(model)));
+    ?? (saved.conversationHistory?.length ? 'edit' : defaultImageMode(model)));
   const modeRef = useRef(mode);
   modeRef.current = mode;
   // Until the user commits to a mode, it follows the selected model by
@@ -435,17 +441,17 @@ export function useImageGeneration(
   // or a restored thread commits it. Only a committed mode is saved, so a
   // reload before the settings arrive still follows them.
   const [modeChosen, setModeChosen] = useState(
-    () => initialState?.mode !== undefined || threadSettings !== null || !!initialState?.conversationHistory?.length
+    () => saved.mode !== undefined || threadSettings !== null || !!saved.conversationHistory?.length
   );
   const modeChosenRef = useRef(modeChosen);
   modeChosenRef.current = modeChosen;
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    () => normalizeAspectRatioForModel(model, initialState?.aspectRatio ?? '1:1', mode)
+    () => normalizeAspectRatioForModel(model, saved.aspectRatio ?? '1:1', mode)
   );
   const [resolution, setResolution] = useState<ImageResolution>(
-    () => normalizeResolutionForModel(model, initialState?.resolution ?? 'auto', mode)
+    () => normalizeResolutionForModel(model, saved.resolution ?? 'auto', mode)
   );
-  const [archivedThreads, setArchivedThreads] = useState<ArchivedImageThread[]>(initialState?.archivedThreads ?? []);
+  const [archivedThreads, setArchivedThreads] = useState<ArchivedImageThread[]>(saved.archivedThreads ?? []);
   // Reference images are NOT persisted - they're per-request context
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
@@ -454,15 +460,15 @@ export function useImageGeneration(
   const [seedInput, setSeedInput] = useState('');
   // The bounded snapshot stores the latest images once, in the history.
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
-    () => initialState?.conversationHistory?.slice(-1)[0]?.images ?? initialState?.generatedImages ?? []
+    () => saved.conversationHistory?.slice(-1)[0]?.images ?? saved.generatedImages ?? []
   );
   const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>(
-    initialState?.conversationHistory ?? []
+    saved.conversationHistory ?? []
   );
   const [conversationId, setConversationId] = useState<string | null>(
-    initialState?.conversationId ?? null
+    saved.conversationId ?? null
   );
-  const [recoveryWarning, setRecoveryWarning] = useState<string | undefined>(initialState?.recoveryWarning);
+  const [recoveryWarning, setRecoveryWarning] = useState<string | undefined>(saved.recoveryWarning);
   const [savingImageIds, setSavingImageIds] = useState<ReadonlySet<string>>(() => new Set());
   const [savedImageIds, setSavedImageIds] = useState<ReadonlySet<string>>(() => new Set());
   // Outstanding requests, matched by correlation id. Refs, not state: the
@@ -542,6 +548,15 @@ export function useImageGeneration(
       newRequestId(CLEAR_REQUEST_PREFIX)
     ));
   }, [vscode]);
+
+  // A saved thread that couldn't be restored can't be reached again:
+  // release it rather than leave its transcript orphaned. Once.
+  const releasedUnrestored = useRef(false);
+  useEffect(() => {
+    if (releasedUnrestored.current || !restored.unrestoredThreadId) return;
+    releasedUnrestored.current = true;
+    releaseThread(restored.unrestoredThreadId);
+  }, [restored, releaseThread]);
 
   /** Put a replaced thread back on screen (its Generate failed; the host still holds it). */
   const restoreThread = useCallback((thread: ReplacedThread) => {
