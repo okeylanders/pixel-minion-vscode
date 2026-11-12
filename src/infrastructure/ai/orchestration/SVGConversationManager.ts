@@ -8,7 +8,7 @@
  */
 import { TextMessage } from '../clients/TextClient';
 import { LoggingService } from '@logging';
-import { AspectRatio, ASPECT_RATIO_DIMENSIONS } from '@messages';
+import { SVGAspectRatio, ASPECT_RATIO_DIMENSIONS } from '@messages';
 
 /**
  * State for a single SVG generation conversation
@@ -17,7 +17,7 @@ export interface SVGConversationState {
   id: string;
   messages: TextMessage[];
   model: string;
-  aspectRatio: AspectRatio;
+  aspectRatio: SVGAspectRatio;
   turnNumber: number;
 }
 
@@ -56,7 +56,7 @@ export class SVGConversationManager {
   /**
    * Create a new conversation with system prompt configured for aspect ratio
    */
-  create(model: string, aspectRatio: AspectRatio): SVGConversationState {
+  create(model: string, aspectRatio: SVGAspectRatio): SVGConversationState {
     const id = `svg-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     // Get dimensions for the aspect ratio
@@ -94,7 +94,7 @@ export class SVGConversationManager {
   getOrCreate(
     id: string | undefined,
     model: string,
-    aspectRatio: AspectRatio
+    aspectRatio: SVGAspectRatio
   ): SVGConversationState {
     if (id) {
       const existing = this.conversations.get(id);
@@ -183,7 +183,7 @@ export class SVGConversationManager {
   rehydrate(
     conversationId: string,
     model: string,
-    aspectRatio: AspectRatio,
+    aspectRatio: SVGAspectRatio,
     history: SVGRehydrationTurn[]
   ): SVGConversationState {
     const conversation: SVGConversationState = {

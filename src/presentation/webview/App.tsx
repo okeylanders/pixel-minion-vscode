@@ -49,8 +49,10 @@ const TABS: Tab[] = [
 export function App(): JSX.Element {
   const { saveState, loadState } = usePersistence();
 
-  // Load persisted state
-  const persistedState = loadState();
+  // Read the persisted state once, at mount. Every later render would read
+  // back the snapshot this App just wrote, and a value fed from it into the
+  // next snapshot (a warning, say) would describe an older state forever.
+  const [persistedState] = useState(loadState);
 
   // Active tab state. A saved id no tab renders (e.g. the old 'settings'
   // tab, now an overlay) falls back to Image instead of an empty panel.

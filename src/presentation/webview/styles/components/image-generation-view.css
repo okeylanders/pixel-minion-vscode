@@ -16,3 +16,27 @@
   flex-shrink: 0;
   margin-left: auto;
 }
+
+/* The thread's own settings (after Frame's .image-thread-description). */
+.image-thread-description {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.image-thread-description strong {
+  color: var(--px-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.image-thread-description p {
+  margin: 0;
+}
+
+.image-thread-settings {
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}

@@ -30,15 +30,37 @@ const isCalendarDate = (value: string | undefined): boolean =>
 
 describe('modelBrowserOptions', () => {
   describe('image pricing labels', () => {
-    it.each(OPENROUTER_IMAGE_MODELS)('shows a per-image comparison for $id', model => {
+    it.each(OPENROUTER_IMAGE_MODELS)('shows a per-image comparison, or says why there is none, for $id', model => {
       const pricing = model.imagePricing;
       const perImage = pricing?.approxUsdPerImage ?? (pricing?.unit === 'image' ? pricing.output : undefined);
+      const option = modelDefinitionToBrowserOption(model);
+      if (perImage === undefined) {
+        // Never a fabricated number: the native rate, with the reason in the details.
+        expect(pricing?.approxNote).toBeTruthy();
+        expect(option.costLabel).toMatch(/per 1M image tokens|per megapixel/);
+        expect(option.costDescription).toContain(`No per-image estimate: cost ${pricing!.approxNote}.`);
+        expect(option.costDescription).toContain(pricing!.approxBasis!);
+        return;
+      }
       expect(perImage).toBeGreaterThan(0);
       expect(Number.isFinite(perImage)).toBe(true);
-      const option = modelDefinitionToBrowserOption(model);
       expect(option.costLabel).toMatch(/^≈ \$[\d.]+ \| image/);
       expect(option.costLabel).not.toMatch(/varies by|per 1M/);
       if (pricing?.unit !== 'image') expect(option.costDescription).toBeTruthy();
+    });
+
+    it('keeps the GPT Image 2.6 rows on their native rate: no per-image reference was verifiable', () => {
+      for (const id of ['openai/gpt-image-2.6-sunburst', 'openai/gpt-image-2.6-flare']) {
+        const option = modelDefinitionToBrowserOption(imageModel(id));
+        expect(option.costLabel).toBe('$8/$30 per 1M image tokens');
+        expect(option.costDescription).toMatch(/^\$8\/\$30 per 1M image tokens \(input\/output\)\. No per-image estimate: cost varies by size & quality\./);
+      }
+    });
+
+    it('charges the per-reference rates the Image API itemizes', () => {
+      expect(modelDefinitionToBrowserOption(imageModel('krea/k3-edit')).costLabel).toBe('≈ $0.05 | image @ 1K · one reference');
+      expect(modelDefinitionToBrowserOption(imageModel('qwen/qwen-image-3-pro')).costDescription).toContain('Reference images add $0.003 each');
+      expect(modelDefinitionToBrowserOption(imageModel('black-forest-labs/flux-3-image-klein')).costLabel).toBe('≈ $0.008 | image @ 768 · list rate');
     });
 
     it.each(['openai/gpt-5.4-image-2', 'openai/gpt-5-image', 'openai/gpt-5-image-mini'])(

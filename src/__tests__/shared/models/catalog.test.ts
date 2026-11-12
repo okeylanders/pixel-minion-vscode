@@ -35,31 +35,40 @@ describe('shared model catalogs', () => {
   });
 
   it.each(OPENROUTER_IMAGE_MODELS)('records coherent capabilities for $id', model => {
-    if (model.referenceImages) {
-      expect(model.referenceImages.min).toBeGreaterThanOrEqual(0);
-      expect(model.referenceImages.max).toBeGreaterThanOrEqual(model.referenceImages.min);
-      // Rows that require a reference need UI gating Pixel doesn't have yet.
-      expect(model.referenceImages.min).toBe(0);
-    }
-    expect(model.supportedAspectRatios?.length ?? 1).toBeGreaterThan(0);
-    expect(new Set(model.supportedAspectRatios ?? []).size).toBe(model.supportedAspectRatios?.length ?? 0);
+    // Every row carries the capability data the Image tab and the host gate on.
+    expect(model.referenceImages).toBeDefined();
+    expect(model.referenceImages!.min).toBeGreaterThanOrEqual(0);
+    expect(model.referenceImages!.max).toBeGreaterThanOrEqual(model.referenceImages!.min);
+    expect(model.supportedAspectRatios?.length).toBeGreaterThan(0);
+    expect(new Set(model.supportedAspectRatios).size).toBe(model.supportedAspectRatios!.length);
+    expect(new Set(model.supportedResolutions ?? []).size).toBe(model.supportedResolutions?.length ?? 0);
     expect(model.imagePricing?.output).toBeGreaterThanOrEqual(0);
-    // Nothing reaches Pixel's chat-only client as an Image-API row.
-    expect(model.transport).not.toBe('images');
+    // Every row is served by the Image API; chat routes are a mode, not a row field.
+    expect(model.transport ?? 'images').toBe('images');
   });
 
-  /*
-   * Pixel's Refine always sends the previous turn's image as a reference
-   * (ImageOrchestrator.continueConversation passes conversation.lastImages),
-   * and attached references survive a model switch. Until capability-aware
-   * controls gate both (roadmap P3/P4), a model that accepts no reference
-   * image would be sent image input it can't take, so none may be listed.
-   * Recraft V4.1 Flash is deferred for exactly this (PR #14 review F-01).
-   */
-  it.each(OPENROUTER_IMAGE_MODELS)('accepts at least one reference image for Refine: $id', model => {
-    expect({ id: model.id, maxReferences: model.referenceImages?.max })
-      .toEqual({ id: model.id, maxReferences: expect.any(Number) });
-    expect(model.referenceImages?.max).toBeGreaterThanOrEqual(1);
+  it('lists the reference-constrained models now that references are gated by capability', () => {
+    const bounds = (id: string) => OPENROUTER_IMAGE_MODELS.find(model => model.id === id)?.referenceImages;
+    // Text only: no uploader, and no Single Shot follow-up (it would send the last image).
+    expect(bounds('recraft/recraft-v4.1-flash')).toEqual({ min: 0, max: 0 });
+    // A reference is required: Generate stays blocked until one is attached.
+    expect(bounds('krea/k3-edit')).toEqual({ min: 1, max: 8 });
+    expect(bounds('recraft/recraft-v4-styles')).toEqual({ min: 1, max: 10 });
+    expect(bounds('recraft/recraft-v4-styles-pro')).toEqual({ min: 1, max: 10 });
+  });
+
+  it('states the wording and warning fields where the Image tab needs them', () => {
+    // Every Riverflow row carries Sourceful's request limit, so a new one can't miss the warning.
+    for (const model of OPENROUTER_IMAGE_MODELS.filter(entry => entry.id.startsWith('sourceful/'))) {
+      expect({ id: model.id, maxRequestBytes: model.maxRequestBytes }).toEqual({ id: model.id, maxRequestBytes: 4.5 * 1024 * 1024 });
+    }
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => model.maxRequestBytes).every(model => model.id.startsWith('sourceful/'))).toBe(true);
+    // Style wording only where a row says so (not inferred from a format list).
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => model.referenceRole === 'style').map(model => model.id).sort())
+      .toEqual(['recraft/recraft-v4-styles', 'recraft/recraft-v4-styles-pro']);
+    expect(OPENROUTER_IMAGE_MODELS.find(model => model.id === 'krea/k3-edit')?.referenceRole).toBe('edit');
+    // No description claims a rule the tab doesn't check.
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => /\b\d+\s?px\b/.test(model.description ?? '')).map(model => model.id)).toEqual([]);
   });
 
   it.each(OPENROUTER_SVG_MODELS)('prices $id in the shape its kind needs', model => {

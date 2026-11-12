@@ -1,24 +1,48 @@
+// Ported from frame-minion@40e7949 packages/core/src/shared/types/messages/imageGeneration.ts; keep in sync
 /**
  * Image Generation Message Payloads
+ *
+ * Pixel deltas from Frame:
+ *   - A continuation carries no `referenceSvgText` (P2): an attachment
+ *     belongs to the turn it was sent with, so a refinement is only a prompt.
+ *   - `ImageSaveResultPayload.cancelled` (P2: a dismissed save dialog is not
+ *     an error).
+ *   - The SVG tab keeps its own seven viewBox ratios (`SVGAspectRatio`,
+ *     svgGeneration.ts); `AspectRatio` here is the Image API's wide set.
  */
 import { TokenUsage } from './tokenUsage';
 
-export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3';
+/** Normalized aspect ratios published by OpenRouter's Image API. */
+export type AspectRatio =
+  | 'auto'
+  | '1:1' | '1:2' | '2:1' | '1:4' | '4:1' | '1:8' | '8:1'
+  | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '7:5' | '5:7'
+  | '9:16' | '16:9' | '21:9'
+  | '9:19.5' | '19.5:9' | '9:20' | '20:9' | '9:21';
+export type ImageResolution = 'auto' | '512' | '768' | '1K' | '1.5K' | '2K' | '4K';
+/** `edit` remains the persisted/wire value for the Single Shot UI mode. */
+export type ImageGenerationMode = 'conversation' | 'edit';
 
-export const ASPECT_RATIO_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
-  '1:1': { width: 1024, height: 1024 },
-  '4:3': { width: 1024, height: 768 },
-  '3:4': { width: 768, height: 1024 },
-  '16:9': { width: 1024, height: 576 },
-  '9:16': { width: 576, height: 1024 },
-  '3:2': { width: 1024, height: 683 },
-  '2:3': { width: 683, height: 1024 },
-};
+/**
+ * Immutable settings for an existing image thread; draft controls are
+ * separate. A continuation always uses these: changing the picker only
+ * affects the next Generate.
+ */
+export interface ImageThreadSettings {
+  mode: ImageGenerationMode;
+  model: string;
+  aspectRatio: AspectRatio;
+  resolution: ImageResolution;
+}
 
 export interface ImageGenerationRequestPayload {
+  /** Required: the host refuses a request without a known mode before any provider call. */
+  mode: ImageGenerationMode;
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
+  /** OpenRouter Image API output tier. `auto` omits the field. */
+  resolution?: ImageResolution;
   referenceImages?: string[];  // base64 encoded
   referenceSvgText?: string;   // raw SVG text (if attachment was SVG)
   conversationId?: string;     // for continuation
@@ -26,7 +50,9 @@ export interface ImageGenerationRequestPayload {
 }
 
 /**
- * History turn for re-hydration (lightweight: prompts + image refs)
+ * A display turn as the host sees it (lightweight: prompt + image refs). A
+ * follow-up sends only the latest Single Shot turn's `images`
+ * (`ImageGenerationContinuePayload.latestImages`).
  */
 export interface ConversationHistoryTurn {
   prompt: string;
@@ -38,41 +64,43 @@ export interface ConversationHistoryTurn {
 }
 
 /**
- * The settings a conversation was started with. A continuation always uses
- * these, never the draft controls: changing the picker only affects the next
- * Generate.
- */
-export interface ImageThreadSettings {
-  model: string;
-  aspectRatio: AspectRatio;
-}
-
-/**
  * A follow-up turn. It carries only the new prompt: reference images and an
- * attached SVG belong to the turn they were sent with (and travel in
- * `history`), so a draft attachment is never added to a refinement.
+ * attached SVG belong to the turn they were sent with, so a draft attachment
+ * is never added to a refinement. It carries no display history either: the
+ * host keeps a Conversation's transcript, and a Single Shot follow-up uses
+ * only the latest images.
  */
 export interface ImageGenerationContinuePayload {
+  /** The thread's mode. Required, like a new request's. */
+  mode: ImageGenerationMode;
   prompt: string;
   conversationId: string;
   /**
-   * Conversation history for re-hydration.
-   * Always sent - handler uses it to rebuild conversation if lost (e.g., extension restart).
+   * Turns in the visible thread. A Conversation restored from its host
+   * transcript must have as many; a Single Shot thread restarted after a host
+   * restart numbers its next turn from it.
    */
-  history?: ConversationHistoryTurn[];
+  turnCount: number;
   /**
-   * The thread's model and aspect ratio (ImageThreadSettings), needed for
-   * re-hydration.
+   * Single Shot only: the latest turn's images (the follow-up's references),
+   * so the thread can restart after a host restart.
    */
+  latestImages?: ConversationHistoryTurn['images'];
+  /** The thread's settings (ImageThreadSettings), needed for re-hydration. */
   model?: string;
   aspectRatio?: AspectRatio;
+  resolution?: ImageResolution;
 }
 
 export interface GeneratedImage {
+  /** False means the provider did not receive a seed; do not offer copy-seed. */
+  seedSupported?: boolean;
   id: string;
   data: string;          // base64
-  mimeType: string;      // 'image/png' | 'image/jpeg'
+  mimeType: string;      // 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
   prompt: string;        // prompt that generated it
+  aspectRatio?: AspectRatio; // requested aspect ratio for the generated image
+  resolution?: ImageResolution;
   timestamp: number;
   seed: number;          // seed used for generation (for reproducibility)
 }
@@ -84,6 +112,8 @@ export interface ConversationTurn {
   id: string;
   prompt: string;
   images: GeneratedImage[];
+  /** Display history omitted image bytes to stay within local storage limits. */
+  imagesOmitted?: boolean;
   turnNumber: number;
   timestamp: number;
   usage?: TokenUsage;
@@ -91,6 +121,8 @@ export interface ConversationTurn {
 }
 
 export interface ImageGenerationResponsePayload {
+  settings?: ImageThreadSettings;
+  recoveryWarning?: string;
   conversationId: string;
   images: GeneratedImage[];
   turnNumber: number;

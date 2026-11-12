@@ -20,10 +20,11 @@
  * `recraft/` prefix only for ids this catalog doesn't list.
  */
 
-import type { ImageApiAspectRatio, SvgModelDefinition } from '../types/providers';
+import type { SvgModelDefinition } from '../types/providers';
+import type { AspectRatio } from '../types/messages/imageGeneration';
 
 /** Aspect ratios the Recraft V4.1 vector endpoints advertise on the Image API. */
-const RECRAFT_VECTOR_ASPECT_RATIOS: readonly ImageApiAspectRatio[] = ['1:1', '3:4', '4:3', '9:16', '16:9', 'auto'];
+const RECRAFT_VECTOR_ASPECT_RATIOS: readonly AspectRatio[] = ['1:1', '3:4', '4:3', '9:16', '16:9', 'auto'];
 
 export const OPENROUTER_SVG_MODELS: SvgModelDefinition[] = [
   // ── Native vector (Recraft, output_format 'svg'): $/SVG ─────────────────

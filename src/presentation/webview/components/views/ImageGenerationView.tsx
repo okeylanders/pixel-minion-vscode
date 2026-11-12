@@ -3,7 +3,11 @@
  *
  * Pattern: Composition of existing image generation components
  * Responsibilities:
- * - Compose ModelSelector, AspectRatioSelector, ImageUploader, ConversationThread
+ * - Compose ModelSelector, AspectRatioSelector, ResolutionSelector,
+ *   ImageUploader, ConversationThread
+ * - Show only the controls the selected model's route supports
+ *   (imageRouteCapabilities), and block Generate while the attached
+ *   references don't fit the model
  * - Receive hook instance as prop (prose-minion pattern)
  * - Show each image's save state, as reported by the host (via the hook)
  *
@@ -12,14 +16,20 @@
  * grows with the conversation, then the sticky refine bar.
  */
 import React from 'react';
-import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration';
+import { UseImageGenerationReturn, referenceRequirementNote } from '../../hooks/domain/useImageGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
+import { ResolutionSelector } from '../image/ResolutionSelector';
 import { ImageUploader } from '../image/ImageUploader';
 import { ConversationThread } from '../image/ConversationThread';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
-import { OPENROUTER_IMAGE_MODELS } from '@shared/models';
+import {
+  OPENROUTER_IMAGE_MODELS,
+  imageModeDescription,
+  imageModeLabel,
+  imageRouteCapabilities,
+} from '@shared/models';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -38,6 +48,9 @@ const TrashIcon: React.FC = () => (
   </LineGlyph>
 );
 
+/** Helper under the picker for an id the catalog doesn't list. */
+const CUSTOM_IMAGE_MODEL_HELP = `${OFF_LIST_MODEL_HELP} It runs as Single Shot through /images with automatic dimensions.`;
+
 export interface ImageGenerationViewProps {
   imageGeneration: UseImageGenerationReturn;
 }
@@ -46,23 +59,33 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   imageGeneration,
 }) => {
   const {
+    mode,
     prompt,
     setPrompt,
     model,
     setModel,
     aspectRatio,
     setAspectRatio,
+    resolution,
+    setResolution,
     seedInput,
     setSeedInput,
     referenceImages,
     referenceSvgText,
+    referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
+    followUpSizeWarning,
+    referenceIssue,
     addReferenceImage,
     removeReferenceImage,
     clearReferenceImages,
     conversationHistory,
     conversationId,
+    threadSettings,
+    recoveryWarning,
+    persistenceWarning,
+    draftWarning,
     savingImageIds,
     savedImageIds,
     isLoading,
@@ -74,6 +97,27 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     saveImage,
     enhancePrompt,
   } = imageGeneration;
+  const capabilities = imageRouteCapabilities(model, mode);
+  const referenceLimits = capabilities?.referenceImages;
+  const requirementNote = referenceRequirementNote(capabilities);
+  // Why Generate can't run with these controls: shown as a warning, and
+  // always attached to the button as its description, so assistive tech
+  // says why it is disabled (an empty prompt has no visible warning).
+  const generateBlockedReason = !capabilities
+    ? `The selected model is unavailable in ${imageModeLabel(mode)}. Choose a supported model above.`
+    : referenceIssue;
+  const generateDescription = generateBlockedReason
+    ?? (!isLoading && !prompt.trim() ? 'Enter a prompt to generate.' : '');
+  // A Single Shot follow-up sends the latest image, which a text-only model can't take.
+  const threadIsTextOnly = threadSettings?.mode === 'edit'
+    && imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0;
+  const threadModelLabel = OPENROUTER_IMAGE_MODELS.find(entry => entry.id === threadSettings?.model)?.displayName
+    ?? threadSettings?.model;
+  const draftDiffersFromThread = !!threadSettings && (
+    threadSettings.model !== model
+    || threadSettings.aspectRatio !== aspectRatio
+    || threadSettings.resolution !== resolution
+  );
 
   // Format the conversation start time
   const formatDateTime = (timestamp: number) => {
@@ -97,29 +141,44 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     <div className="generation-view image-generation-view">
       {/* Input well: Model, Aspect Ratio, Seed, Prompt, Reference Images, Generate button */}
       <div className="well">
-        {/* Header: Model, Aspect Ratio and Seed, stacked full width */}
+        {/* Header: Model, then only the controls this model's route supports */}
         <div className="generation-header">
           <ModelSelector
             models={OPENROUTER_IMAGE_MODELS}
             selectedModel={model}
             onModelChange={setModel}
-            unavailableLabel={OFF_LIST_MODEL_HELP}
+            unavailableLabel={CUSTOM_IMAGE_MODEL_HELP}
             disabled={isLoading}
           />
-          <AspectRatioSelector
-            selectedRatio={aspectRatio}
-            onRatioChange={setAspectRatio}
-            disabled={isLoading}
-          />
-          <Input
-            type="text"
-            value={seedInput}
-            onChange={(e) => setSeedInput(e.target.value)}
-            placeholder="Auto Generate"
-            disabled={isLoading}
-            label="Seed"
-            className="seed-input"
-          />
+          {capabilities?.supportedAspectRatios.some(ratio => ratio !== 'auto') && (
+            <AspectRatioSelector
+              model={model}
+              mode={mode}
+              selectedRatio={aspectRatio}
+              onRatioChange={setAspectRatio}
+              disabled={isLoading}
+            />
+          )}
+          {capabilities?.supportedResolutions.length ? (
+            <ResolutionSelector
+              model={model}
+              mode={mode}
+              selectedResolution={resolution}
+              onResolutionChange={setResolution}
+              disabled={isLoading}
+            />
+          ) : null}
+          {capabilities?.supportsSeed && (
+            <Input
+              type="text"
+              value={seedInput}
+              onChange={(e) => setSeedInput(e.target.value)}
+              placeholder="Auto Generate"
+              disabled={isLoading}
+              label="Seed"
+              className="seed-input"
+            />
+          )}
         </div>
 
         {/* Prompt input */}
@@ -131,14 +190,18 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             disabled={isLoading}
             rows={3}
           />
+          {draftWarning && <div className="generation-warning" role="status">{draftWarning}</div>}
 
           <div className="image-generation-actions-row">
             <ImageUploader
               images={referenceImages}
+              svgIndex={referenceSvgIndex}
               onAddImage={addReferenceImage}
               onRemoveImage={removeReferenceImage}
               onClear={clearReferenceImages}
               disabled={isLoading}
+              maxImages={referenceLimits?.max ?? 4}
+              accept={capabilities?.referenceMimeTypes?.join(',')}
             />
             <Button
               onClick={enhancePrompt}
@@ -164,10 +227,19 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
               ⚠️ {referenceImageSizeWarning}
             </div>
           )}
+          {requirementNote && <div className="generation-note">{requirementNote}</div>}
+          {generateBlockedReason && (
+            <div className="generation-warning" role="status">
+              {generateBlockedReason}
+            </div>
+          )}
 
+          {/* Always rendered (out of the layout): Generate's description. */}
+          <span id="image-generate-description" className="visually-hidden">{generateDescription}</span>
           <Button
             onClick={generate}
-            disabled={isLoading || !prompt.trim()}
+            disabled={isLoading || !!generateBlockedReason || !prompt.trim()}
+            aria-describedby="image-generate-description"
             variant="primary"
           >
             {isLoading ? 'Generating...' : '⚡ Generate'}
@@ -184,6 +256,26 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
       {/* Output well: Conversation header and thread */}
       <div className="well generation-output-well">
+        {/* The thread's own settings: follow-ups use these, not the controls above */}
+        {threadSettings && (
+          <div className="image-thread-description">
+            <strong>{imageModeLabel(threadSettings.mode)}{threadSettings.mode === 'edit' ? ' history' : ''}</strong>
+            <p className="generation-note">
+              {threadIsTextOnly
+                ? 'This model generates from text only. Start a new generation above to make another image.'
+                : imageModeDescription(threadSettings.mode)}
+            </p>
+            <small className="image-thread-settings">
+              {threadModelLabel} · {threadSettings.aspectRatio === 'auto' ? 'Auto ratio' : threadSettings.aspectRatio} · {threadSettings.resolution === 'auto' ? 'Default resolution' : threadSettings.resolution}
+            </small>
+            {draftDiffersFromThread && (
+              <p className="generation-note">Controls above apply to a new thread. Follow-ups keep this thread’s settings.</p>
+            )}
+          </div>
+        )}
+        {persistenceWarning && <div className="generation-warning" role="status">{persistenceWarning}</div>}
+        {recoveryWarning && <div className="generation-warning" role="status">{recoveryWarning}</div>}
+
         {/* Conversation header - only show when we have a conversation */}
         {conversationHistory.length > 0 && (
           <div className="conversation-header">
@@ -214,8 +306,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             </span>
             <p className="generation-empty-title">Your images appear here</p>
             <p className="generation-empty-hint">
-              Describe one above and press Generate. Follow-up prompts refine it in the same
-              conversation.
+              Describe one above and press Generate, then refine it with follow-up prompts.
             </p>
           </div>
         )}
@@ -236,15 +327,22 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             defaultMessage="Generating image..."
           />
         </div>
+        {/* Beside the refine bar: what a follow-up would send */}
+        {followUpSizeWarning && !threadIsTextOnly && (
+          <div className="generation-warning" role="status">⚠️ {followUpSizeWarning}</div>
+        )}
       </div>
 
       {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}
-      {conversationId && conversationHistory.length > 0 && (
+      {conversationId && conversationHistory.length > 0 && !threadIsTextOnly && (
         <ContinueChatInput
+          key={conversationId}
           onSubmit={continueChat}
           disabled={isLoading}
           isLoading={isLoading}
-          placeholder="Refine: Make it more vibrant..."
+          placeholder={threadSettings?.mode === 'edit'
+            ? 'Write a prompt using the latest image...'
+            : 'Continue the conversation...'}
         />
       )}
     </div>

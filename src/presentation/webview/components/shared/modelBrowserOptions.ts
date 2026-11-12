@@ -12,6 +12,9 @@
  *   - `imagePricingLabel` / `imageUnitBadgeLabel` take an output noun so the
  *     SVG tab can say "| SVG" (default "image" keeps Frame's labels).
  *   - `svgModelToBrowserOption` and its metadata are Pixel-only.
+ *   - A row with only an `approxNote` (no verifiable per-image estimate, e.g.
+ *     GPT Image 2.6) keeps its native-rate label and explains why in its
+ *     cost description.
  * Frame's text, video and orchestrator mappers have no Pixel consumer and
  * are not ported.
  */
@@ -50,7 +53,27 @@ interface ModelMetadata {
 
 const IMAGE_MODEL_METADATA: Record<string, ModelMetadata> = {
   // OpenRouter catalog creation dates (`created`), checked 2026-11-07.
+  // Image API (Single Shot) rows added with the P3 transport; dates checked 2026-11-12.
+  'openai/gpt-image-2.6-sunburst': { releaseDate: '2026-11-04', narrative: 'OpenAI’s newest detail-optimized tier for dense compositions, text-heavy layouts, and edits that stay consistent from one pass to the next.' },
+  'openai/gpt-image-2.6-flare': { releaseDate: '2026-11-04', narrative: 'OpenAI’s newest speed-optimized tier, about 50% faster than GPT Image 2.5, for fast text-to-image and image-to-image iteration.' },
+  'qwen/qwen-image-2.1-turbo': { releaseDate: '2026-10-16', narrative: 'Fast, low-cost Qwen generation and editing where throughput and price matter most.' },
+  'krea/k3-edit': { releaseDate: '2026-10-15', narrative: 'Instruction-following edits from one to eight reference images. It edits what you attach; it does not generate from a prompt alone.' },
+  'black-forest-labs/flux-3-image-klein': { releaseDate: '2026-10-15', narrative: 'Open-weights FLUX.3 for very cheap generation and multi-reference edits that keep characters and subjects consistent.' },
   'google/gemini-nano-banana-2.1': { releaseDate: '2026-10-06', narrative: 'Flash-tier successor to Nano Banana 2 and Nano Banana Pro: stronger product recontextualization and editing at half Nano Banana 2’s output-token rate.' },
+  'black-forest-labs/flux-3-image': { releaseDate: '2026-10-01', narrative: 'FLUX flagship image generation and editing with up to 10 references, from 768 up to 4K.' },
+  'recraft/recraft-v4.1-flash': { releaseDate: '2026-09-23', narrative: 'Fast, very cheap Recraft generation from a text prompt alone; it takes no reference images.' },
+  'openai/gpt-image-2.5-sunburst': { releaseDate: '2026-09-09', narrative: 'Precision-focused GPT Image 2.5 for detailed creative instructions and careful visual edits.' },
+  'openai/gpt-image-2.5-flare': { releaseDate: '2026-09-09', narrative: 'Speed-focused GPT Image 2.5 for everyday image work and frequent iteration.' },
+  'recraft/recraft-v4-styles': { releaseDate: '2026-08-26', narrative: 'Create a new raster image matching the style of 1–10 reference images.' },
+  'recraft/recraft-v4-styles-pro': { releaseDate: '2026-08-26', narrative: 'Create a higher-resolution raster image matching the style of 1–10 reference images.' },
+  'qwen/qwen-image-3-pro': { releaseDate: '2026-08-05', narrative: 'Premium Qwen generation and editing with finely rendered small text, detail, and knowledge-rich scenes.' },
+  'qwen/qwen-image-3': { releaseDate: '2026-08-05', narrative: 'Versatile Qwen generation and editing with crisp small text and strong prompt detail.' },
+  'krea/krea-2-large': { releaseDate: '2026-07-20', narrative: "Krea's largest image model for high-detail, aesthetic-forward generation." },
+  'krea/krea-2-medium': { releaseDate: '2026-07-20', narrative: 'Balanced Krea tier for everyday image generation at a lower cost.' },
+  'krea/krea-2-medium-turbo': { releaseDate: '2026-07-20', narrative: 'Fastest Krea lane for rapid iteration and cheap drafts.' },
+  'openai/gpt-image-2': { releaseDate: '2026-06-24', narrative: 'Premium OpenAI image generation for final-quality compositions and text-sensitive edits.' },
+  'openai/gpt-image-1': { releaseDate: '2026-06-24', narrative: "OpenAI's general GPT Image model (the tier below GPT Image 2); solid instruction following for edits and text-in-image." },
+  'openai/gpt-image-1-mini': { releaseDate: '2026-06-24', narrative: 'Compact OpenAI image model for cheaper drafts and quick alternates.' },
   'sourceful/riverflow-v2.6-pro': { releaseDate: '2026-10-29', narrative: 'Flagship Riverflow 2.6 for text-to-image and edits, planning each image before it renders.' },
   'bytedance-seed/seedream-5-0-flash': { releaseDate: '2026-10-01', narrative: 'Fast Seedream editing with up to 14 references.' },
   'microsoft/mai-image-2.6': { releaseDate: '2026-09-04', narrative: 'MAI image generation and reference-guided editing, with up to five reference images.' },
@@ -160,7 +183,14 @@ function imagePricingLabel(pricing: ImagePricing, noun = 'image'): string {
 
 function imagePricingDescription(pricing: ImagePricing): string | undefined {
   if (pricing.unit === 'image') return pricing.approxBasis;
-  if (pricing.approxUsdPerImage == null) return undefined;
+  // Pixel delta: a row with no verifiable per-image reference still explains
+  // its native rates (Frame has no such row yet).
+  if (pricing.approxUsdPerImage == null) {
+    if (!pricing.approxNote && !pricing.approxBasis) return undefined;
+    const rateOrder = pricing.input != null ? ' (input/output)' : ' (output)';
+    const note = pricing.approxNote ? ` No per-image estimate: cost ${pricing.approxNote}.` : '';
+    return `${imageNativePricingLabel(pricing)}${rateOrder}.${note}${pricing.approxBasis ? ` ${pricing.approxBasis}` : ''}`;
+  }
   const rateOrder = pricing.input != null ? ' (input/output)' : ' (output)';
   const basis = pricing.approxBasis ?? 'Output estimate; prompt and reference-image charges may be additional.';
   return `${imageNativePricingLabel(pricing)}${rateOrder}. ${basis}`;

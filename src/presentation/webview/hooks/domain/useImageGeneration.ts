@@ -3,6 +3,21 @@
  *
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
+ *
+ * Modes, thread-owned settings, capability normalization and the bounded
+ * snapshot follow frame-minion@40e7949
+ * packages/core/src/presentation/webview/hooks/domain/useImageGeneration.ts.
+ * Pixel keeps its own request ownership (P2: correlation ids per request
+ * kind, save tracking, enhance answers dropped by Generate and Clear). Until
+ * the mode toggle lands (roadmap P4), each new thread's mode is chosen by
+ * Frame's default rule: Conversation when the model has a verified route,
+ * otherwise Single Shot.
+ *
+ * Pixel fixes not yet upstream (flag them when syncing): snapshot warnings
+ * are recomputed from live state, never restored; thread settings are saved
+ * only with a conversation id; Generate releases the thread it replaces only
+ * after the new one succeeds (and puts it back if it fails); request-size
+ * warnings and requirement wording come from catalog fields, not id prefixes.
  */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
@@ -11,6 +26,8 @@ import {
   MessageEnvelope,
   createEnvelope,
   AspectRatio,
+  ImageResolution,
+  ImageGenerationMode,
   GeneratedImage,
   ConversationTurn,
   ConversationHistoryTurn,
@@ -23,16 +40,39 @@ import {
   EnhancePromptRequestPayload,
   EnhancePromptResponsePayload,
 } from '@messages';
-import { DEFAULT_IMAGE_MODEL } from '@shared/models';
+import {
+  DEFAULT_IMAGE_MODEL,
+  OPENROUTER_IMAGE_MODELS,
+  defaultImageMode,
+  imageModeLabel,
+  imageRouteCapabilities,
+} from '@shared/models';
+import type { ImageRouteCapabilities } from '@shared/models';
 import { imageExtensionForMime } from '../../../../shared/media/imageFormats';
 import { newRequestId } from '../../utils/requestId';
+import {
+  boundedImageHistory,
+  mergeImageHistoryDraft,
+  MAX_IMAGE_HISTORY_STORAGE_BYTES,
+  IMAGE_HISTORY_DRAFT_RESERVE_BYTES,
+  IMAGE_HISTORY_RESTORED_WARNING,
+} from './imageHistoryPersistence';
 
-// Sourceful models have a 4.5MB request size limit for reference images
-const SOURCEFUL_SIZE_LIMIT_BYTES = 4.5 * 1024 * 1024; // 4.5MB
+/**
+ * The ratio to keep when the model (or mode) changes: the current one if the
+ * route lists it. The mode is required: what a model takes depends on the
+ * route (imageRouteCapabilities), never on its catalog row alone.
+ */
+export function normalizeAspectRatioForModel(modelId: string, current: AspectRatio, mode: ImageGenerationMode): AspectRatio {
+  const supported = imageRouteCapabilities(modelId, mode)?.supportedAspectRatios;
+  return !supported || supported.includes(current) ? current : supported[0];
+}
 
-/** Check if a model ID belongs to Sourceful provider */
-export function isSourcefulModel(modelId: string): boolean {
-  return modelId.startsWith('sourceful/');
+/** The resolution to keep when the model (or mode) changes; anything the route doesn't list falls back to Auto. */
+export function normalizeResolutionForModel(modelId: string, current: ImageResolution, mode: ImageGenerationMode): ImageResolution {
+  const supported = imageRouteCapabilities(modelId, mode)?.supportedResolutions;
+  if (!supported) return 'auto';
+  return current === 'auto' || supported.includes(current) ? current : 'auto';
 }
 
 /** Calculate approximate byte size of base64 data URLs */
@@ -45,8 +85,118 @@ export function calculateBase64Size(dataUrls: string[]): number {
   }, 0);
 }
 
+/** "exactly 1 reference image", "0–3 reference images": how many a route takes. */
+function referenceCountText(limits: { min: number; max: number }, noun = 'reference image'): string {
+  const count = limits.min === limits.max ? `exactly ${limits.min}` : `${limits.min}–${limits.max}`;
+  return `${count} ${noun}${limits.min === 1 && limits.max === 1 ? '' : 's'}`;
+}
+
+const MIME_LABELS: Record<string, string> = { 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/webp': 'WebP' };
+
+/** "PNG", "PNG or JPEG", "PNG, JPEG, or WebP". */
+function formatList(words: readonly string[]): string {
+  if (words.length < 3) return words.join(' or ');
+  return `${words.slice(0, -1).join(', ')}, or ${words[words.length - 1]}`;
+}
+
+/**
+ * The note under the uploader for a route that requires references, or null.
+ * Its wording comes from catalog fields only: the count bounds, the format
+ * list, and `referenceRole` for what the model does with them.
+ */
+export function referenceRequirementNote(capabilities: ImageRouteCapabilities | undefined): string | null {
+  const limits = capabilities?.referenceImages;
+  if (!limits || limits.min === 0) return null;
+  const formats = capabilities?.referenceMimeTypes?.length
+    ? `${formatList(capabilities.referenceMimeTypes.map(mime => MIME_LABELS[mime] ?? mime))} `
+    : '';
+  switch (capabilities?.referenceRole) {
+    case 'style':
+      return `Requires ${referenceCountText(limits, `${formats}style reference`)}: this model makes a new image in their style.`;
+    case 'edit':
+      return `Requires ${referenceCountText(limits, `${formats}reference image`)}: this model edits the images you attach.`;
+    default:
+      return `Requires ${referenceCountText(limits, `${formats}reference image`)}.`;
+  }
+}
+
+/** Megabytes with one decimal, for size warnings. */
+function megabytes(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1);
+}
+
+/**
+ * How far the images one request carries exceed the route's request-size
+ * limit (`maxRequestBytes`, a catalog field), or null when they fit or the
+ * route states no limit. Pass only what the request sends as images: an SVG
+ * attachment goes as text.
+ */
+export function imagesOverRequestLimit(
+  modelId: string,
+  mode: ImageGenerationMode,
+  images: readonly string[]
+): { totalBytes: number; limitBytes: number } | null {
+  const limitBytes = imageRouteCapabilities(modelId, mode)?.maxRequestBytes;
+  if (!limitBytes || images.length === 0) return null;
+  const totalBytes = calculateBase64Size([...images]);
+  return totalBytes > limitBytes ? { totalBytes, limitBytes } : null;
+}
+
+function modelName(modelId: string): string {
+  return OPENROUTER_IMAGE_MODELS.find(entry => entry.id === modelId)?.displayName ?? modelId;
+}
+
+/**
+ * Why the attached references can't go to this model in this mode, or null.
+ * The host refuses the same mismatches before calling the provider; this
+ * lets the tab say so before the user presses Generate.
+ */
+export function referenceImageIssue(
+  modelId: string,
+  mode: ImageGenerationMode,
+  referenceImages: readonly string[]
+): string | null {
+  const capabilities = imageRouteCapabilities(modelId, mode);
+  const limits = capabilities?.referenceImages;
+  if (limits) {
+    const count = referenceImages.length;
+    if (limits.max === 0 && count > 0) {
+      return 'This model accepts text prompts only. Remove the reference images to generate.';
+    }
+    if (count < limits.min) {
+      return `This model needs at least ${limits.min} reference ${limits.min === 1 ? 'image' : 'images'}. Add one to generate.`;
+    }
+    if (count > limits.max) {
+      return `This model accepts ${referenceCountText(limits)}; ${count} attached. Remove ${count - limits.max} to generate.`;
+    }
+  }
+  const mimeTypes = capabilities?.referenceMimeTypes;
+  if (mimeTypes) {
+    const unsupported = referenceImages.some((dataUrl) => {
+      const mime = /^data:(image\/[^;,]+)[;,]/i.exec(dataUrl)?.[1]?.toLowerCase();
+      const normalized = mime === 'image/jpg' ? 'image/jpeg' : mime;
+      return !normalized || !mimeTypes.includes(normalized as typeof mimeTypes[number]);
+    });
+    if (unsupported) return 'This model requires PNG, JPEG, or WebP reference images.';
+  }
+  return null;
+}
+
 /** Correlation-id prefix of clear requests; their errors are always ours. */
 const CLEAR_REQUEST_PREFIX = 'image-clear';
+
+/**
+ * The thread a Generate replaces. It stays alive on the host until the new
+ * thread exists: released when the new one succeeds, put back on screen when
+ * it fails.
+ */
+interface ReplacedThread {
+  conversationId: string;
+  threadSettings: ImageThreadSettings | null;
+  generatedImages: GeneratedImage[];
+  conversationHistory: ConversationTurn[];
+  recoveryWarning?: string;
+}
 
 /**
  * What the hook dispatched for the outstanding generate or refine. The
@@ -57,6 +207,10 @@ interface PendingGeneration {
   correlationId: string;
   prompt: string;
   settings: ImageThreadSettings;
+  /** A failed new thread clears its optimistic settings; a failed follow-up keeps them. */
+  isNewThread: boolean;
+  /** Generate only: the thread it replaces, if one was on screen. */
+  replaces?: ReplacedThread;
   referenceSvgText?: string;
 }
 
@@ -70,21 +224,72 @@ interface PendingEnhance {
   prompt: string;
 }
 
+/**
+ * The saved thread's settings. A thread exists only once the host has named
+ * it: settings saved without a conversation id belong to a first Generate
+ * that never answered (the webview reloaded while it ran), so they restore
+ * nothing. State saved before modes existed has no `mode` (or no thread
+ * settings at all): it opens as Single Shot, because there is no host
+ * transcript to continue a conversation from. Its ratio is moved onto one the
+ * model's Single Shot route lists (the old picker offered seven fixed ratios
+ * to every model; providers clamped the ones they didn't support).
+ */
+function restoredThreadSettings(
+  initialState: Partial<ImageGenerationPersistence> | undefined,
+  fallbackModel: string
+): ImageThreadSettings | null {
+  if (!initialState?.conversationId) return null;
+  const saved = initialState.threadSettings as Partial<ImageThreadSettings> | null | undefined;
+  if (saved?.mode && saved.model && saved.aspectRatio) {
+    return { mode: saved.mode, model: saved.model, aspectRatio: saved.aspectRatio, resolution: saved.resolution ?? 'auto' };
+  }
+  const model = saved?.model ?? initialState.model ?? fallbackModel;
+  return {
+    mode: 'edit',
+    model,
+    aspectRatio: normalizeAspectRatioForModel(model, saved?.aspectRatio ?? initialState.aspectRatio ?? '1:1', 'edit'),
+    resolution: 'auto',
+  };
+}
+
 // 1. State Interface (read-only)
 export interface ImageGenerationState {
+  /**
+   * The mode a new thread starts in for the selected model. Until the mode
+   * toggle (roadmap P4) it is chosen for the model, never by the user.
+   */
+  mode: ImageGenerationMode;
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
+  resolution: ImageResolution;
   referenceImages: string[];  // base64 data URLs
   referenceSvgText: string | null; // raw SVG text attachment
+  /** Index in `referenceImages` of the SVG attachment's preview (sent as text, not as an image), or null. */
+  referenceSvgIndex: number | null;
   referenceSvgWarning: string | null;
-  referenceImageSizeWarning: string | null; // Warning for Sourceful 4.5MB limit
+  /** The references Generate would send exceed the model's request-size limit (a warning; Generate stays enabled). */
+  referenceImageSizeWarning: string | null;
+  /** A Single Shot follow-up re-sends the latest output, which exceeds the thread model's request-size limit. */
+  followUpSizeWarning: string | null;
+  /** Why the attached references can't go to the selected model (Generate is blocked), or null. */
+  referenceIssue: string | null;
   seedInput: string;          // seed input field (empty = auto-generate)
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];  // Full conversation thread
   conversationId: string | null;
-  /** Settings the current conversation was created with (null: no conversation). */
+  /** Settings the current thread was created with (null: no thread). */
   threadSettings: ImageThreadSettings | null;
+  /** The thread's last turn was generated, but its transcript could not be saved for restart recovery. */
+  recoveryWarning?: string;
+  /**
+   * Local history can't hold this thread: the current snapshot leaves out
+   * images (they won't survive a reload), or the restored thread has turns
+   * whose previews an earlier snapshot left out. Recomputed from live state.
+   */
+  persistenceWarning?: string;
+  /** The current snapshot holds a shortened copy of the draft (prompt or model id). */
+  draftWarning?: string;
   /** Images with a save request outstanding. */
   savingImageIds: ReadonlySet<string>;
   /** Images whose save the host confirmed. Cancelled or failed saves never appear here. */
@@ -99,6 +304,7 @@ export interface ImageGenerationActions {
   setPrompt: (prompt: string) => void;
   setModel: (model: string) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
+  setResolution: (resolution: ImageResolution) => void;
   setSeedInput: (seed: string) => void;
   addReferenceImage: (dataUrl: string, svgText?: string | null) => void;
   removeReferenceImage: (index: number) => void;
@@ -131,9 +337,19 @@ export interface ImageGenerationPersistence {
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
+  /** Absent in state saved before resolution tiers existed (treated as Auto). */
+  resolution?: ImageResolution;
   conversationId: string | null;
-  /** Absent in state saved before thread settings existed. */
+  /** Absent in state saved before thread settings existed; may lack `mode` from before modes. */
   threadSettings?: ImageThreadSettings | null;
+  recoveryWarning?: string;
+  /**
+   * What this snapshot left out, and whether its draft was shortened. Saved
+   * for reference only: they are never restored, because a restored warning
+   * would describe an older snapshot than the next one written.
+   */
+  persistenceWarning?: string;
+  draftWarning?: string;
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];
 }
@@ -155,18 +371,23 @@ export function useImageGeneration(
   // State
   const [prompt, setPrompt] = useState(initialState?.prompt ?? '');
   const [model, setModelState] = useState(initialState?.model ?? (sync?.selectedModel ?? DEFAULT_IMAGE_MODEL));
+  // Until the P4 toggle, a new thread's mode follows the selected model.
+  const mode = defaultImageMode(model);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    initialState?.aspectRatio ?? '1:1'
+    () => normalizeAspectRatioForModel(model, initialState?.aspectRatio ?? '1:1', defaultImageMode(model))
+  );
+  const [resolution, setResolution] = useState<ImageResolution>(
+    () => normalizeResolutionForModel(model, initialState?.resolution ?? 'auto', defaultImageMode(model))
   );
   // Reference images are NOT persisted - they're per-request context
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [referenceSvgText, setReferenceSvgText] = useState<string | null>(null);
   const [referenceSvgWarning, setReferenceSvgWarning] = useState<string | null>(null);
   const [referenceSvgIndex, setReferenceSvgIndex] = useState<number | null>(null);
-  const [referenceImageSizeWarning, setReferenceImageSizeWarning] = useState<string | null>(null);
   const [seedInput, setSeedInput] = useState('');
+  // The bounded snapshot stores the latest images once, in the history.
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>(
-    initialState?.generatedImages ?? []
+    () => initialState?.conversationHistory?.slice(-1)[0]?.images ?? initialState?.generatedImages ?? []
   );
   const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>(
     initialState?.conversationHistory ?? []
@@ -174,18 +395,21 @@ export function useImageGeneration(
   const [conversationId, setConversationId] = useState<string | null>(
     initialState?.conversationId ?? null
   );
-  // State saved before thread settings existed: the old code continued with
-  // the persisted controls, so they are the best record of the thread.
   const [threadSettings, setThreadSettings] = useState<ImageThreadSettings | null>(
-    initialState?.threadSettings ?? (initialState?.conversationId
-      ? { model: initialState.model ?? model, aspectRatio: initialState.aspectRatio ?? '1:1' }
-      : null)
+    () => restoredThreadSettings(initialState, model)
   );
+  const [recoveryWarning, setRecoveryWarning] = useState<string | undefined>(initialState?.recoveryWarning);
   const [savingImageIds, setSavingImageIds] = useState<ReadonlySet<string>>(() => new Set());
   const [savedImageIds, setSavedImageIds] = useState<ReadonlySet<string>>(() => new Set());
   // Outstanding requests, matched by correlation id. Refs, not state: the
   // App-level message handlers must see the latest value synchronously.
   const pending = useRef<PendingGeneration | null>(null);
+  // The same replaced thread, as state, so the snapshot can keep it while
+  // the Generate that replaces it runs.
+  const [replacedThread, setReplacedThread] = useState<ReplacedThread | null>(null);
+  // A release (clear) error that arrived while a generation ran: that
+  // generation's success would hide it, so it is shown once it settles.
+  const heldReleaseError = useRef<string | null>(null);
   // The outstanding enhance and the prompt text it was asked to improve.
   const pendingEnhance = useRef<PendingEnhance | null>(null);
   /** Outstanding saves: correlation id → image id. */
@@ -193,35 +417,81 @@ export function useImageGeneration(
   const [isLoading, setIsLoading] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setModel = useCallback((newModel: string) => {
+
+  /** Select a model and keep only the ratio and resolution its route lists. */
+  const applyModel = useCallback((newModel: string) => {
+    const newMode = defaultImageMode(newModel);
     setModelState(newModel);
+    setAspectRatio(current => normalizeAspectRatioForModel(newModel, current, newMode));
+    setResolution(current => normalizeResolutionForModel(newModel, current, newMode));
+  }, []);
+  const setModel = useCallback((newModel: string) => {
+    applyModel(newModel);
     sync?.onModelChange?.(newModel);
-  }, [sync]);
+  }, [sync, applyModel]);
   // Reset defaults when settings change (only when idle)
   const selectedModel = sync?.selectedModel;
   useEffect(() => {
     if (selectedModel && !pending.current) {
-      setModelState(selectedModel);
+      applyModel(selectedModel);
     }
-  }, [selectedModel]);
+  }, [selectedModel, applyModel]);
 
-  // Check reference image size for Sourceful models (4.5MB limit)
-  useEffect(() => {
-    if (!isSourcefulModel(model) || referenceImages.length === 0) {
-      setReferenceImageSizeWarning(null);
-      return;
-    }
+  // The SVG attachment's preview is not sent as an image: its markup goes
+  // as `referenceSvgText`, which the host appends to the prompt once.
+  const imagesForApi = useMemo(
+    () => referenceImages.filter((_, i) => i !== referenceSvgIndex),
+    [referenceImages, referenceSvgIndex]
+  );
+  const referenceIssue = useMemo(
+    () => referenceImageIssue(model, mode, imagesForApi),
+    [model, mode, imagesForApi]
+  );
+  // Request-size limits (Sourceful's 4.5 MB) come from the catalog, and are
+  // checked against what each request actually sends as images.
+  const referenceImageSizeWarning = useMemo(() => {
+    const over = imagesOverRequestLimit(model, mode, imagesForApi);
+    return over
+      ? `Reference images total ${megabytes(over.totalBytes)} MB, over ${modelName(model)}’s ${megabytes(over.limitBytes)} MB request limit. Generation may fail.`
+      : null;
+  }, [model, mode, imagesForApi]);
+  const followUpSizeWarning = useMemo(() => {
+    // Only a Single Shot follow-up re-sends images: the latest output.
+    if (!conversationId || threadSettings?.mode !== 'edit') return null;
+    const latest = conversationHistory[conversationHistory.length - 1]?.images.map(image => image.data) ?? [];
+    const over = imagesOverRequestLimit(threadSettings.model, 'edit', latest);
+    return over
+      ? `The latest image is ${megabytes(over.totalBytes)} MB, over ${modelName(threadSettings.model)}’s ${megabytes(over.limitBytes)} MB request limit. A follow-up sends it again, so it may fail.`
+      : null;
+  }, [conversationId, threadSettings, conversationHistory]);
 
-    const totalBytes = calculateBase64Size(referenceImages);
-    if (totalBytes > SOURCEFUL_SIZE_LIMIT_BYTES) {
-      const sizeMB = (totalBytes / (1024 * 1024)).toFixed(1);
-      setReferenceImageSizeWarning(
-        `Reference images total ${sizeMB}MB, exceeding Sourceful's 4.5MB limit. Generation may fail.`
-      );
-    } else {
-      setReferenceImageSizeWarning(null);
-    }
-  }, [model, referenceImages]);
+  /** Release a thread the user can no longer reach: host memory and its saved transcript. */
+  const releaseThread = useCallback((id: string) => {
+    // Its only possible answer is an error (e.g. still generating),
+    // recognised by the prefix.
+    vscode.postMessage(createEnvelope(
+      MessageType.IMAGE_GENERATION_CLEAR,
+      'webview.imageGeneration',
+      { conversationId: id },
+      newRequestId(CLEAR_REQUEST_PREFIX)
+    ));
+  }, [vscode]);
+
+  /** Put a replaced thread back on screen (its Generate failed; the host still holds it). */
+  const restoreThread = useCallback((thread: ReplacedThread) => {
+    setConversationId(thread.conversationId);
+    setThreadSettings(thread.threadSettings);
+    setGeneratedImages(thread.generatedImages);
+    setConversationHistory(thread.conversationHistory);
+    setRecoveryWarning(thread.recoveryWarning);
+  }, []);
+
+  /** A release error held while a generation ran, once; null when there is none. */
+  const takeHeldReleaseError = useCallback((): string | null => {
+    const held = heldReleaseError.current;
+    heldReleaseError.current = null;
+    return held;
+  }, []);
 
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
@@ -232,8 +502,10 @@ export function useImageGeneration(
 
     const payload = message.payload as ImageGenerationResponsePayload;
     setConversationId(payload.conversationId);
-    setThreadSettings(dispatch.settings);
+    // The host reports the settings it holds the thread to.
+    setThreadSettings(payload.settings ?? dispatch.settings);
     setGeneratedImages(payload.images);
+    setRecoveryWarning(payload.recoveryWarning);
     setConversationHistory((prev) => [...prev, {
       id: `turn-${payload.turnNumber}`,
       prompt: dispatch.prompt,
@@ -244,8 +516,15 @@ export function useImageGeneration(
       referenceSvgText: dispatch.referenceSvgText,
     }]);
     setIsLoading(false);
-    setError(null);
-  }, []);
+    // The new thread exists, so the one it replaced can go: it can't be
+    // reached again (earlier-thread archives arrive with P4). A failed
+    // release reports an error after this response, which stays shown.
+    if (dispatch.replaces && dispatch.replaces.conversationId !== payload.conversationId) {
+      releaseThread(dispatch.replaces.conversationId);
+    }
+    setReplacedThread(null);
+    setError(takeHeldReleaseError());
+  }, [releaseThread, takeHeldReleaseError]);
 
   const handleSaveResult = useCallback((message: MessageEnvelope) => {
     const imageId = message.correlationId ? pendingSaves.current.get(message.correlationId) : undefined;
@@ -280,10 +559,22 @@ export function useImageGeneration(
   }, []);
 
   const handleError = useCallback((message: MessageEnvelope): boolean => {
-    const text = (message.payload as { message?: string } | undefined)?.message ?? 'Something went wrong';
+    let text = (message.payload as { message?: string } | undefined)?.message ?? 'Something went wrong';
     if (pending.current && message.correlationId === pending.current.correlationId) {
+      const { isNewThread, replaces } = pending.current;
+      // A failed new thread never existed: the thread it was replacing
+      // (never released) comes back; with none, its optimistic settings go.
+      if (replaces) restoreThread(replaces);
+      else if (isNewThread) setThreadSettings(null);
       pending.current = null;
+      setReplacedThread(null);
       setIsLoading(false);
+      const held = takeHeldReleaseError();
+      if (held) text = `${text} ${held}`;
+    } else if (message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`) && pending.current) {
+      // A generation is running: its success would clear this at once.
+      heldReleaseError.current = text;
+      return true;
     } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current.correlationId) {
       pendingEnhance.current = null;
       setIsEnhancing(false);
@@ -297,7 +588,7 @@ export function useImageGeneration(
     }
     setError(text);
     return true;
-  }, []);
+  }, [restoreThread, takeHeldReleaseError]);
 
   const showError = useCallback((text: string) => setError(text), []);
 
@@ -351,14 +642,19 @@ export function useImageGeneration(
       setError('Please enter a prompt');
       return;
     }
+    if (!imageRouteCapabilities(model, mode)) {
+      setError(`Choose a model that supports ${imageModeLabel(mode)}.`);
+      return;
+    }
+    if (referenceIssue) {
+      setError(referenceIssue);
+      return;
+    }
 
     // Parse seed input - if valid number use it, otherwise let handler auto-generate
     const parsedSeed = seedInput.trim() ? parseInt(seedInput, 10) : undefined;
     const seed = parsedSeed !== undefined && !isNaN(parsedSeed) ? parsedSeed : undefined;
-    // The SVG attachment's preview is not sent as an image: its markup goes
-    // as `referenceSvgText`, which the host appends to the prompt once.
-    const imagesForApi = referenceImages.filter((_, i) => i !== referenceSvgIndex);
-    const settings: ImageThreadSettings = { model, aspectRatio };
+    const settings: ImageThreadSettings = { mode, model, aspectRatio, resolution };
 
     const message = createEnvelope<ImageGenerationRequestPayload>(
       MessageType.IMAGE_GENERATION_REQUEST,
@@ -372,12 +668,20 @@ export function useImageGeneration(
       },
       newRequestId('image-generate')
     );
+    // The thread on screen is replaced, but released only once the new one
+    // succeeds: if this request fails, it comes back.
+    const replaces: ReplacedThread | undefined = conversationId
+      ? { conversationId, threadSettings, generatedImages, conversationHistory, recoveryWarning }
+      : undefined;
     pending.current = {
       correlationId: message.correlationId!,
       prompt,
       settings,
+      isNewThread: true,
+      replaces,
       referenceSvgText: referenceSvgText ?? undefined,
     };
+    setReplacedThread(replaces ?? null);
 
     // Generate takes the prompt on screen. An enhance still running is
     // dropped, so its answer can't rewrite the box under this request.
@@ -385,11 +689,12 @@ export function useImageGeneration(
     setIsLoading(true);
     setError(null);
     setConversationId(null);  // Clear conversation for new generation
-    setThreadSettings(null);
+    setThreadSettings(settings);
+    setRecoveryWarning(undefined);
     setGeneratedImages([]);    // Clear previous images
     setConversationHistory([]); // Clear history for new conversation
     vscode.postMessage(message);
-  }, [prompt, model, aspectRatio, referenceImages, referenceSvgText, referenceSvgIndex, seedInput, vscode, dropPendingEnhance]);
+  }, [prompt, mode, model, aspectRatio, resolution, imagesForApi, referenceIssue, referenceSvgText, seedInput, conversationId, threadSettings, generatedImages, conversationHistory, recoveryWarning, vscode, dropPendingEnhance]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -403,32 +708,41 @@ export function useImageGeneration(
         setError('No active conversation to continue');
         return;
       }
+      if (threadSettings.mode === 'edit') {
+        // A Single Shot follow-up sends the latest image as its reference.
+        if (imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0) {
+          setError('This model generates from text only, so it can’t follow up on an image. Use Generate to make a new image.');
+          return;
+        }
+        if (!conversationHistory.slice(-1)[0]?.images.length) {
+          setError('The latest image was not retained after reload. Add a saved image as a reference and generate a new image.');
+          return;
+        }
+      }
 
-      // Build history for self-contained request (enables re-hydration after extension restart)
-      const history: ConversationHistoryTurn[] = conversationHistory.map(turn => ({
-        prompt: turn.prompt,
-        images: turn.images.map(img => ({
-          data: img.data,
-          seed: img.seed,
-        })),
-        referenceSvgText: turn.referenceSvgText,
-      }));
+      // Single Shot follow-ups use only the latest images, which also let the
+      // host restart the thread after a restart.
+      const latestImages: ConversationHistoryTurn['images'] | undefined = threadSettings.mode === 'edit'
+        ? conversationHistory[conversationHistory.length - 1].images.map(img => ({ data: img.data, seed: img.seed }))
+        : undefined;
 
       // The thread's settings, not the draft controls, own a continuation, and
       // draft attachments are not part of the thread: they apply to the next
-      // Generate only.
+      // Generate only. Single Shot carries only its last result; Conversation
+      // obtains its transcript from the host and sends only its turn count.
       const message = createEnvelope<ImageGenerationContinuePayload>(
         MessageType.IMAGE_GENERATION_CONTINUE,
         'webview.imageGeneration',
         {
           prompt: chatPrompt,
           conversationId,
-          history,
+          turnCount: conversationHistory.length,
+          ...(latestImages ? { latestImages } : {}),
           ...threadSettings,
         },
         newRequestId('image-continue')
       );
-      pending.current = { correlationId: message.correlationId!, prompt: chatPrompt, settings: threadSettings };
+      pending.current = { correlationId: message.correlationId!, prompt: chatPrompt, settings: threadSettings, isNewThread: false };
 
       setIsLoading(true);
       setError(null);
@@ -439,25 +753,18 @@ export function useImageGeneration(
 
   const clearConversation = useCallback(() => {
     if (pending.current) return;
-    if (conversationId) {
-      // Release the host's copy too. Its only possible answer is an error
-      // (e.g. still generating), recognised by the prefix.
-      vscode.postMessage(createEnvelope(
-        MessageType.IMAGE_GENERATION_CLEAR,
-        'webview.imageGeneration',
-        { conversationId },
-        newRequestId(CLEAR_REQUEST_PREFIX)
-      ));
-    }
+    // Release the host's copy (and a Conversation's saved transcript) too.
+    if (conversationId) releaseThread(conversationId);
     setConversationId(null);
     setThreadSettings(null);
+    setRecoveryWarning(undefined);
     setGeneratedImages([]);
     setConversationHistory([]);
     setPrompt('');
     // Clear starts over: an enhance still running must not refill the box.
     dropPendingEnhance();
     setError(null);
-  }, [conversationId, dropPendingEnhance, vscode]);
+  }, [conversationId, dropPendingEnhance, releaseThread]);
 
   const saveImage = useCallback(
     (image: GeneratedImage) => {
@@ -509,33 +816,59 @@ export function useImageGeneration(
     vscode.postMessage(message);
   }, [prompt, vscode]);
 
-  // Persistence object (reference images excluded - they're per-request
-  // context). Memoized: App writes webview state whenever this identity
-  // changes, and it carries every generated image as base64.
-  const persistedState = useMemo<ImageGenerationPersistence>(() => ({
-    prompt,
-    model,
-    aspectRatio,
-    conversationId,
-    threadSettings,
-    generatedImages,
-    conversationHistory,
-  }), [prompt, model, aspectRatio, conversationId, threadSettings, generatedImages, conversationHistory]);
+  // Persistence (reference images excluded - they're per-request context).
+  // App writes webview state whenever this identity changes, and it carries
+  // every generated image as base64, so the bounded history is memoized on
+  // its own and the cheap draft controls are merged afterwards: typing never
+  // re-serializes image history. Nothing read from `initialState` takes part:
+  // its warnings described an older snapshot. A first Generate's optimistic
+  // settings stay out until the host names the thread: a reload while it runs
+  // must not restore a thread that doesn't exist. While a Generate replaces a
+  // thread, the snapshot keeps the replaced one: the host still holds it, so
+  // a reload meanwhile brings it back instead of leaving it unreachable.
+  const persistedHistory = useMemo(() => boundedImageHistory({
+    model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
+    ...(replacedThread ?? {
+      threadSettings: conversationId ? threadSettings : null, recoveryWarning, conversationId,
+      generatedImages, conversationHistory,
+    }),
+  }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
+  [replacedThread, threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
+  const persistedState = useMemo<ImageGenerationPersistence>(() => mergeImageHistoryDraft(persistedHistory, {
+    model, prompt, aspectRatio, resolution,
+  }), [persistedHistory, model, prompt, aspectRatio, resolution]);
+  // Live turns never carry `imagesOmitted` (only snapshot copies do), so a
+  // flagged turn is one restored from an earlier session. The note goes when
+  // Clear or Generate replaces those turns.
+  const restoredPreviewsOmitted = useMemo(
+    () => conversationHistory.some(turn => turn.imagesOmitted),
+    [conversationHistory]
+  );
+  const persistenceWarning = persistedHistory.persistenceWarning
+    ?? (restoredPreviewsOmitted ? IMAGE_HISTORY_RESTORED_WARNING : undefined);
 
   return {
     // State
+    mode,
     prompt,
     model,
     aspectRatio,
+    resolution,
     referenceImages,
     referenceSvgText,
+    referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
+    followUpSizeWarning,
+    referenceIssue,
     seedInput,
     generatedImages,
     conversationHistory,
     conversationId,
     threadSettings,
+    recoveryWarning,
+    persistenceWarning,
+    draftWarning: persistedState.draftWarning,
     savingImageIds,
     savedImageIds,
     isLoading,
@@ -545,6 +878,7 @@ export function useImageGeneration(
     setPrompt,
     setModel,
     setAspectRatio,
+    setResolution,
     setSeedInput,
     addReferenceImage,
     removeReferenceImage,

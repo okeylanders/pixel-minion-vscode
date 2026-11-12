@@ -6,26 +6,13 @@
  *
  * The image-pricing and image-model types below are ported from
  * frame-minion@40e7949 packages/core/src/shared/types/providers.ts; keep in
- * sync. Pixel-only additions (`ImageApiAspectRatio`, `TextPricing`,
- * `SvgModelDefinition`) are marked as such.
+ * sync. Pixel-only additions (`TextPricing`, `SvgModelDefinition`) are marked
+ * as such.
  */
+
+import type { AspectRatio } from './messages/imageGeneration';
 
 export type GenerationType = 'image' | 'svg';
-
-/**
- * Normalized aspect ratios published by OpenRouter's Image API.
- *
- * Frame calls this `AspectRatio`. Pixel keeps that name for the seven ratios
- * the Image and SVG tabs send today (`messages/imageGeneration.ts`); the
- * catalog records the wider set each endpoint advertises so the Image API
- * transport (roadmap P3) can drive its controls from it.
- */
-export type ImageApiAspectRatio =
-  | 'auto'
-  | '1:1' | '1:2' | '2:1' | '1:4' | '4:1' | '1:8' | '8:1'
-  | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '7:5' | '5:7'
-  | '9:16' | '16:9' | '21:9'
-  | '9:19.5' | '19.5:9' | '9:20' | '20:9' | '9:21';
 
 /**
  * How an OpenRouter image model bills output. These are the three units the
@@ -73,12 +60,11 @@ export interface ImagePricing {
  * pricing surface: absent ⇒ the provider publishes no price and the Model
  * Browser renders no cost hint.
  *
- * ⚠️ Not yet consumed in Pixel: `transport`, `supportsSeed`, `referenceImages`,
- * `referenceMimeTypes`, `supportedResolutions` and `supportedAspectRatios` are
- * recorded from the live Image API endpoint records so the catalog stays
- * shareable with Frame. Nothing reads them until the Image API transport and
- * capability-driven controls land (roadmap P3); today every request goes to
- * `/chat/completions` with the Image tab's fixed controls.
+ * The capability fields come from the live Image API endpoint records and
+ * drive both the controls the Image tab shows and the host's checks before a
+ * request is sent (`imageRouteCapabilities`, shared/models/ImageGenerationModes.ts).
+ * For a native-vector SVG row they describe the Image API record only: the SVG
+ * tab's vector client still uses `/chat/completions` (roadmap P5b).
  */
 export interface ImageModelDefinition {
   id: string;           // e.g., 'google/gemini-2.5-flash-image'
@@ -93,6 +79,17 @@ export interface ImageModelDefinition {
   /** Narrower reference MIME allowlist for routes with format requirements. */
   referenceMimeTypes?: readonly ('image/png' | 'image/jpeg' | 'image/webp')[];
   /**
+   * What the model does with its references, where that is stated: `style`
+   * makes a new image in their style (Recraft Styles), `edit` edits them
+   * (Krea K3 Edit). Absent: not stated. Only the Image tab's wording uses it.
+   */
+  referenceRole?: 'style' | 'edit';
+  /**
+   * The provider's request-size limit, in bytes. The Image tab warns when the
+   * images a request carries exceed it; nothing refuses the request.
+   */
+  maxRequestBytes?: number;
+  /**
    * Unit-aware image-generation pricing (audited against the live
    * `/api/v1/images/models` endpoints). Absent ⇒ the provider publishes no
    * price (Model Browser renders no cost label).
@@ -101,7 +98,7 @@ export interface ImageModelDefinition {
   /** Normalized output tiers published by OpenRouter's Image API. Absent means auto/default only. */
   supportedResolutions?: readonly ('512' | '768' | '1K' | '1.5K' | '2K' | '4K')[];
   /** Exact normalized aspect ratios accepted by the live OpenRouter Image API. */
-  supportedAspectRatios?: readonly ImageApiAspectRatio[];
+  supportedAspectRatios?: readonly AspectRatio[];
 }
 
 /**

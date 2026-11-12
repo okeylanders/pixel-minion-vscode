@@ -1,9 +1,15 @@
 /**
  * ImageCard — Frame's fm-result card.
  *
- * Left-aligned, up to 320px wide: the image on a square stage, then a meta
+ * Left-aligned, up to 320px wide: the image on a stage shaped like the image
+ * (square until its size is known; ImageCard sets it inline), then a meta
  * block with the prompt and the approve/save tile on the first row and the
  * mono seed chip on its own row.
+ *
+ * The stage's height is capped (a Pixel delta): routes offer ratios down to
+ * 1:8, which at 320px wide would make a stage about 2,560px tall. Past the
+ * cap the stage keeps its width and the image is letterboxed inside it
+ * (object-fit: contain), so the whole image and its footer stay in view.
  */
 
 .image-card {
@@ -21,6 +27,7 @@
 .image-card-image-container {
   position: relative;
   width: 100%;
+  max-height: min(70vh, 560px);
   aspect-ratio: 1 / 1;
   background: color-mix(in oklab, var(--px-bg) 50%, var(--px-field));
 }

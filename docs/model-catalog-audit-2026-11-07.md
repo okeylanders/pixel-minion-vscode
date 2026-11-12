@@ -394,3 +394,39 @@ Results for every current and proposed id:
 - The released v1.3.0 catalog is not broken by the transport change. Its five delisted ids are now migrated on read.
 - The six chat-blocked models that the PR #12 refresh added were removed in PR A (`RETIRED_MODELS`, reason `images-api-only`). They return with the P3 transport.
 - PR B may add only chat-routable models.
+
+---
+
+## Addendum 2 — P3 transport qualification (2026-11-12)
+
+Run for roadmap P3 (the `/images` transport), five days after the audit. Budget set by the owner: up to $0.40 of live calls, stop before usage passes $0.60.
+
+**Free re-checks** (unauthenticated feeds, plus the free routing probe from the first addendum with `modalities: ['audio']`):
+- `GET /api/v1/images/models` and every `…/endpoints` record: no capability or price drift for any catalog id since 2026-11-07. Two new listings, `minimax/minimax-h3-image` and `-highspeed` (1K–4K, 24 ratios, 0–16 references), are not evaluated or added.
+- The probe gives the same split as on 2026-11-07: 17 catalog-candidate ids are Image-API-only (GPT Image ×7, Krea ×4 incl. K3 Edit, FLUX.3 ×2, Qwen ×3, Muse), 38 are chat-routable. Only the verified conversational set (Gemini ×7, GPT-5 wrappers ×3) is used over chat.
+- **Muse has no route at all**: the probe rejects it on chat ("is an image generation model and cannot be used with the chat/completions endpoint") although its chat endpoint record is still active, and its Image API endpoint list is empty. It stays out of Pixel's catalog; Frame still routes it over chat (flag upstream).
+- Snapshots are committed as test fixtures: `src/__tests__/fixtures/provider-contracts/openrouter-image-chat-routes-2026-11-12.json` and `openrouter-image-endpoints-2026-11-12.json`.
+
+**Paid calls**, made once each through Pixel's real `OpenRouterImageClient`, `ImageOrchestrator` and transcript store (key injected by the agent proxy; the client sent a placeholder). No call was retried.
+
+The key's workspace is now **restricted to BYOK capacity**: a provider without a BYOK key in the workspace answers `404 "No endpoints found that can be served by your own provider keys"` at routing, before generation and without a charge. Only OpenAI had a BYOK key, so OpenAI calls were billed to that key (OpenRouter reports `cost: 0` and the spend in `cost_details.upstream_inference_cost`).
+
+| Step | Model | Route | Result | Cost |
+| --- | --- | --- | --- | --- |
+| A | `black-forest-labs/flux-3-image-klein` @768 1:1, seed 42 | `/images` | 404 BYOK routing | $0 |
+| D | `recraft/recraft-v4.1-flash`, Auto, prompt only | `/images` | 404 BYOK routing | $0 |
+| F | `google/gemini-3.1-flash-lite-image` 1:1 1K | chat (Conversation) | 404 BYOK routing | $0 |
+| H | `openai/gpt-image-1-mini` 1:1 | `/images` | ✅ 200, `data[{b64_json, media_type: image/png}]`, 1024×1024 | $0.008474 |
+| I1 | `openai/gpt-image-1-mini`, `aspect_ratio: 'auto'` | `/images` | ✅ 200, PNG 1536×1024 (model chose landscape) | $0.012576 |
+| I2 | same thread, Single Shot follow-up | `/images` with one `input_reference` (I1's image) | ✅ 200, PNG 1536×1024; 1,546 prompt tokens for the reference | $0.016404 |
+| K | `recraft/recraft-v4.1-flash` with an `input_reference` (raw request past Pixel's preflight) | `/images` | 404 BYOK routing (so OpenRouter's own handling of a reference to a text-only model is still unobserved) | $0 |
+| J1 | `openai/gpt-5-image-mini`, Conversation, `image_config.aspect_ratio: '3:2'` | chat | ✅ 200; `content: null`, one encrypted `reasoning_details` item, one image (no thought signature); **1024×1024 despite 3:2** | $0.041397 |
+| J2 | same thread after a simulated host restart | chat, transcript restored from the store | ✅ 200; replayed `[user, assistant (content null, reasoning_details), user + latest image]` was accepted; 5.8 MB transcript | $0.043323 |
+
+**Spend:** OpenRouter credit usage $0.16766 before and after (unchanged); BYOK usage $0 → $0.122174. Total live spend **$0.1222**, below the $0.40 budget.
+
+**What this establishes:** the Image API body (prompt, explicit Auto, `input_references`), its response shape, a Single Shot follow-up, a GPT-5 Conversation and its restart replay (opaque assistant message incl. `content: null` and encrypted reasoning) all work as sent. The response metadata is a fixture (`openrouter-image-live-2026-11-12.json`) replayed by `OpenRouterImageLiveContract.test.ts`.
+
+**What it doesn't:** any non-OpenAI provider (the BYOK restriction), Gemini Conversation (the default model family; 4K, signed replay), FLUX/Qwen/Krea/Recraft over `/images`, and how OpenRouter treats a reference sent to a text-only model (Pixel refuses it before sending). These need a key whose workspace isn't BYOK-restricted, or BYOK keys for those providers; owner-run.
+
+**Observations:** GPT-5 Image Mini ignored `image_config.aspect_ratio: '3:2'` on chat in one call (Pixel's card shows the real 1:1 shape; one sample, not acted on). For BYOK turns OpenRouter's `usage.cost` is 0, so Pixel's per-turn cost line and the balance refresh show no spend for them.

@@ -6,9 +6,12 @@
  * `pixelMinion.imageModel` or `pixelMinion.svgModel` never reaches a request.
  *
  * Verified 2026-11-07: delisted ids against `/api/v1/models`,
- * `/api/v1/images/models` and each id's `/endpoints` record; images-api-only
- * ids by a `/chat/completions` probe that OpenRouter rejects before routing
- * (see docs/model-catalog-audit-2026-11-07.md).
+ * `/api/v1/images/models` and each id's `/endpoints` record (see
+ * docs/model-catalog-audit-2026-11-07.md).
+ *
+ * Models OpenRouter serves only through its Image API used to be listed here
+ * too (reason `images-api-only`). Pixel speaks that API since roadmap P3, so
+ * those ids are catalog models again and nothing migrates them.
  *
  * Superseded-but-live ids (a model replaced in the curated list by a newer
  * generation) are deliberately NOT listed: OpenRouter still serves them, so a
@@ -16,19 +19,10 @@
  * than silently switching models and prices under the user.
  */
 
-import { DEFAULT_IMAGE_MODEL } from './ImageModels';
-
 /** Why a saved model id can no longer be used by Pixel Minion. */
 export type RetiredModelReason =
   /** OpenRouter no longer serves the model ("no provider serves this model anymore"). */
-  | 'delisted'
-  /**
-   * OpenRouter serves the model only through `POST /api/v1/images`; a
-   * `/chat/completions` request is rejected with 404 "is an image generation
-   * model and cannot be used with the chat/completions endpoint". These return
-   * once Pixel adopts the dedicated Image API transport (roadmap phase P3).
-   */
-  | 'images-api-only';
+  'delisted';
 
 export interface RetiredModel {
   replacement: string;
@@ -44,13 +38,6 @@ export const RETIRED_MODELS: Readonly<Record<string, RetiredModel>> = {
   'sourceful/riverflow-v2-fast-preview': { replacement: 'sourceful/riverflow-v2.5-fast', reason: 'delisted' },
   'anthropic/claude-opus-4': { replacement: 'anthropic/claude-opus-5.5', reason: 'delisted' },
   'anthropic/claude-opus-5-fast': { replacement: 'anthropic/claude-opus-5.5', reason: 'delisted' },
-  // Image API only — added by the PR #12 catalog refresh, never released.
-  'openai/gpt-image-2': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
-  'openai/gpt-image-1': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
-  'openai/gpt-image-1-mini': { replacement: 'openai/gpt-5.4-image-2', reason: 'images-api-only' },
-  'krea/krea-2-large': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
-  'krea/krea-2-medium': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
-  'krea/krea-2-medium-turbo': { replacement: DEFAULT_IMAGE_MODEL, reason: 'images-api-only' },
 };
 
 /** Replacement id per retired id (derived from {@link RETIRED_MODELS}). */

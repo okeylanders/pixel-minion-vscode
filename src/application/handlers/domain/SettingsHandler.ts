@@ -16,7 +16,7 @@ import {
 } from '@messages';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS } from '../../../shared/models';
+import { RETIRED_MODELS, RETIRED_MODEL_REPLACEMENTS, RetiredModelReason } from '../../../shared/models';
 
 /** Settings that hold a catalog model id and must never point at a retired one. */
 const MODEL_SETTING_KEYS = ['imageModel', 'svgModel'] as const;
@@ -223,9 +223,7 @@ export class SettingsHandler {
     const { replacement } = retired;
     const clear = replacement === fallback;
 
-    const why = retired.reason === 'delisted'
-      ? 'is no longer available on OpenRouter'
-      : "is only served by OpenRouter's Image API, which Pixel Minion does not use yet";
+    const why = RETIRED_REASON_TEXT[retired.reason];
     const scope = target === vscode.ConfigurationTarget.Global ? 'user' : 'workspace';
     this.logger.info(clear
       ? `Model ${saved} ${why}; clearing the ${scope} ${key} setting so it falls back to ${replacement}`
@@ -240,6 +238,11 @@ export class SettingsHandler {
     return clear ? undefined : replacement;
   }
 }
+
+/** How the migration log explains each reason a model was retired. */
+const RETIRED_REASON_TEXT: Record<RetiredModelReason, string> = {
+  delisted: 'is no longer available on OpenRouter',
+};
 
 function replaceRetiredModel(model: string): string {
   return RETIRED_MODEL_REPLACEMENTS[model] ?? model;

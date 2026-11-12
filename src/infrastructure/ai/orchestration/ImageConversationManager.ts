@@ -1,3 +1,4 @@
+// Ported from frame-minion@40e7949 packages/core/src/infrastructure/ai/orchestration/ImageConversationManager.ts; keep in sync
 /**
  * ImageConversationManager - Manages image generation conversation state
  *
@@ -12,30 +13,30 @@ import {
   ImageGenerationResult,
 } from '../clients/ImageGenerationClient';
 import { LoggingService } from '@logging';
+import type { ImageGenerationMode } from '@messages';
 
 /**
  * State for a single image generation conversation
  */
 export interface ImageConversationState {
+  mode: ImageGenerationMode;
   id: string;
   messages: ImageConversationMessage[];
   model: string;
   aspectRatio: string;
+  resolution?: string;
   turnNumber: number;
   lastSeed?: number;
   lastImages?: string[];
 }
 
 /**
- * History turn for re-hydration (from webview persistence)
+ * A generated image the webview hands back to restart a Single Shot thread
+ * after a host restart.
  */
-export interface RehydrationTurn {
-  prompt: string;
-  images: Array<{
-    data: string;
-    seed: number;
-  }>;
-  referenceSvgText?: string;
+export interface RehydrationImage {
+  data: string;
+  seed: number;
 }
 
 export class ImageConversationManager {
@@ -46,13 +47,15 @@ export class ImageConversationManager {
   /**
    * Create a new conversation
    */
-  create(model: string, aspectRatio: string): ImageConversationState {
+  create(model: string, aspectRatio: string, resolution?: string, mode: ImageGenerationMode = 'edit'): ImageConversationState {
     const id = `img-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     const conversation: ImageConversationState = {
       id,
+      mode,
       messages: [],
       model,
       aspectRatio,
+      resolution,
       turnNumber: 0,
       lastImages: [],
     };
@@ -74,7 +77,9 @@ export class ImageConversationManager {
   getOrCreate(
     id: string | undefined,
     model: string,
-    aspectRatio: string
+    aspectRatio: string,
+    resolution?: string,
+    mode: ImageGenerationMode = 'edit'
   ): ImageConversationState {
     if (id) {
       const existing = this.conversations.get(id);
@@ -82,7 +87,7 @@ export class ImageConversationManager {
         return existing;
       }
     }
-    return this.create(model, aspectRatio);
+    return this.create(model, aspectRatio, resolution, mode);
   }
 
   /**
@@ -170,62 +175,39 @@ export class ImageConversationManager {
   }
 
   /**
-   * Re-hydrate a conversation from webview history (after extension restart)
+   * Restart a Single Shot thread after an extension restart, from what its
+   * next follow-up uses: the latest images (its references and seed). Like a
+   * live Single Shot thread, it keeps no earlier messages.
    */
   rehydrate(
     conversationId: string,
     model: string,
     aspectRatio: string,
-    history: RehydrationTurn[]
+    latestImages: RehydrationImage[],
+    turnCount: number,
+    resolution?: string
   ): ImageConversationState {
     const conversation: ImageConversationState = {
       id: conversationId,
+      mode: 'edit',
       messages: [],
       model,
       aspectRatio,
-      turnNumber: 0,
-      lastImages: [],
+      resolution,
+      turnNumber: turnCount,
+      lastSeed: latestImages[0]?.seed,
+      lastImages: latestImages.map(img => img.data),
     };
 
-    // Rebuild messages from history
-    for (const turn of history) {
-      // Add user message with prompt and images as context
-      const userContent: ImageMessageContent[] = [
-        { type: 'text', text: turn.referenceSvgText ? `${turn.prompt}\n\nReference SVG:\n${turn.referenceSvgText}` : turn.prompt }
-      ];
-
-      for (const img of turn.images) {
-        userContent.push({
-          type: 'image_url',
-          image_url: { url: img.data }
-        });
-      }
-
-      conversation.messages.push({
-        role: 'user',
-        content: userContent
-      });
-
-      // Add assistant response with images
-      conversation.messages.push({
-        role: 'assistant',
-        content: [{ type: 'text', text: 'Generated images' }],
-        images: turn.images.map(img => ({ image_url: { url: img.data } }))
-      });
-
-      conversation.turnNumber++;
-
-      // Track the last seed used
-      if (turn.images.length > 0) {
-        conversation.lastSeed = turn.images[0].seed;
-        conversation.lastImages = turn.images.map(img => img.data);
-      }
-    }
-
     this.conversations.set(conversationId, conversation);
-    this.logger.info(`Re-hydrated conversation ${conversationId} with ${conversation.turnNumber} turns`);
+    this.logger.info(`Re-hydrated Single Shot thread ${conversationId} at turn ${turnCount}`);
 
     return conversation;
+  }
+
+  /** Only the host-owned transcript store may restore opaque provider messages. */
+  restore(state: ImageConversationState): void {
+    this.conversations.set(state.id, state);
   }
 
   /**

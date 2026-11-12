@@ -14,7 +14,7 @@ import { OpenRouterDynamicTextClient } from '../clients/OpenRouterDynamicTextCli
 import { TextClient } from '../clients/TextClient';
 import { SVGConversationManager, SVGConversationState, SVGRehydrationTurn } from './SVGConversationManager';
 import { LoggingService } from '@logging';
-import { AspectRatio, TokenUsage } from '@messages';
+import { SVGAspectRatio, TokenUsage } from '@messages';
 import { isNativeVectorSvgModel, svgModelSupportsRefinement } from '../../../shared/svg/svgRoutes';
 import { inspectSvgDocument } from '../../../shared/svg/SVGDocumentPolicy';
 
@@ -38,7 +38,7 @@ export const SVG_MAX_OUTPUT_TOKENS = 32_000;
 
 export interface SVGGenerationOptions {
   model: string;
-  aspectRatio: AspectRatio;
+  aspectRatio: SVGAspectRatio;
   referenceImage?: string;  // base64 encoded image
   referenceSvgText?: string; // raw SVG content
 }
@@ -204,7 +204,7 @@ export class SVGOrchestrator {
     prompt: string,
     history?: SVGRehydrationTurn[],
     model?: string,
-    aspectRatio?: AspectRatio,
+    aspectRatio?: SVGAspectRatio,
     referenceSvgText?: string
   ): Promise<SVGTurnResult> {
     let conversation = this.conversationManager.get(conversationId);

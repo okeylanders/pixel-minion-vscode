@@ -1,6 +1,6 @@
 # Pixel Minion ← Frame Minion: image-generator parity and port plan
 
-**Status:** Investigation complete, 2026-11-07. Nothing was implemented, and no paid generations were run.
+**Status:** Investigation complete, 2026-11-07 (no code changed, no paid generations). P3 implemented 2026-11-12: see [§8](#8-p3-as-built-2026-11-12).
 **Decision:** [Declared] Pixel's image generator should do what Frame's now does, with nothing that uses fal.ai, and Pixel's model picker should look and behave the same as Frame's.
 **Inspected:**
 - Frame `40e7949` (detached worktree of `feat/video-models-sprint-06`), which contains `aa1bab1 23be8e8 eea465c 51ef963 5492f94 a61d131 658396d b138cb7 ce4ae49`.
@@ -325,3 +325,101 @@ Effort total [Inferred]: P1 M, P2 S–M, P3 L, P4 M, P5a M, P5b M. Roughly 18–
    - `footerLabel` prop and the Pixel a11y changes.
    - Release dates for the 5 rows that have none.
    - Retention of transcripts and tombstones (F-7/R-4), which both apps inherit.
+
+---
+
+## 8. P3 as built (2026-11-12)
+
+**Status:** ✅ Implemented on `claude/pixel-minion-images-transport-dhbqpd` (`19136ad`, `cfb0d34`, `a501ad5`), from `main` at `035906f`; pre-PR independent-review fixes merged in `18e36b3` ([table below](#pre-pr-independent-review-r6-p3)). Awaiting Astra's review.
+
+The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, PR B had already moved the catalogs to `src/shared/models`, ported Frame's unit-aware `ImageModelDefinition` with every capability field, and fixed the picker; P2 had added correlation ids, rollback and the in-flight guard. So P3 is mostly the engine and the controls. The P4 items (toggle, archives, start-from-image, Settings custom ids) are untouched, except the two P3 can't ship without: untagged history migrates to Single Shot, and a custom id runs as Single Shot.
+
+### Status by item (parity matrix rows touched)
+
+| Row | Item | Status |
+| --- | --- | --- |
+| 2 | Two transports, mode-aware client | ✅ `cfb0d34`. Muse is out of both modes (no route on 2026-11-12) |
+| 3 | Capability resolution | ✅ `cfb0d34` (`ImageGenerationModes.ts`) |
+| 4 | Aspect ratios incl. `auto`; SVG keeps its seven | ✅ `19136ad`, `cfb0d34` |
+| 5 | Resolution tiers | ✅ `cfb0d34` |
+| 6 | Seed only where supported | ✅ `cfb0d34` |
+| 7 | Reference min/max and MIME, UI and host | ✅ `cfb0d34`; witnesses in `a501ad5` |
+| 8 | Normalization when an option disappears | ✅ `cfb0d34` |
+| 9 | Thread-owned settings + migration | ✅ `cfb0d34` (migration done here, not P4: P3 can't continue an untagged thread otherwise) |
+| 12 | Host transcript store, restart recovery | ✅ `cfb0d34` (`GlobalStorage` seam instead of Frame's ports) |
+| 13 | Bounded persistence | ✅ `cfb0d34` without archives (P4) |
+| 16 | MIME detection, natural dimensions | ✅ `cfb0d34` |
+| 21 | Text-only models | ✅ `cfb0d34` |
+| 25 | Catalog breadth | ✅ 35 → 54 rows |
+| 1, 10, 11, 20, 22 | Mode toggle, archives, start-from-image, custom ids in Settings, mode copy | ⏳ P4 |
+
+### Ported vs adapted
+
+- **Verbatim (modulo imports and comments):** `ImageConversationManager`, `OpenRouterImageTransport` (chat and Image API adapters), `OpenRouterImageClient`'s preflight and parsing, `ImageOrchestrator`'s mode, settings and recovery logic, `FileImageConversationStore`'s validation and limits, `imageHistoryPersistence`'s bound, `AspectRatioSelector`, `ResolutionSelector`, `ImageUploader`'s limits.
+- **Adapted:**
+  - Conversational set from the 2026-11-07 probe (re-run 2026-11-12), not Frame's 2026-09-10 list: adds Nano Banana 2.1; drops Muse.
+  - Conversation carries the model's audited reference bounds (Frame: unbounded).
+  - The store writes through `GlobalStorage` (`size` / `read` / `write` / `rename`, mkdir-p) over `context.storageUri` (or a global `empty-window/` folder), not Frame's `FileSystem` / `Workspace` ports; writes are temp-then-rename (review H2, H7).
+  - Raster sniffing reuses `shared/media/imageFormats` (also the save handler's).
+  - The orchestrator keeps P2's fuller rollback (turn number and last images too).
+  - Generate releases the thread it replaces (`IMAGE_GENERATION_CLEAR`) once the new generation succeeds, and restores it if the new one fails (review W3): P3 has no archive, so the thread can't be reached again, and its transcript would otherwise be orphaned.
+  - One `ImageOrchestrator` per extension, shared by every view (review H1); `mode` is required on every request (review H3, Frame keeps the F-1 carve-out); follow-ups send a turn count, plus the latest images for Single Shot, instead of the display history (review H6).
+  - Mode is derived from the model until P4's toggle (`defaultImageMode`, Frame's rule, named).
+  - The image card prefers natural dimensions over the requested ratio (Frame: requested first).
+  - The persistence bound has no desktop budget and no archives.
+  - The chat client keeps Pixel's signature diagnostics in its debug log.
+- **Not ported:** project-frame helpers and MVO seams, the desktop budget, the image card's video/orchestrator actions, Frame's `TERMINAL_AI_RESPONSE_TYPES` (Pixel already arms the balance refresh that way).
+
+### Acceptance (§5 row P3)
+
+| Criterion | Evidence |
+| --- | --- |
+| Single Shot sends an `/images` body; ratio/resolution omitted when unverified | `OpenRouterImageClient.test.ts`; live I1/I2 |
+| Conversation sends the full history plus `image_config` | `OpenRouterImageClient.test.ts`, `ImageConversationModes.test.ts`; live J1/J2 |
+| No endpoint retry | client tests for both transports |
+| Transcript under the workspace's `image-conversations/img-*.json` within 64 MiB (first build: `globalStorage/image-conversations/<hash>/`) | `ImageConversationModes.test.ts`, `ImageConversationStore.test.ts` |
+| Conversation continues after an extension-host restart; a mismatch errors explicitly | `ImageConversationModes.test.ts`, `imageTabRoutes.test.tsx`; live J2 |
+| Unsupported ratio, resolution or reference count rejected before any provider call | client, orchestrator and end-to-end tests |
+| WebP output saves as `.webp` | P2's save tests, unchanged; the transport keeps the sniffed type |
+| (Muse uses chat in both modes) | Not applicable: Muse has no route |
+
+### Pre-PR independent review (R6-P3)
+
+Three reviewers read `035906f..b8dc618` before the PR was opened (host side, webview side, and the P4 reviewer for the shared persistence code). No blockers. Fixed on `p3fix/host` and `p3fix/web`, merged in `18e36b3`; details in the [detailed changelog](../CHANGELOG-DETAILED.md#pre-pr-review-follow-up-p3).
+
+| Id | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| W1 | Major | Persistence warning carried into every later snapshot (never cleared); draft note appended per keystroke; up to 48 MiB re-serialized per keystroke | ✅ Fixed in `8c5d592` |
+| W2 | Minor | Reload during a first Generate restored a ghost thread | ✅ Fixed in `42b34ef` |
+| W3 + H8 | Minor | Generate released the replaced thread before the new one succeeded; a release error was wiped by the next response | ✅ Fixed in `75a7259` |
+| W4 / H6 | Minor | Follow-ups posted every turn's images; Single Shot host threads kept every turn | ✅ Fixed in `f5a8cae` |
+| W5 | Minor | 1:8 / 8:1 outputs made giant cards | ✅ Fixed in `7fbf472` |
+| W6 | Minor | SVG attachment counted against the raster reference cap | ✅ Fixed in `304539e` |
+| N1 | Nit | Dead no-mode normalization branches bypassed route capabilities | ✅ Fixed in `be9bc43` |
+| N2 | Nit | Requirement note inferred from MIME presence, "1–1", unenforced 256 px claim | ✅ Fixed in `a3f1ff0` (claim dropped) |
+| N3 | Nit | Sourceful size warning keyed on an id prefix; counted the SVG; missed follow-up re-sends | ✅ Fixed in `a3f1ff0` (`maxRequestBytes`) |
+| N4 | Nit | Generate's blocked reason not announced | ✅ Fixed in `58898e0` |
+| H1 | Minor | In-flight lock and tombstone didn't hold across a re-resolved view (cleared thread resurrected) | ✅ Fixed in `0d233e7`, `23f53ad`, `15890d1` |
+| H2 | Minor | Non-atomic transcript writes; an over-cap turn left a stale record | ✅ Fixed in `8d8cce5` |
+| H3 | Minor | A request without `mode` skipped ratio/resolution gates and the unknown-id guard | ✅ Fixed in `6c0615c` |
+| H4 | Minor | Provider's error reason dropped | ✅ Fixed in `189518e` |
+| H5 | Minor | One unusable `/images` entry discarded the whole paid result | ✅ Fixed in `9622d4d` |
+| H7 | Nit | Store scope changed with multi-root folder edits | ✅ Fixed in `33449f6` (`context.storageUri`) |
+| — | Nit | `clear()` wrote a tombstone for ids with no record | ✅ Fixed in `23f53ad` |
+| — | Risk | Chat `aspect_ratio: 'auto'` acceptance unverified | ✅ Omitted for Auto in `0c49595` |
+| — | Tests | Mutation survivors: settings immutability in `generateImage`; store id-vs-file check | ✅ `72788f8`, `23f53ad` |
+| — | Residual | In-memory threads outlive a view until the host restarts if their webview state is lost | ↪ Deferred (bounded: Single Shot holds only its latest images) |
+| — | Residual | A thread whose text alone exceeds 48 MiB is dropped from the snapshot with no note | ↪ Deferred (pathological; text-only) |
+
+Same defects exist in Frame (report upstream): W1, W2, W3, W6, N3, H7.
+
+### Manual checks still owed (owner-run)
+
+The key's workspace is BYOK-restricted, so the live run reached only OpenAI (audit addendum 2). Still owed:
+- Gemini Conversation at 4K with a reload between turns 2 and 3, and signed vs unsigned replay (F-11).
+- One call each through `/images` for FLUX.3, Qwen, Krea (K3 Edit with a reference) and Recraft (V4.1 Flash with and without a reference).
+- The installed-VSIX pass at 360 px in Dark, Light and High Contrast.
+
+### Inherited limitations (documented, not fixed)
+
+F-7 (each Conversation turn rewrites its whole transcript; no expiry; tombstones stay), F-10 (reloading mid-generation strands the Conversation; the next follow-up fails with "visible history differ"), F-11 (the latest image is a user reference even when signed assistant images are replayed, so it is billed twice), R-4 (deleting an unknown Single Shot id after a restart writes a small tombstone). Also observed in the live run: GPT-5 Image Mini ignored a chat `aspect_ratio` once; BYOK turns report `cost: 0`.

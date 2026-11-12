@@ -43,7 +43,6 @@ import {
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import {
-  OpenRouterImageClient,
   ImageOrchestrator,
   OpenRouterDynamicTextClient,
   OpenRouterImageSVGClient,
@@ -88,7 +87,14 @@ export class MessageHandler {
     postToWebview: (message: MessageEnvelope) => void,
     secretStorage: SecretStorageService,
     private readonly logger: LoggingService,
-    private readonly accountBalanceService: AccountBalanceService
+    private readonly accountBalanceService: AccountBalanceService,
+    /**
+     * The extension's one image orchestrator (built in extension.ts, like the
+     * balance service). Its thread map and in-flight registry must outlive
+     * this handler: a re-resolved view gets a new MessageHandler, and a clear
+     * from it must still see a turn the previous view started.
+     */
+    imageOrchestrator: ImageOrchestrator
   ) {
     const postMessage = (message: MessageEnvelope): void => {
       postToWebview(message);
@@ -114,9 +120,6 @@ export class MessageHandler {
       (settings) => this.handleSettingsChanged(settings),
       () => this.resetClients()
     );
-    // Create image generation orchestrator and inject client
-    const imageOrchestrator = new ImageOrchestrator(logger);
-    imageOrchestrator.setClient(new OpenRouterImageClient(secretStorage, logger));
     this.imageGenerationHandler = new ImageGenerationHandler(
       postMessage,
       imageOrchestrator,

@@ -1,0 +1,2687 @@
+{
+ "capturedAt": "2026-11-12",
+ "source": "GET https://openrouter.ai/api/v1/images/models and GET /api/v1/images/models/<id>/endpoints (unauthenticated)",
+ "note": "Image API capabilities per curated id. referenceImages, aspectRatios, resolutions and supportsSeed are intersected across endpoints (a capability counts only when every endpoint advertises it). Each endpoint keeps its provider slug, its own resolution enum and its pricing entries as published. meta/muse-image is listed by /images/models but has no endpoint.",
+ "models": {
+  "google/gemini-nano-banana-2.1": {
+   "created": "2026-10-06",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:4",
+    "1:8",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-ai-studio",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-3.1-flash-image": {
+   "created": "2026-06-18",
+   "endpointCount": 3,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:4",
+    "1:8",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "512",
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-vertex/us",
+     "resolutions": [
+      "512",
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 6.6e-05
+      }
+     ]
+    },
+    {
+     "providerSlug": "google-ai-studio",
+     "resolutions": [
+      "512",
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 6e-05
+      }
+     ]
+    },
+    {
+     "providerSlug": "google-vertex/global",
+     "resolutions": [
+      "512",
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 6e-05
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-3.1-flash-lite-image": {
+   "created": "2026-06-30",
+   "endpointCount": 2,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:4",
+    "1:8",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "1K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-vertex/global",
+     "resolutions": [
+      "1K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    },
+    {
+     "providerSlug": "google-ai-studio",
+     "resolutions": [
+      "1K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-2.5-flash-image": {
+   "created": "2025-10-07",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 3
+   },
+   "aspectRatios": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-vertex/global",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 3e-07
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-3-pro-image": {
+   "created": "2026-06-18",
+   "endpointCount": 2,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-ai-studio/global",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 0.00012
+      }
+     ]
+    },
+    {
+     "providerSlug": "google-vertex/global",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 0.00012
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-2.6-sunburst": {
+   "created": "2026-11-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "gif",
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-2.6-flare": {
+   "created": "2026-11-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "gif",
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-2.5-sunburst": {
+   "created": "2026-09-09",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-2.5-flare": {
+   "created": "2026-09-09",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-2": {
+   "created": "2026-06-24",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-1": {
+   "created": "2026-06-24",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 1e-05
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 4e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-image-1-mini": {
+   "created": "2026-06-24",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2.5e-06
+      },
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 2e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-5.4-image-2": {
+   "created": "2026-04-21",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3e-05
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-5-image-mini": {
+   "created": "2025-10-16",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2.5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      }
+     ]
+    }
+   ]
+  },
+  "openai/gpt-5-image": {
+   "created": "2025-10-14",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 16
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "openai",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 1e-05
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 4e-05
+      }
+     ]
+    }
+   ]
+  },
+  "microsoft/mai-image-2.6": {
+   "created": "2026-09-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 5
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "azure",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 3.8e-05
+      }
+     ]
+    }
+   ]
+  },
+  "microsoft/mai-image-2.6-flash": {
+   "created": "2026-09-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 5
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "azure",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 1.75e-06
+      },
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2.5e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 1.9e-05
+      }
+     ]
+    }
+   ]
+  },
+  "microsoft/mai-image-2.5": {
+   "created": "2026-06-02",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "azure",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 4.7e-05
+      }
+     ]
+    }
+   ]
+  },
+  "microsoft/mai-image-2.5-pro": {
+   "created": "2026-07-23",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "azure",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 5e-06
+      },
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 8e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 0.000108
+      }
+     ]
+    }
+   ]
+  },
+  "krea/k3-edit": {
+   "created": "2026-10-15",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 1,
+    "max": 8
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:2",
+    "16:9",
+    "4:5",
+    "2:3",
+    "9:16"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "krea",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.03
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.06,
+       "variant": "2k"
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.02
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.07,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "request",
+       "cost_usd": 0.02,
+       "variant": "high_thinking_surcharge"
+      }
+     ]
+    }
+   ]
+  },
+  "krea/krea-2-large": {
+   "created": "2026-07-20",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:2",
+    "16:9",
+    "4:5",
+    "2:3",
+    "9:16"
+   ],
+   "resolutions": [
+    "1K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "krea",
+     "resolutions": [
+      "1K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.06
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.065,
+       "variant": "style_references"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.07,
+       "variant": "moodboards"
+      }
+     ]
+    }
+   ]
+  },
+  "krea/krea-2-medium": {
+   "created": "2026-07-20",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:2",
+    "16:9",
+    "4:5",
+    "2:3",
+    "9:16"
+   ],
+   "resolutions": [
+    "1K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "krea",
+     "resolutions": [
+      "1K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.03
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035,
+       "variant": "style_references"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04,
+       "variant": "moodboards"
+      }
+     ]
+    }
+   ]
+  },
+  "krea/krea-2-medium-turbo": {
+   "created": "2026-07-20",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:2",
+    "16:9",
+    "4:5",
+    "2:3",
+    "9:16"
+   ],
+   "resolutions": [
+    "1K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "krea",
+     "resolutions": [
+      "1K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.015
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.0175,
+       "variant": "style_references"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.02,
+       "variant": "moodboards"
+      }
+     ]
+    }
+   ]
+  },
+  "sourceful/riverflow-v2.6-pro": {
+   "created": "2026-10-29",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "5:4",
+    "4:5",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "sourceful",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.13
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.15,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.17,
+       "variant": "4k"
+      }
+     ]
+    }
+   ]
+  },
+  "sourceful/riverflow-v2.5-pro": {
+   "created": "2026-06-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg",
+    "png",
+    "webp"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "sourceful",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.13
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.15,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.17,
+       "variant": "4k"
+      }
+     ]
+    }
+   ]
+  },
+  "sourceful/riverflow-v2.5-fast": {
+   "created": "2026-06-04",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 4
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": [
+    "jpeg"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "sourceful",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.019
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.021,
+       "variant": "2k"
+      }
+     ]
+    }
+   ]
+  },
+  "sourceful/riverflow-v2-pro": {
+   "created": "2026-02-02",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "sourceful",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.15
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.15,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.33,
+       "variant": "4k"
+      },
+      {
+       "billable": "input_font",
+       "unit": "image",
+       "cost_usd": 0.03
+      },
+      {
+       "billable": "input_reference",
+       "unit": "image",
+       "cost_usd": 0.2
+      }
+     ]
+    }
+   ]
+  },
+  "sourceful/riverflow-v2-fast": {
+   "created": "2026-02-02",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 4
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "sourceful",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.02
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04,
+       "variant": "2k"
+      },
+      {
+       "billable": "input_font",
+       "unit": "image",
+       "cost_usd": 0.03
+      },
+      {
+       "billable": "input_reference",
+       "unit": "image",
+       "cost_usd": 0.2
+      }
+     ]
+    }
+   ]
+  },
+  "x-ai/grok-imagine-image-2.0": {
+   "created": "2026-08-11",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 3
+   },
+   "aspectRatios": [
+    "1:1",
+    "3:4",
+    "4:3",
+    "9:16",
+    "16:9",
+    "2:3",
+    "3:2",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "1:2",
+    "2:1",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "xai",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.01
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04,
+       "variant": "low_1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.06,
+       "variant": "low_2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.06,
+       "variant": "medium_1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.08,
+       "variant": "medium_2k"
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4-styles-pro": {
+   "created": "2026-08-26",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 1,
+    "max": 10
+   },
+   "aspectRatios": [
+    "1:1",
+    "2:1",
+    "1:2",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "5:4",
+    "4:5",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.1
+      },
+      {
+       "billable": "input_reference",
+       "unit": "request",
+       "cost_usd": 0.005
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4-styles": {
+   "created": "2026-08-26",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 1,
+    "max": 10
+   },
+   "aspectRatios": [
+    "1:1",
+    "2:1",
+    "1:2",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "5:4",
+    "4:5",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035
+      },
+      {
+       "billable": "input_reference",
+       "unit": "request",
+       "cost_usd": 0.005
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4.1-flash": {
+   "created": "2026-09-23",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 0
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.007
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4.1-pro": {
+   "created": "2026-05-13",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.21
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4.1": {
+   "created": "2026-05-13",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4.1-utility-pro": {
+   "created": "2026-05-13",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.21
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4.1-utility": {
+   "created": "2026-05-13",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4-pro": {
+   "created": "2026-05-07",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.25
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v4": {
+   "created": "2026-05-07",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04
+      }
+     ]
+    }
+   ]
+  },
+  "recraft/recraft-v3": {
+   "created": "2026-05-07",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 1
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "recraft",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux-3-image": {
+   "created": "2026-10-01",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "21:9",
+    "2:1",
+    "16:9",
+    "3:2",
+    "7:5",
+    "4:3",
+    "5:4",
+    "1:1",
+    "4:5",
+    "3:4",
+    "5:7",
+    "2:3",
+    "9:16",
+    "1:2",
+    "9:21",
+    "auto"
+   ],
+   "resolutions": [
+    "768",
+    "1K",
+    "1.5K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs",
+     "resolutions": [
+      "768",
+      "1K",
+      "1.5K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.041,
+       "variant": "768"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.048,
+       "variant": "1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.07,
+       "variant": "1.5k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.1,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.607,
+       "variant": "4k"
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux-3-image-klein": {
+   "created": "2026-10-15",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "21:9",
+    "2:1",
+    "16:9",
+    "3:2",
+    "7:5",
+    "4:3",
+    "5:4",
+    "1:1",
+    "4:5",
+    "3:4",
+    "5:7",
+    "2:3",
+    "9:16",
+    "1:2",
+    "9:21",
+    "auto"
+   ],
+   "resolutions": [
+    "768",
+    "1K",
+    "1.5K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs",
+     "resolutions": [
+      "768",
+      "1K",
+      "1.5K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.008,
+       "variant": "768"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.009,
+       "variant": "1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.011,
+       "variant": "1.5k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.014,
+       "variant": "2k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.036,
+       "variant": "4k"
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux.2-klein-4b": {
+   "created": "2026-01-14",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 4
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "megapixel",
+       "cost_usd": 0.014
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux.2-pro": {
+   "created": "2025-11-25",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 8
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "megapixel",
+       "cost_usd": 0.03
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux.2-flex": {
+   "created": "2025-11-25",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 8
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs/us-3",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "megapixel",
+       "cost_usd": 0.06
+      },
+      {
+       "billable": "output_image",
+       "unit": "megapixel",
+       "cost_usd": 0.06
+      }
+     ]
+    }
+   ]
+  },
+  "black-forest-labs/flux.2-max": {
+   "created": "2025-12-16",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 8
+   },
+   "aspectRatios": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "black-forest-labs/us-3",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "megapixel",
+       "cost_usd": 0.07
+      }
+     ]
+    }
+   ]
+  },
+  "bytedance-seed/seedream-5-0-flash": {
+   "created": "2026-10-01",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "9:21",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "seed",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.018
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0
+      }
+     ]
+    }
+   ]
+  },
+  "bytedance-seed/seedream-5-0-lite": {
+   "created": "2026-08-13",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "9:21",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "seed",
+     "resolutions": [
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0
+      }
+     ]
+    }
+   ]
+  },
+  "bytedance-seed/seedream-5-0-pro": {
+   "created": "2026-08-12",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "9:21",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "seed",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.045
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.09,
+       "variant": "high_resolution"
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.003
+      }
+     ]
+    }
+   ]
+  },
+  "bytedance-seed/seedream-4.5": {
+   "created": "2025-12-23",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "9:19.5",
+    "19.5:9",
+    "9:20",
+    "20:9",
+    "9:21",
+    "21:9",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "seed",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0
+      }
+     ]
+    }
+   ]
+  },
+  "qwen/qwen-image-3-pro": {
+   "created": "2026-08-05",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 3
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "1:4",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "alibaba",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.003
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.04,
+       "variant": "1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.075,
+       "variant": "2k"
+      }
+     ]
+    }
+   ]
+  },
+  "qwen/qwen-image-3": {
+   "created": "2026-08-05",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 3
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "1:4",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "alibaba",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.003
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.03,
+       "variant": "1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.03,
+       "variant": "2k"
+      }
+     ]
+    }
+   ]
+  },
+  "qwen/qwen-image-2.1-turbo": {
+   "created": "2026-10-16",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 4
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:2",
+    "1:4",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "alibaba",
+     "resolutions": [
+      "1K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.0184,
+       "variant": "1k"
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.0184,
+       "variant": "2k"
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-3.1-flash-image-preview": {
+   "created": "2026-02-26",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "1:4",
+    "1:8",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:1",
+    "4:3",
+    "4:5",
+    "5:4",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "512",
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-ai-studio",
+     "resolutions": [
+      "512",
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 6e-05
+      }
+     ]
+    }
+   ]
+  },
+  "google/gemini-3-pro-image-preview": {
+   "created": "2025-11-20",
+   "endpointCount": 2,
+   "referenceImages": {
+    "min": 0,
+    "max": 14
+   },
+   "aspectRatios": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9"
+   ],
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "google-ai-studio/global/flex",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 1e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 6e-05
+      }
+     ]
+    },
+    {
+     "providerSlug": "google-ai-studio/global",
+     "resolutions": [
+      "1K",
+      "2K",
+      "4K"
+     ],
+     "pricing": [
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 2e-06
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 0.00012
+      }
+     ]
+    }
+   ]
+  },
+  "meta/muse-image": {
+   "created": "2026-08-26",
+   "endpointCount": 0,
+   "referenceImages": null,
+   "aspectRatios": null,
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": []
+  }
+ }
+}

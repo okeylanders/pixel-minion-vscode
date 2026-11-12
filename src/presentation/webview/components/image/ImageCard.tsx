@@ -2,10 +2,19 @@
  * ImageCard - Display a generated image with save functionality
  *
  * Features:
- * - Square aspect ratio container for consistent layout
+ * - The stage takes the image's own shape: its natural dimensions once it
+ *   loads (providers may clamp a requested ratio), the requested ratio
+ *   before that, square when neither is known; image-card.css caps its
+ *   height, so a very tall image (1:8) is letterboxed instead of filling
+ *   thousands of pixels
  * - Image preview with object-fit contain
  * - Truncated prompt display with full text on hover
+ * - Seed chip only when the route took a seed
  * - Save button integration
+ *
+ * After frame-minion@40e7949 components/image/ImageCard.tsx (natural size,
+ * seed visibility). Pixel deltas: natural dimensions win over the requested
+ * ratio, and Frame's video/orchestrator action groups are not ported.
  */
 import React from 'react';
 import { GeneratedImage } from '../../../../shared/types/messages/imageGeneration';
@@ -26,6 +35,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
   saved = false,
 }) => {
   const [seedCopied, setSeedCopied] = React.useState(false);
+  const [naturalAspectRatio, setNaturalAspectRatio] = React.useState<string | null>(null);
 
   const handleSave = () => {
     onSave(image);
@@ -38,13 +48,24 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     });
   };
 
+  const requestedAspectRatio = image.aspectRatio && image.aspectRatio !== 'auto'
+    ? image.aspectRatio.replace(':', ' / ')
+    : null;
+  const displayAspectRatio = naturalAspectRatio ?? requestedAspectRatio ?? '1 / 1';
+
   return (
     <div className="image-card">
-      <div className="image-card-image-container">
+      <div className="image-card-image-container" style={{ aspectRatio: displayAspectRatio }}>
         <img
           src={image.data}
           alt={image.prompt}
           className="image-card-image"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget;
+            if (naturalWidth > 0 && naturalHeight > 0) {
+              setNaturalAspectRatio(`${naturalWidth} / ${naturalHeight}`);
+            }
+          }}
         />
       </div>
       <div className="image-card-footer">
@@ -52,14 +73,16 @@ export const ImageCard: React.FC<ImageCardProps> = ({
           <span className="image-card-prompt" title={image.prompt}>
             {image.prompt.length > 50 ? `${image.prompt.slice(0, 50)}...` : image.prompt}
           </span>
-          <button
-            type="button"
-            className="image-card-seed"
-            onClick={handleCopySeed}
-            title={seedCopied ? 'Copied!' : `Seed: ${image.seed} (click to copy)`}
-          >
-            🎲 {image.seed}
-          </button>
+          {image.seedSupported !== false && (
+            <button
+              type="button"
+              className="image-card-seed"
+              onClick={handleCopySeed}
+              title={seedCopied ? 'Copied!' : `Seed: ${image.seed} (click to copy)`}
+            >
+              🎲 {image.seed}
+            </button>
+          )}
         </div>
         <SaveButton onClick={handleSave} saving={saving} saved={saved} />
       </div>

@@ -31,6 +31,19 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - MAI-Image 2.6 and MAI-Image 2.6 Flash
   - Riverflow V2.6 Pro
   - Grok Imagine Image 2.0
+- **OpenRouter's Image API**
+  - The Image tab now uses OpenRouter's dedicated image endpoint, which is how most newer image models are offered. It unlocks:
+  - ⭐ GPT Image 2, GPT Image 1 and GPT Image 1 Mini, plus GPT Image 2.5 and 2.6 (Sunburst for detail, Flare for speed)
+  - FLUX.3 Image and FLUX.3 Image Klein (very low cost)
+  - Qwen Image 3 Pro, Qwen Image 3 and Qwen Image 2.1 Turbo
+  - Krea 2 Large, Krea 2 Medium and Krea 2 Medium Turbo
+  - Krea K3 Edit and Recraft V4 Styles / Styles Pro, which work from images you attach
+  - Recraft V4.1 Flash, a very cheap text-to-image model
+- **Controls that fit the model** - Each model shows only the options it supports: the aspect ratios it offers (including Auto, where the model picks), a Resolution choice (from 512 or 768 up to 4K) where it has output sizes, and a Seed only where the model takes one. The reference-image button allows as many images, and the file types, as the model accepts.
+- **Conversations that survive a restart** - Models with a conversational route (the Nano Banana family and the GPT-5 image models) keep the whole conversation, including the model's own notes on earlier images, so a refinement still has full context after VS Code reloads. Other models refine by sending your latest image with the new prompt. The result card shows which kind of thread you are in and the settings it keeps.
+  - Conversations are saved per workspace, and a crash while saving keeps the previous copy.
+  - A conversation that grows past 64 MB keeps working while VS Code stays open, and says up front that it can't be picked up again after a restart.
+  - Closing and reopening the Pixel Minion view while an image is generating no longer disturbs the conversation.
 - **New SVG code models**
   - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
   - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
@@ -41,12 +54,22 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **SVG models are grouped by how they make SVG** - "Native SVG" (Recraft) or "SVG code". Code models show their per-token price, with an approximate cost per SVG and a note when the model reasons by default.
 - **Older SVG models keep working** - Claude Opus 5, Claude Fable 5, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
 - **GPT-5 Image Mini** is labelled "retiring Dec 1, 2026", the date OpenRouter has announced.
+- **Refinements of threads started before this update** continue by sending the latest image with your new prompt (earlier prompts aren't resent), because there is no saved conversation to replay. If such a thread used an aspect ratio its model doesn't offer, it continues at one the model does.
+- **Generated images keep their real shape** - The result card follows the image's actual dimensions instead of a square, so a model that picks its own size is shown as it came back.
+- **Image history saved between sessions has a size limit** - Very large image histories keep your prompts and settings but may leave out older previews; a note says so while it applies, and a refinement that needs a missing image tells you how to continue. Save the images you want to keep.
+- **Very tall or wide images fit the panel** - A 1:8 or 8:1 result is shown letterboxed in a card of normal height instead of a card thousands of pixels tall.
 - **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log: Grok Imagine (Image Quality) → Grok Imagine Image 2.0, Claude Opus 4 and Claude Opus 5 Fast → Claude Opus 5.5, and the Riverflow V2 preview tiers → Riverflow V2.5.
 - The model picker in each tab is the same height and style as the fields beside it.
 
 ### Fixed
 
 - Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
+- **Requests a model can't take are stopped before they are sent** - Attaching reference images to a text-only model, generating with a reference-only model before attaching one, or keeping more images than a new model accepts after switching now blocks Generate with a note saying what to change, instead of failing at OpenRouter.
+- A model's reply that isn't a PNG, JPEG, WebP or GIF image is refused instead of being shown under a guessed format.
+- **Errors say why.** When OpenRouter refuses a request (for example a moderation refusal, an unsupported option or a model with no available provider), the message now includes OpenRouter's own reason instead of only "404 Not Found" or "No images returned". If one image in a response is unusable, the others are still shown.
+- **A failed Generate keeps your previous images.** Generate no longer throws away the current conversation until the new one has succeeded; if the new request fails, the previous conversation comes back and can still be refined.
+- **An attached SVG doesn't use up a reference-image slot.** Its markup is sent as text with your prompt, so it works with every model, including ones that take no reference images.
+- Screen readers announce why Generate is unavailable (for example, that a prompt or a reference image is needed).
 - **Long SVGs from code models could come back cut off** - Most code models reason before they answer, and that reasoning counts against the response limit. SVG requests now allow up to 32,000 tokens (was 16,384).
 - The SVG model browser grouped Gemini text models with the image models.
 - **Answers land where they belong.** Every generation, refinement, prompt enhancement and save now carries its own request id. A late or repeated answer can no longer replace a newer result, and an Enhance Prompt error in one tab no longer stops the other tab's spinner or appears in both tabs.

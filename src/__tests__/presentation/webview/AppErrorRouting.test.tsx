@@ -124,7 +124,8 @@ describe('a save the host failed to handle (router fallback ERROR)', () => {
     expect(isDisabled(screen.getByRole('button', { name: 'Saving…' }))).toBe(true);
 
     // A refinement of the same conversation is running when the save's error arrives.
-    const refine = screen.getByPlaceholderText('Refine: Make it more vibrant...');
+    // The default model (Nano Banana 2) starts a Conversation thread.
+    const refine = screen.getByPlaceholderText('Continue the conversation...');
     fireEvent.change(refine, { target: { value: 'Make it red' } });
     fireEvent.keyDown(refine, { key: 'Enter' });
     const [refinement] = sent(MessageType.IMAGE_GENERATION_CONTINUE);
