@@ -28,7 +28,7 @@ import { ImageConversationManager, RehydrationImage } from './ImageConversationM
 import { LoggingService } from '@logging';
 
 export interface ImageGenerationOptions {
-  mode?: ImageGenerationMode;
+  mode: ImageGenerationMode;
   model: string;
   aspectRatio: string;
   resolution?: string;
@@ -109,10 +109,9 @@ export class ImageOrchestrator {
       throw new Error('No image generation client configured. Call setClient() first.');
     }
 
-    if (options.mode !== undefined && options.mode !== 'conversation' && options.mode !== 'edit') throw new Error('Unknown image generation mode');
-    // Sidebar requests name a mode; an id they send must name a live thread.
-    // A caller without a mode keeps the historical create-on-unseen-id rule.
-    if (options.mode !== undefined && conversationId && !this.conversationManager.get(conversationId)) throw new Error('Image thread is unavailable. Start a new thread.');
+    if (options.mode !== 'conversation' && options.mode !== 'edit') throw new Error('Unknown image generation mode');
+    // An id the caller sends must name a live thread; only the host creates ids.
+    if (conversationId && !this.conversationManager.get(conversationId)) throw new Error('Image thread is unavailable. Start a new thread.');
 
     if (options.mode === 'conversation' && !imageRouteCapabilities(options.model, 'conversation')) {
       throw new Error('This model has no verified Conversation route. Choose another model or use Single Shot.');
@@ -124,9 +123,9 @@ export class ImageOrchestrator {
       options.model,
       options.aspectRatio,
       options.resolution === 'auto' ? undefined : options.resolution,
-      options.mode ?? 'edit'
+      options.mode
     );
-    if (conversation.mode !== (options.mode ?? 'edit') || conversation.model !== options.model ||
+    if (conversation.mode !== options.mode || conversation.model !== options.model ||
         conversation.aspectRatio !== options.aspectRatio || conversation.resolution !== (options.resolution === 'auto' ? undefined : options.resolution)) {
       throw new Error('Image thread settings cannot change. Start a new thread.');
     }

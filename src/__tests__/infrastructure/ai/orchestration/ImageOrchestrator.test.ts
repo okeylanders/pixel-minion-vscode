@@ -75,7 +75,7 @@ describe('ImageOrchestrator request ownership', () => {
     const orchestrator = create();
     mockFetch.mockRejectedValueOnce(new Error('offline'));
 
-    await expect(orchestrator.generateImage('A tree', { model, aspectRatio: '1:1' })).rejects.toThrow('offline');
+    await expect(orchestrator.generateImage('A tree', conversation)).rejects.toThrow('offline');
 
     const created = (logger.debug as jest.Mock).mock.calls
       .map(([message]) => String(message))
@@ -180,7 +180,7 @@ describe('ImageOrchestrator rollback after the response was recorded', () => {
   it('still releases a first turn that failed after being recorded', async () => {
     const orchestrator = withClient([malformed]);
 
-    await expect(orchestrator.generateImage('A tree', { model, aspectRatio: '1:1' })).rejects.toThrow();
+    await expect(orchestrator.generateImage('A tree', conversation)).rejects.toThrow();
 
     const created = (logger.debug as jest.Mock).mock.calls
       .map(([message]) => String(message))

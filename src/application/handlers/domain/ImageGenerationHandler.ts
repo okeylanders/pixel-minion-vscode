@@ -20,6 +20,7 @@ import {
   ImageSaveResultPayload,
   GeneratedImage,
   AspectRatio,
+  ImageGenerationMode,
   ImageResolution,
   StatusPayload,
   TokenUsage,
@@ -29,6 +30,17 @@ import { ImageOrchestrator } from '@ai';
 import { imageExtensionForMime, sniffImageMime } from '../../../shared/media/imageFormats';
 import { plainSaveFileName } from '../saveFileName';
 import { workspaceOutputDirectory } from '../outputDirectory';
+
+/**
+ * Every image request names its mode: the mode picks the endpoint and the
+ * capability checks, so a request without one (or with one this build doesn't
+ * know) is refused before the orchestrator or a provider sees it.
+ */
+function assertImageMode(mode: unknown): asserts mode is ImageGenerationMode {
+  if (mode !== 'conversation' && mode !== 'edit') {
+    throw new Error('This image request has no known generation mode (Conversation or Single Shot). Reload the Pixel Minion view and try again.');
+  }
+}
 
 export class ImageGenerationHandler {
   private readonly configSection = 'pixelMinion';
@@ -52,6 +64,7 @@ export class ImageGenerationHandler {
     this.sendLoadingStatus(true, message.correlationId);
 
     try {
+      assertImageMode(mode);
       const result = await this.orchestrator.generateImage(prompt, {
         mode,
         model,
@@ -105,10 +118,11 @@ export class ImageGenerationHandler {
     this.sendLoadingStatus(true, message.correlationId);
 
     try {
+      assertImageMode(mode);
       // A refinement carries only its prompt; references and SVG text stay
       // with the turns that sent them (in the transcript or the latest images).
       const result = await this.orchestrator.continueConversation(conversationId, prompt, {
-        mode: mode ?? 'edit',
+        mode,
         turnCount,
         latestImages: latestImages?.map(image => ({ data: image.data, seed: image.seed })),
         model,

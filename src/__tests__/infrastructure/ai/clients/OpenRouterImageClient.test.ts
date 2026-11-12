@@ -167,7 +167,7 @@ describe('Single Shot: the dedicated Image API', () => {
     const base64 = (bytes as Buffer).toString('base64');
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: [{ b64_json: base64 }] }) });
     const result = await client().generateImages({
-      model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree'),
+      model: 'google/gemini-3.1-flash-image', mode: 'edit', aspectRatio: '1:1', messages: prompt('A tree'),
     });
     expect(result.images[0]).toEqual({ data: `data:${mimeType};base64,${base64}`, mimeType });
   });
@@ -191,6 +191,14 @@ describe('Single Shot: the dedicated Image API', () => {
     })).rejects.toThrow(message);
   });
 
+  it('refuses a request without a known mode, or without a model, before calling the provider', async () => {
+    const unchecked = { model: 'krea/krea-2-medium-turbo', aspectRatio: '21:9', resolution: '4K', messages: prompt('A tree') };
+    await expect(client().generateImages(unchecked as never)).rejects.toThrow('Unknown image generation mode');
+    await expect(client().generateImages({ ...unchecked, mode: 'chat' } as never)).rejects.toThrow('Unknown image generation mode');
+    await expect(client().generateImages({ mode: 'edit', model: ' ', aspectRatio: 'auto', messages: prompt('A tree') })).rejects.toThrow('Choose an image model');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it('omits an unverified automatic ratio for a custom id', async () => {
     await client().generateImages({ model: 'vendor/custom', mode: 'edit', aspectRatio: 'auto', seed: 5, messages: prompt('A tree') });
     // Custom ids keep a seed (permissive) but no ratio the catalog never verified.
@@ -198,7 +206,7 @@ describe('Single Shot: the dedicated Image API', () => {
   });
 
   it('omits resolution when the picker is set to auto', async () => {
-    await client().generateImages({ model: 'openai/gpt-image-2', aspectRatio: '1:1', resolution: 'auto', messages: prompt('A tree') });
+    await client().generateImages({ model: 'openai/gpt-image-2', mode: 'edit', aspectRatio: '1:1', resolution: 'auto', messages: prompt('A tree') });
     expect(body()).not.toHaveProperty('resolution');
   });
 

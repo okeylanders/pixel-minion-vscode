@@ -284,21 +284,33 @@ it('allows only one provider request for concurrent continuations of a restored 
   expect(restored.getConversation(first.conversationId)?.messages).toHaveLength(4);
 });
 
-it('keeps mode-less callers compatible while explicit sidebar ids stay strict, and skips writes without a transcript', async () => {
+it('refuses an id it does not hold in either mode, and skips writes without a transcript', async () => {
   imagesApi();
   const { create, storage } = harness();
   const orchestrator = create();
-  const result = await orchestrator.generateImage('A frame', { model, aspectRatio: '9:16' }, 'legacy-id');
+  // Only the host creates thread ids: an unseen one is never adopted.
+  await expect(orchestrator.generateImage('A frame', { mode: 'edit', model, aspectRatio: '9:16' }, 'legacy-id')).rejects.toThrow('unavailable');
+  await expect(orchestrator.generateImage('A frame', options, 'img-unseen')).rejects.toThrow('unavailable');
+  expect(mockFetch).not.toHaveBeenCalled();
+  const result = await orchestrator.generateImage('A frame', { mode: 'edit', model, aspectRatio: '9:16' });
   expect(result.conversationId).toMatch(/^img-/);
-  expect(mockFetch).toHaveBeenCalledTimes(1);
   await orchestrator.clearConversation('legacy-id');
   await orchestrator.clearConversation(result.conversationId);
   expect(orchestrator.getConversation(result.conversationId)).toBeUndefined();
-  expect(storage.write).not.toHaveBeenCalled();
-  await expect(orchestrator.generateImage('A frame', { ...options, mode: 'edit' }, 'img-unseen')).rejects.toThrow('unavailable');
   // Unknown after a restart, but nothing is saved for it: no tombstone is written.
   await orchestrator.clearConversation('img-unseen');
   expect(storage.write).not.toHaveBeenCalled();
+});
+
+it('refuses a request without a known mode before the provider: no unchecked ratio, tier or made-up id', async () => {
+  imagesApi();
+  const orchestrator = harness().create();
+  // P3 host review H3: this once reached /images with a ratio and tier Krea 2 doesn't list.
+  const unchecked = { model: 'krea/krea-2-medium-turbo', aspectRatio: '21:9', resolution: '4K' };
+  await expect(orchestrator.generateImage('x', unchecked as never, 'img-made-up')).rejects.toThrow();
+  await expect(orchestrator.generateImage('x', unchecked as never)).rejects.toThrow('Unknown image generation mode');
+  await expect(orchestrator.generateImage('x', { ...unchecked, mode: 'chat' } as never)).rejects.toThrow('Unknown image generation mode');
+  expect(mockFetch).not.toHaveBeenCalled();
 });
 
 it('tombstones the saved record of a thread a restarted host has never seen', async () => {

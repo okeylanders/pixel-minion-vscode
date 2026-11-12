@@ -46,10 +46,10 @@ export interface ImageConversationMessage {
 export interface ImageGenerationRequest {
   /**
    * Conversation sends `messages` whole; Single Shot (`edit`) sends only the
-   * latest user message. Omitted means Single Shot, with the historical
-   * request defaults (no capability checks on ratio or resolution).
+   * latest user message. The mode's route capabilities are checked before
+   * any request.
    */
-  mode?: ImageGenerationMode;
+  mode: ImageGenerationMode;
   messages: ImageConversationMessage[];
   model: string;
   aspectRatio: string;

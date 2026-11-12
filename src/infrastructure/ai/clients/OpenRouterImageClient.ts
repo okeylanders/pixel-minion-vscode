@@ -21,7 +21,7 @@ import {
 } from './ImageGenerationClient';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
-import { OPENROUTER_IMAGE_MODELS, imageRouteCapabilities } from '../../../shared/models';
+import { imageRouteCapabilities } from '../../../shared/models';
 import type { AspectRatio, ImageResolution } from '@messages';
 import { openRouterImageTransport } from './OpenRouterImageTransport';
 
@@ -49,19 +49,20 @@ export class OpenRouterImageClient implements ImageGenerationClient {
     if (!userMessage) {
       throw new Error('Image generation request has no user prompt');
     }
-    const model = OPENROUTER_IMAGE_MODELS.find(model => model.id === request.model);
-    const mode = request.mode ?? 'edit';
+    const mode = request.mode;
     if (mode !== 'edit' && mode !== 'conversation') throw new Error('Unknown image generation mode');
     const capabilities = imageRouteCapabilities(request.model, mode);
-    if (mode === 'conversation' && !capabilities) {
-      throw new Error('This model has no verified Conversation route. Choose another model or use Single Shot.');
+    if (!capabilities) {
+      throw new Error(mode === 'conversation'
+        ? 'This model has no verified Conversation route. Choose another model or use Single Shot.'
+        : 'Choose an image model first.');
     }
     const referenceCount = userMessage.content.filter(block => block.type === 'image_url').length;
-    const referenceLimits = capabilities?.referenceImages;
+    const referenceLimits = capabilities.referenceImages;
     if (referenceLimits && (referenceCount < referenceLimits.min || referenceCount > referenceLimits.max)) {
       throw new Error(`This model accepts ${referenceLimits.min === referenceLimits.max ? referenceLimits.min : `${referenceLimits.min}–${referenceLimits.max}`} reference images; received ${referenceCount}.`);
     }
-    if (capabilities?.referenceMimeTypes) {
+    if (capabilities.referenceMimeTypes) {
       for (const block of userMessage.content.filter(block => block.type === 'image_url')) {
         const mime = /^data:(image\/[^;,]+)[;,]/i.exec(block.image_url?.url ?? '')?.[1]?.toLowerCase();
         const normalizedMime = mime === 'image/jpg' ? 'image/jpeg' : mime;
@@ -70,14 +71,10 @@ export class OpenRouterImageClient implements ImageGenerationClient {
         }
       }
     }
-    // Explicit modes are capability-checked at the host boundary. A caller
-    // that omits the mode keeps the historical request defaults.
-    if (request.mode && capabilities) {
-      if (!capabilities.supportedAspectRatios.includes(request.aspectRatio as AspectRatio)) throw new Error('Aspect ratio is not supported in this mode');
-      if (request.resolution && request.resolution !== 'auto' && !capabilities.supportedResolutions.includes(request.resolution as Exclude<ImageResolution, 'auto'>)) throw new Error('Resolution is not supported in this mode');
-    }
-    const transport = openRouterImageTransport(capabilities ?? model);
-    const supportsSeed = capabilities?.supportsSeed ?? (model?.supportsSeed !== false);
+    if (!capabilities.supportedAspectRatios.includes(request.aspectRatio as AspectRatio)) throw new Error('Aspect ratio is not supported in this mode');
+    if (request.resolution && request.resolution !== 'auto' && !capabilities.supportedResolutions.includes(request.resolution as Exclude<ImageResolution, 'auto'>)) throw new Error('Resolution is not supported in this mode');
+    const transport = openRouterImageTransport(capabilities);
+    const supportsSeed = capabilities.supportsSeed;
     const supportedRequest = { ...request, seed: supportsSeed ? request.seed : undefined, resolution: request.resolution === 'auto' ? undefined : request.resolution };
 
     this.logger.debug('Calling OpenRouter image generation', {

@@ -36,7 +36,8 @@ export interface ImageThreadSettings {
 }
 
 export interface ImageGenerationRequestPayload {
-  mode?: ImageGenerationMode;
+  /** Required: the host refuses a request without a known mode before any provider call. */
+  mode: ImageGenerationMode;
   prompt: string;
   model: string;
   aspectRatio: AspectRatio;
@@ -70,7 +71,8 @@ export interface ConversationHistoryTurn {
  * only the latest images.
  */
 export interface ImageGenerationContinuePayload {
-  mode?: ImageGenerationMode;
+  /** The thread's mode. Required, like a new request's. */
+  mode: ImageGenerationMode;
   prompt: string;
   conversationId: string;
   /**
