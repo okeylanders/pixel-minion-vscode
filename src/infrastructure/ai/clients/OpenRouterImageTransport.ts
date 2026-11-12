@@ -10,9 +10,15 @@
  *     `choices[0].message.images` back. The assistant message is returned
  *     untouched so provider signatures survive the next turn.
  *
- * Pixel delta: raster formats are recognised by the shared
+ * Pixel deltas: raster formats are recognised by the shared
  * `sniffImageMime` (src/shared/media/imageFormats.ts, also used by the save
  * handler) instead of a local copy, so display and save agree on one list.
+ * And an `/images` result that has no base64 data or isn't a supported raster
+ * format is skipped with a warning, like an unusable chat image: the turn
+ * fails only when no image survives (one bad entry used to discard the whole,
+ * already billed, result). OpenRouter documents `data[].b64_json` as required
+ * and no `url` alternative (Image API reference, read 2026-11-12), so an entry
+ * with only a URL is one of the skipped ones.
  */
 import type { ImageModelDefinition } from '../../../shared/types/providers';
 import type { ImageRouteCapabilities } from '../../../shared/models/ImageGenerationModes';
@@ -60,21 +66,27 @@ const imageApiTransport: OpenRouterImageTransport = {
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error('No images returned from OpenRouter Image API');
     }
-    return data.flatMap((image: unknown, index: number) => {
-      if (!image || typeof image !== 'object' || typeof (image as { b64_json?: unknown }).b64_json !== 'string') {
-        logger.warn(`Image ${index} missing base64 data`);
+    const images = data.flatMap((image: unknown, index: number) => {
+      const b64 = image && typeof image === 'object' ? (image as { b64_json?: unknown }).b64_json : undefined;
+      if (typeof b64 !== 'string' || !b64) {
+        logger.warn(`Image API result ${index} has no base64 image data; skipped`);
         return [];
       }
-      const typedImage = image as { b64_json: string; media_type?: unknown };
-      const declaredMime = typedImage.media_type === 'image/jpg' ? 'image/jpeg' : typedImage.media_type;
-      const detectedMime = detectRasterMime(typedImage.b64_json);
+      const declared = (image as { media_type?: unknown }).media_type;
+      const declaredMime = declared === 'image/jpg' ? 'image/jpeg' : declared;
+      const detectedMime = detectRasterMime(b64);
       const mimeType = detectedMime ?? declaredMime;
       if (typeof mimeType !== 'string' || !RASTER_MIME_TYPES.includes(mimeType)) {
-        throw new Error('Image response format could not be identified as a supported raster image.');
+        logger.warn(`Image API result ${index} could not be identified as PNG, JPEG, WebP or GIF (media type: ${typeof declared === 'string' ? declared.slice(0, 64) : 'none'}); skipped`);
+        return [];
       }
       if (detectedMime && declaredMime && detectedMime !== declaredMime) logger.warn('Image media type disagrees with its bytes; using the detected raster format');
-      return [{ data: `data:${mimeType};base64,${typedImage.b64_json}`, mimeType }];
+      return [{ data: `data:${mimeType};base64,${b64}`, mimeType }];
     });
+    if (images.length === 0) {
+      throw new Error('OpenRouter Image API returned no usable image: no result had image data whose format could be identified as PNG, JPEG, WebP or GIF.');
+    }
+    return images;
   },
 };
 

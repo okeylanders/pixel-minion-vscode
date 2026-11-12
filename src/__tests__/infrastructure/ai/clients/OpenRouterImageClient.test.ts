@@ -180,8 +180,9 @@ describe('Single Shot: the dedicated Image API', () => {
   });
 
   it.each([
-    [{ data: [{ b64_json: 'QUJD' }] }, 'format could not be identified'],
-    [{ data: [{ b64_json: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64'), media_type: 'image/svg+xml' }] }, 'format could not be identified'],
+    [{ data: [{ b64_json: 'QUJD' }] }, 'no usable image'],
+    [{ data: [{ b64_json: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64'), media_type: 'image/svg+xml' }] }, 'no usable image'],
+    [{ data: [{ url: 'https://example.com/a.png' }, null, { b64_json: '' }] }, 'no usable image'],
     [{ data: [] }, 'No images returned'],
     [{}, 'No images returned'],
   ])('rejects unidentified or missing output instead of saving a guess: %j', async (response, message) => {
@@ -197,6 +198,25 @@ describe('Single Shot: the dedicated Image API', () => {
     await expect(client().generateImages({ ...unchecked, mode: 'chat' } as never)).rejects.toThrow('Unknown image generation mode');
     await expect(client().generateImages({ mode: 'edit', model: ' ', aspectRatio: 'auto', messages: prompt('A tree') })).rejects.toThrow('Choose an image model');
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps the usable images when another result has no data or an unidentifiable format', async () => {
+    const PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]).toString('base64');
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: [
+      { b64_json: PNG, media_type: 'image/png' },
+      { b64_json: 'QUJD' },
+      { url: 'https://example.com/b.png' },
+      { b64_json: Buffer.from('<svg/>').toString('base64'), media_type: 'image/svg+xml' },
+    ], usage: { cost: 0.04 } }) });
+    const result = await client().generateImages({ model: 'krea/krea-2-medium-turbo', mode: 'edit', aspectRatio: '1:1', messages: prompt('A tree') });
+    expect(result.images).toEqual([{ data: `data:image/png;base64,${PNG}`, mimeType: 'image/png' }]);
+    expect(result.usage?.costUsd).toBe(0.04);
+    const warnings = (mockLogger.warn as jest.Mock).mock.calls.map(([message]) => String(message));
+    expect(warnings).toEqual([
+      'Image API result 1 could not be identified as PNG, JPEG, WebP or GIF (media type: none); skipped',
+      'Image API result 2 has no base64 image data; skipped',
+      'Image API result 3 could not be identified as PNG, JPEG, WebP or GIF (media type: image/svg+xml); skipped',
+    ]);
   });
 
   it('omits an unverified automatic ratio for a custom id', async () => {
