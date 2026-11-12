@@ -10,7 +10,7 @@
  * - Show only the controls the selected model's route supports
  *   (imageRouteCapabilities), and block Generate while the attached
  *   references don't fit the model
- * - Earlier threads (browse, save, start a new thread from an image, delete)
+ * - Browse one thread at a time with results-pane navigation
  * - Receive hook instance as prop (prose-minion pattern)
  * - Show each image's save state, as reported by the host (via the hook)
  *
@@ -61,7 +61,7 @@ const MODES: readonly ImageGenerationMode[] = ['conversation', 'edit'];
 const PROMPT_ID = 'image-generation-prompt';
 
 /** Where focus goes once an action removes the element that had it. */
-type FocusTarget = { kind: 'prompt' } | { kind: 'heading' } | { kind: 'thread'; id: string };
+type FocusTarget = 'prompt' | 'results';
 
 /** Why the selected model sits outside the mode's list (helper text under the picker). */
 function unavailableModelHelp(model: string, mode: ImageGenerationMode): string {
@@ -136,27 +136,47 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   // The thread on screen keeps its own mode; the toggle sets the next one's.
   const activeMode = threadSettings?.mode ?? mode;
   const supportedModels = OPENROUTER_IMAGE_MODELS.filter(entry => imageRouteCapabilities(entry.id, mode));
+  // Browsing never changes the live conversation or its host transcript.
+  // null follows the latest result (the current thread, or newest archive).
+  const [selectedArchiveId, setSelectedArchiveId] = useState<string | null>(null);
+  const hasCurrentThread = conversationHistory.length > 0 || isLoading;
+  const threadCount = archivedThreads.length + (hasCurrentThread ? 1 : 0);
+  const selectedIndex = selectedArchiveId === null ? -1
+    : archivedThreads.findIndex(thread => thread.id === selectedArchiveId);
+  const visibleIndex = !isLoading && selectedIndex >= 0 ? selectedIndex : threadCount - 1;
+  const visibleArchive = archivedThreads[visibleIndex];
+  const visibleTurns = visibleArchive?.turns ?? conversationHistory;
+  const visibleSettings = visibleArchive?.settings ?? threadSettings;
+  const visibleMode = visibleSettings?.mode ?? mode;
+  useEffect(() => { setSelectedArchiveId(null); }, [conversationId, isLoading]);
+  const browseThread = (index: number) => {
+    if (busy || index < 0 || index >= threadCount) return;
+    setSelectedArchiveId(archivedThreads[index]?.id ?? null);
+  };
   // "Start … from this image" and Delete thread remove the button that was
   // pressed (the thread it sat in moves or goes), so focus is moved on
   // purpose once the change renders, instead of falling to <body>.
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
-  const archivedHeadingRef = useRef<HTMLHeadingElement>(null);
-  const archivedSummaries = useRef(new Map<string, HTMLElement>());
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (!focusTarget) return;
-    const element = focusTarget.kind === 'heading' ? archivedHeadingRef.current
-      : focusTarget.kind === 'thread' ? archivedSummaries.current.get(focusTarget.id)
-        : null;
+    const element = focusTarget === 'results' ? resultsHeadingRef.current : null;
     (element ?? document.getElementById(PROMPT_ID))?.focus();
     setFocusTarget(null);
   }, [focusTarget]);
-  const shownArchivedThreads = [...archivedThreads].reverse();
-  /** Delete an Earlier thread, then focus the next one down, else the heading, else the prompt. */
-  const deleteArchivedThread = (id: string) => {
-    const index = shownArchivedThreads.findIndex(thread => thread.id === id);
-    const next = shownArchivedThreads[index + 1];
-    removeArchivedThread(id);
-    setFocusTarget(next ? { kind: 'thread', id: next.id } : shownArchivedThreads.length > 1 ? { kind: 'heading' } : { kind: 'prompt' });
+  /** Show the next newer thread after deleting, or the previous one at the end. */
+  const deleteVisibleThread = () => {
+    if (busy) return;
+    if (visibleArchive) {
+      const next = archivedThreads[visibleIndex + 1];
+      const previous = archivedThreads[visibleIndex - 1];
+      setSelectedArchiveId(next?.id ?? (hasCurrentThread ? null : previous?.id ?? null));
+      removeArchivedThread(visibleArchive.id);
+    } else {
+      clearConversation();
+      setSelectedArchiveId(null);
+    }
+    setFocusTarget(threadCount > 1 ? 'results' : 'prompt');
   };
   // Starting from an image attaches it as the next thread's reference, so it
   // is offered only when the draft model has a route in the selected mode
@@ -166,7 +186,8 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   const onStartFromImage = busy || !acceptsReference ? undefined : (image: GeneratedImage) => {
     startFromImage(image);
     // The image waits in the uploader; the prompt is the next thing to fill in.
-    setFocusTarget({ kind: 'prompt' });
+    setSelectedArchiveId(null);
+    setFocusTarget('prompt');
   };
   const referenceMimeTypes = capabilities?.referenceMimeTypes;
   const canStartFromImage = (image: GeneratedImage) => !referenceMimeTypes
@@ -175,8 +196,10 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
     && imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0;
-  const threadModelLabel = OPENROUTER_IMAGE_MODELS.find(entry => entry.id === threadSettings?.model)?.displayName
-    ?? threadSettings?.model;
+  const visibleThreadIsTextOnly = visibleSettings?.mode === 'edit'
+    && imageRouteCapabilities(visibleSettings.model, 'edit')?.referenceImages?.max === 0;
+  const threadModelLabel = OPENROUTER_IMAGE_MODELS.find(entry => entry.id === visibleSettings?.model)?.displayName
+    ?? visibleSettings?.model;
   const draftDiffersFromThread = !!threadSettings && (
     threadSettings.model !== model
     || threadSettings.aspectRatio !== aspectRatio
@@ -196,8 +219,8 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
   // Get conversation title from first prompt
   const getConversationTitle = () => {
-    if (conversationHistory.length === 0) return '';
-    const firstPrompt = conversationHistory[0].prompt;
+    if (visibleTurns.length === 0) return '';
+    const firstPrompt = visibleTurns[0].prompt;
     return firstPrompt.length > 25 ? `${firstPrompt.slice(0, 25)}...` : firstPrompt;
   };
 
@@ -259,7 +282,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
 
         <p className="generation-note image-mode-description">
           {imageModeEndpointDescription(mode, model)}{mode === 'conversation' && ' Longer conversations may cost more.'}
-          <br />Switching modes starts a new thread and keeps earlier threads below.
+          <br />Switching modes starts a new thread. Use the arrows in the results pane to browse previous threads.
         </p>
 
         {/* Prompt input */}
@@ -337,42 +360,63 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
       </div>
 
       {/* Output well: Conversation header and thread */}
-      <div className="well generation-output-well">
+      <section className="well generation-output-well" aria-label="Image results">
         {/* The thread's mode and own settings: follow-ups use these, not the controls above */}
         <div className="image-thread-description">
-          <strong>{imageModeLabel(activeMode)}{activeMode === 'edit' ? ' history' : ''}</strong>
+          <div className="image-results-toolbar">
+            <h3 className="image-results-heading" ref={resultsHeadingRef} tabIndex={-1}>
+              {imageModeLabel(visibleMode)}{visibleMode === 'edit' ? ' history' : ''}
+            </h3>
+            {threadCount > 0 && (
+              <nav className="image-thread-navigation" aria-label="Result threads">
+                <button type="button" className="image-thread-arrow" title="Previous thread" aria-label="Previous thread"
+                  disabled={busy || visibleIndex <= 0} onClick={() => browseThread(visibleIndex - 1)}>
+                  <LineGlyph size={16}><path d="M19 12H5m7-7-7 7 7 7" /></LineGlyph>
+                </button>
+                <span className="image-thread-position" role="status" aria-live="polite" aria-atomic="true">
+                  <span aria-hidden="true">{visibleIndex + 1} / {threadCount}</span>
+                  <span className="visually-hidden">Thread {visibleIndex + 1} of {threadCount}{visibleArchive ? ', earlier thread' : ', current thread'}</span>
+                </span>
+                <button type="button" className="image-thread-arrow" title="Next thread" aria-label="Next thread"
+                  disabled={busy || visibleIndex >= threadCount - 1} onClick={() => browseThread(visibleIndex + 1)}>
+                  <LineGlyph size={16}><path d="M5 12h14m-7-7 7 7-7 7" /></LineGlyph>
+                </button>
+              </nav>
+            )}
+          </div>
           <p className="generation-note">
-            {threadIsTextOnly
+            {visibleThreadIsTextOnly
               ? 'This model generates from text only. Start a new generation above to make another image.'
-              : imageModeDescription(activeMode)}
+              : imageModeDescription(visibleMode)}
           </p>
-          {threadSettings && (
+          {visibleSettings && (
             <small className="image-thread-settings">
-              {threadModelLabel} · {threadSettings.aspectRatio === 'auto' ? 'Auto ratio' : threadSettings.aspectRatio} · {threadSettings.resolution === 'auto' ? 'Default resolution' : threadSettings.resolution}
+              {threadModelLabel} · {visibleSettings.aspectRatio === 'auto' ? 'Auto ratio' : visibleSettings.aspectRatio} · {visibleSettings.resolution === 'auto' ? 'Default resolution' : visibleSettings.resolution}
             </small>
           )}
-          {draftDiffersFromThread && (
+          {visibleArchive && <p className="generation-note">Earlier thread. To make changes, start a new thread from an image below.</p>}
+          {!visibleArchive && draftDiffersFromThread && (
             <p className="generation-note">Controls above apply to a new thread. Follow-ups keep this thread’s settings.</p>
           )}
         </div>
         {persistenceWarning && <div className="generation-warning" role="status">{persistenceWarning}</div>}
-        {recoveryWarning && <div className="generation-warning" role="status">{recoveryWarning}</div>}
+        {!visibleArchive && recoveryWarning && <div className="generation-warning" role="status">{recoveryWarning}</div>}
 
         {/* Conversation header - only show when we have a conversation */}
-        {conversationHistory.length > 0 && (
+        {visibleTurns.length > 0 && (
           <div className="conversation-header">
             <div className="conversation-header-info">
               <span className="conversation-header-title">{getConversationTitle()}</span>
               <span className="conversation-header-date">
-                {formatDateTime(conversationHistory[0].timestamp)}
+                {formatDateTime(visibleTurns[0].timestamp)}
               </span>
             </div>
             <button
               type="button"
               className="conversation-header-clear"
-              onClick={clearConversation}
-              title="Clear thread"
-              aria-label="Clear thread"
+              onClick={deleteVisibleThread}
+              title={visibleArchive ? 'Delete thread' : 'Clear thread'}
+              aria-label={visibleArchive ? 'Delete thread' : 'Clear thread'}
               disabled={busy}
             >
               <TrashIcon />
@@ -381,7 +425,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         )}
 
         {/* Empty state until the first generation */}
-        {conversationHistory.length === 0 && !isLoading && (
+        {visibleTurns.length === 0 && !isLoading && (
           <div className="generation-empty">
             <span className="generation-empty-icon" aria-hidden="true">
               <TabImageIcon size={22} />
@@ -401,7 +445,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
         <div className="generation-output">
           {/* Conversation thread - chat-style display of all turns */}
           <ConversationThread
-            turns={conversationHistory}
+            turns={visibleTurns}
             onSaveImage={saveImage}
             onStartFromImage={onStartFromImage}
             canStartFromImage={canStartFromImage}
@@ -410,38 +454,6 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             savedImageIds={savedImageIds}
           />
 
-          {/* Earlier threads: browse, save, start again; they don't continue */}
-          {archivedThreads.length > 0 && (
-            <section className="image-archived-threads" aria-labelledby="image-archived-threads-title">
-              <h3 id="image-archived-threads-title" className="image-archived-threads-title" ref={archivedHeadingRef} tabIndex={-1}>
-                Earlier threads
-              </h3>
-              {shownArchivedThreads.map(thread => (
-                <details key={thread.id} className="image-archived-thread">
-                  <summary ref={(element) => {
-                    if (element) archivedSummaries.current.set(thread.id, element);
-                    else archivedSummaries.current.delete(thread.id);
-                  }}>
-                    {imageModeLabel(thread.settings.mode)} · {thread.turns[0]?.prompt.slice(0, 40)} · {thread.turns.length} {thread.turns.length === 1 ? 'turn' : 'turns'}
-                  </summary>
-                  <p className="generation-note">{imageModeDescription(thread.settings.mode)}</p>
-                  <ConversationThread
-                    turns={thread.turns}
-                    onSaveImage={saveImage}
-                    onStartFromImage={onStartFromImage}
-                    canStartFromImage={canStartFromImage}
-                    startFromImageLabel={startFromImageLabel}
-                    savingImageIds={savingImageIds}
-                    savedImageIds={savedImageIds}
-                  />
-                  <Button variant="secondary" onClick={() => deleteArchivedThread(thread.id)} disabled={busy}>
-                    Delete thread
-                  </Button>
-                </details>
-              ))}
-            </section>
-          )}
-
           {/* Loading indicator - appears at bottom where new content will show */}
           <LoadingIndicator
             isLoading={isLoading}
@@ -449,18 +461,19 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           />
         </div>
         {/* Beside the refine bar: what a follow-up would send */}
-        {followUpSizeWarning && !threadIsTextOnly && (
+        {!visibleArchive && followUpSizeWarning && !threadIsTextOnly && (
           <div className="generation-warning" role="status">⚠️ {followUpSizeWarning}</div>
         )}
-      </div>
+      </section>
 
       {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}
       {conversationId && conversationHistory.length > 0 && !threadIsTextOnly && (
         <ContinueChatInput
           key={conversationId}
+          hidden={!!visibleArchive}
           submitLabel={activeMode === 'edit' ? 'Generate' : 'Send'}
           onSubmit={continueChat}
-          disabled={busy}
+          disabled={busy || !!visibleArchive}
           isLoading={isLoading}
           placeholder={activeMode === 'edit'
             ? 'Write a prompt using the latest image...'

@@ -392,7 +392,7 @@ describe('migration of history saved before modes', () => {
 });
 
 describe('the Image tab', () => {
-  it('renders an accessible segmented mode control, archive labels and the latest-image explanation', () => {
+  it('renders an accessible mode control and keeps the archived thread’s own description', () => {
     render(<View initial={existing} />);
     const group = screen.getByRole('group', { name: 'Image generation mode' });
     const edit = within(group).getByRole('button', { name: 'Single Shot' });
@@ -400,9 +400,10 @@ describe('the Image tab', () => {
     expect(edit.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(edit);
     expect(edit.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByText('Earlier threads')).toBeTruthy();
-    expect(screen.getByText(/Conversation · Keep the knight blue · 1 turn/)).toBeTruthy();
-    expect(screen.getAllByText(/Earlier messages are not included/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Earlier thread\. To make changes/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Conversation' })).toBeTruthy();
+    expect(screen.getByText('Keep the knight blue', { selector: '.conversation-header-title' })).toBeTruthy();
+    expect(screen.getByText(/Uses previous messages and images as context/)).toBeTruthy();
     expect(screen.queryByPlaceholderText('Continue the conversation...')).toBeNull();
     expect(screen.getByRole('button', { name: 'Delete thread' })).toBeTruthy();
   });
@@ -440,7 +441,7 @@ describe('the Image tab', () => {
     // Activating the other switches, keeping the thread under Earlier threads.
     fireEvent.click(buttons[1]);
     expect(buttons.map(button => button.getAttribute('aria-pressed'))).toEqual(['false', 'true']);
-    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    expect(screen.getByText(/Earlier thread\. To make changes/)).toBeTruthy();
   });
 
   it('moves focus to the prompt after starting from an image (the pressed button is gone)', () => {
@@ -451,21 +452,22 @@ describe('the Image tab', () => {
     expect(document.activeElement).toBe(screen.getByPlaceholderText('Describe the image you want to generate...'));
   });
 
-  it('moves focus after Delete thread: the next thread down, else the heading, else the prompt', () => {
+  it('deletes the visible archive and focuses the next result, then the prompt when empty', () => {
     const thread = (id: string, prompt: string) => ({ id, settings, turns: [{ ...turn, id: `turn-${id}`, prompt }] });
-    // Oldest first; shown newest first: Third, Second, First.
     render(<View initial={{ model, archivedThreads: [thread('img-1', 'First'), thread('img-2', 'Second'), thread('img-3', 'Third')] }} />);
-    const summary = (prompt: string) => screen.getByText(new RegExp(`· ${prompt} ·`)).closest('summary');
-    const deleteIn = (prompt: string) => within(summary(prompt)!.closest('details') as HTMLElement).getByRole('button', { name: 'Delete thread' });
-
-    fireEvent.click(deleteIn('Second'));
-    expect(document.activeElement).toBe(summary('First'));
-    fireEvent.click(deleteIn('First'));
-    // The last one in the list went: the heading, so the user knows where they are.
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Earlier threads' }));
-    fireEvent.click(deleteIn('Third'));
-    // None left: the heading went too.
-    expect(screen.queryByRole('heading', { name: 'Earlier threads' })).toBeNull();
+    const results = screen.getByRole('region', { name: 'Image results' });
+    expect(within(results).getByText('Third', { selector: '.conversation-header-title' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous thread' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    // Second was selected; its newer neighbor is Third.
+    expect(within(results).getByText('Third', { selector: '.conversation-header-title' })).toBeTruthy();
+    expect(document.activeElement).toBe(within(results).getByRole('heading'));
+    expect(posted().payload).toEqual({ conversationId: 'img-2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    expect(within(results).getByText('First', { selector: '.conversation-header-title' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    expect(screen.queryByRole('navigation', { name: 'Result threads' })).toBeNull();
+    expect(screen.getByText('Your images appear here')).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByPlaceholderText('Describe the image you want to generate...'));
   });
 
@@ -524,7 +526,7 @@ describe('the Image tab', () => {
   it('offers start-from-image on every image, but not while busy or for a model that takes no reference', () => {
     const { unmount } = render(<View initial={existing} />);
     fireEvent.click(screen.getByRole('button', { name: 'Start a conversation from this image' }));
-    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    expect(screen.getByText(/Earlier thread\. To make changes/)).toBeTruthy();
     expect(screen.getAllByAltText('Reference 1').length).toBe(1);
     expect(mockPost).toHaveBeenCalledWith(expect.objectContaining({ type: MessageType.IMAGE_GENERATION_CLEAR }));
     unmount();
@@ -571,6 +573,77 @@ describe('the Image tab', () => {
     expect(screen.queryByText(/Controls above apply to a new thread/)).toBeNull();
     fireEvent.change(screen.getByLabelText('Resolution'), { target: { value: '2K' } });
     expect(screen.getByText(/Controls above apply to a new thread/)).toBeTruthy();
+  });
+});
+
+describe('results-pane thread navigation', () => {
+  const oldImage = { ...image, id: 'image-old', prompt: 'Old landscape' };
+  const oldSettings: ImageThreadSettings = { mode: 'edit', model: 'recraft/recraft-v4.1', aspectRatio: '1:1', resolution: 'auto' };
+  const archive = { id: 'img-old', settings: oldSettings, turns: [{ ...turn, id: 'turn-old', prompt: 'Old landscape', images: [oldImage] }] };
+
+  it('browses one thread at a time with its own settings, without changing or dispatching the current thread', () => {
+    render(<View initial={{ ...existing, archivedThreads: [archive] }} />);
+    const results = screen.getByRole('region', { name: 'Image results' });
+    const previous = screen.getByRole('button', { name: 'Previous thread' }) as HTMLButtonElement;
+    const next = screen.getByRole('button', { name: 'Next thread' }) as HTMLButtonElement;
+    expect(next.disabled).toBe(true);
+    expect(within(results).queryByAltText(oldImage.prompt)).toBeNull();
+    expect(screen.getByText('Thread 2 of 2, current thread')).toBeTruthy();
+
+    const draft = screen.getByRole('textbox', { name: 'Continue the conversation...' });
+    fireEvent.change(draft, { target: { value: 'Keep my unsent refinement' } });
+    fireEvent.click(previous);
+    expect(previous.disabled).toBe(true);
+    expect(next.disabled).toBe(false);
+    expect(screen.getByText('Thread 1 of 2, earlier thread')).toBeTruthy();
+    expect(within(results).getByAltText(oldImage.prompt)).toBeTruthy();
+    expect(within(results).queryByAltText(image.prompt)).toBeNull();
+    expect(within(results).getByText(/Recraft V4.1 · 1:1 · Default resolution/)).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Continue the conversation...' })).toBeNull();
+    // Even a stale event on the hidden composer must not submit to the current thread.
+    fireEvent.keyDown(draft, { key: 'Enter' });
+    expect(mockPost).not.toHaveBeenCalled();
+
+    fireEvent.click(next);
+    expect((screen.getByRole('textbox', { name: 'Continue the conversation...' }) as HTMLInputElement).value).toBe('Keep my unsent refinement');
+    expect(within(results).getByAltText(image.prompt)).toBeTruthy();
+    expect(within(results).queryByAltText(oldImage.prompt)).toBeNull();
+    expect(mockPost).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CONTINUE, payload: { conversationId: 'img-existing', prompt: 'Keep my unsent refinement' } });
+  });
+
+  it('saves the browsed image and deletes only its archive, returning focus to the current result', () => {
+    render(<View initial={{ ...existing, archivedThreads: [archive] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous thread' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save to workspace' }));
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_SAVE_REQUEST, payload: { imageId: oldImage.id } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread' }));
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CLEAR, payload: { conversationId: 'img-old' } });
+    expect(screen.getByText('Thread 1 of 1, current thread')).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Continue the conversation...' })).toBeTruthy();
+    expect(document.activeElement).toBe(within(screen.getByRole('region', { name: 'Image results' })).getByRole('heading'));
+  });
+
+  it('shows the pending generation instead of an archive, locks navigation, and restores the live thread on failure', () => {
+    let state: ReturnType<typeof useImageGeneration>;
+    function Harness() {
+      state = useImageGeneration({ ...existing, prompt: 'New result', archivedThreads: [archive] });
+      return <ImageGenerationView imageGeneration={state} />;
+    }
+    render(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Previous thread' }));
+    fireEvent.click(screen.getByRole('button', { name: '⚡ Start Conversation' }));
+    const request = posted();
+    expect(screen.getByText('Thread 3 of 3, current thread')).toBeTruthy();
+    expect(screen.queryByAltText(oldImage.prompt)).toBeNull();
+    expect((screen.getByRole('button', { name: 'Previous thread' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Next thread' }) as HTMLButtonElement).disabled).toBe(true);
+    act(() => { state.handleError(fail(request.correlationId)); });
+    expect(screen.getByText('Thread 2 of 2, current thread')).toBeTruthy();
+    expect(screen.getByAltText(image.prompt)).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Continue the conversation...' })).toBeTruthy();
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
   });
 });
 
