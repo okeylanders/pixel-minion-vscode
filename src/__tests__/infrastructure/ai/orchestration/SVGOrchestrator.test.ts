@@ -363,4 +363,71 @@ describe('SVGOrchestrator', () => {
       expect(sent[1].split('Reference SVG:').length - 1).toBe(1);
     });
   });
+  describe('route ownership and replay', () => {
+    const RAW_SVG = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
+    const raster = 'data:image/png;base64,iVBORw0KGgo=';
+    const svgClient = () => {
+      const sent: unknown[] = [];
+      const client: jest.Mocked<TextClient> = {
+        getModel: jest.fn().mockReturnValue('mock'),
+        isConfigured: jest.fn().mockResolvedValue(true),
+        createCompletion: jest.fn().mockImplementation(async (messages) => {
+          sent.push(JSON.parse(JSON.stringify(messages)));
+          return { content: RAW_SVG, finishReason: 'stop' };
+        }),
+      };
+      return { client, sent };
+    };
+
+    it('refuses to refine a native-vector conversation before any provider call', async () => {
+      const text = svgClient();
+      const vector = svgClient();
+      orchestrator.setClient(text.client as unknown as OpenRouterDynamicTextClient);
+      orchestrator.setVectorImageClient(vector.client);
+      const first = await orchestrator.generateSVG('A red star', { model: 'recraft/recraft-v4.1-pro-vector', aspectRatio: '1:1' });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Make it blue')).rejects.toThrow("Refine isn't available");
+      // Nor after a restart, when the conversation would be re-hydrated.
+      await expect(orchestrator.continueSVG('svg-restored', 'Make it blue',
+        [{ prompt: 'A red star', svgCode: RAW_SVG }], 'recraft/recraft-v4-vector', '1:1')).rejects.toThrow("Refine isn't available");
+
+      expect(vector.client.createCompletion).toHaveBeenCalledTimes(1);
+      expect(text.client.createCompletion).not.toHaveBeenCalled();
+      expect(orchestrator.getConversation('svg-restored')).toBeUndefined();
+    });
+
+    it('returns a native-vector document the policy rejects, and says why in the log', async () => {
+      const hostile = '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect/></svg>';
+      const vector = svgClient();
+      vector.client.createCompletion.mockResolvedValueOnce({ content: hostile, finishReason: 'stop' });
+      orchestrator.setVectorImageClient(vector.client);
+
+      const result = await orchestrator.generateSVG('A red star', { model: 'recraft/recraft-v4-vector', aspectRatio: '1:1' });
+
+      expect(result.svgCode).toBe(hostile);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'SVG from recraft/recraft-v4-vector will not be previewed or saved: it has an event handler attribute (onload)'
+      );
+    });
+
+    it('replays the original raster reference after re-hydration', async () => {
+      const live = svgClient();
+      orchestrator.setClient(live.client as unknown as OpenRouterDynamicTextClient);
+      const first = await orchestrator.generateSVG('Trace this', { model: 'openai/gpt-5.3-codex', aspectRatio: '1:1', referenceImage: raster });
+      await orchestrator.continueSVG(first.conversationId, 'Thicker lines');
+
+      const restored = new SVGOrchestrator(mockLogger);
+      const replay = svgClient();
+      restored.setClient(replay.client as unknown as OpenRouterDynamicTextClient);
+      await restored.continueSVG('svg-restored', 'Thicker lines',
+        [{ prompt: 'Trace this', svgCode: RAW_SVG, turnNumber: 1, referenceImage: raster }], 'openai/gpt-5.3-codex', '1:1');
+
+      // The restored request is the request the live conversation sent.
+      expect(replay.sent[0]).toEqual(live.sent[1]);
+      expect((replay.sent[0] as Array<{ content: unknown }>)[1].content).toEqual([
+        { type: 'text', text: 'Trace this' },
+        { type: 'image_url', image_url: { url: raster } },
+      ]);
+    });
+  });
 });

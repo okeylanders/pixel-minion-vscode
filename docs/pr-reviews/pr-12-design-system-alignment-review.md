@@ -66,7 +66,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | U1 / C2 | 🔴 | `anthropic/claude-opus-5-fast` delisted (0 endpoints) | U, C — **consensus** | A | ✅ Fixed in `76fddce` |
 | U2 / C2 | 🔴 | `x-ai/grok-imagine-image-quality` delisted (0 endpoints; Image API 404). Replacement `x-ai/grok-imagine-image-2.0` | U, C — **consensus** | A (remove + migrate) · B/P3 (add 2.0) | ✅ Removed + migrated in `76fddce`; Grok Imagine 2.0 added and migration retargeted in `7038e87` |
 | U3 | 🔴 **pre**, verified | Transport: only the Gemini image family, the GPT-5 image wrappers and Muse list `/chat/completions`. Recraft (incl. default SVG model), FLUX, Krea, Riverflow, Seedream, MAI and `gpt-image-*` list only `/api/v1/images`. Frame reached the same conclusion 2026-09-10 | U, S | Keyed smoke test → P3 | ◐ Verified 2026-11-07 (keyed probe, $0.111): v1.3.0 catalog routes; six PR #12 additions are Image-API-only, removed in `ebc9f59`; transport → P3 |
-| S1 | 🔴 **pre** | Generated SVG injected via `dangerouslySetInnerHTML` ×5 per result (`SVGPreview.tsx:20-23`). CSP blocks scripts, but `style-src 'unsafe-inline'` lets `<style>` restyle or hide the UI. Duplicate ids collide with app SVG ids. Saved files keep any `<script>` | S | P5a | ⏳ Open |
+| S1 | 🔴 **pre** | Generated SVG injected via `dangerouslySetInnerHTML` ×5 per result (`SVGPreview.tsx:20-23`). CSP blocks scripts, but `style-src 'unsafe-inline'` lets `<style>` restyle or hide the UI. Duplicate ids collide with app SVG ids. Saved files keep any `<script>` | S | P5a | ✅ Fixed in `9128d89` (animation check in an installed VSIX still owed) |
 | D3 / V6 | 🟠 | Header lockup off-family: monochrome link-blue glyph on a themed tile; 17/10.5 px; doubled centred 1 px rule; tagline copied from Frame | D, V — **consensus** | A | ✅ Fixed in `9800bad` |
 | D4 / V3 / C10 | 🟠 | Picker ≠ Frame sprint-06: two-line 44 px trigger; 2 pivots (no By Release Date); no OpenRouter highlight or cost description; combined price pill widened to 220 px. SVG text model Gemini 3.1 Pro grouped as "Gemini Image" | D, V, C — **consensus** | B | ✅ Fixed in 5d8bb2d |
 | C3 / C9 / U-1b | 🟠 | Per-image estimates invented (1,290 tokens applied to all Google/OpenAI/Microsoft). Units guessed from id prefix; input charges never shown; type says "$ per 1M tokens" | C, U, S — **consensus** | B | ✅ Fixed in 5d8bb2d (unit-aware pricing), 7038e87 (input rates) |
@@ -78,7 +78,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | D7 / C8 | 🟠 | Model browser a11y: no focus trap or return, background not inert, Escape not scoped, chips/selection unannounced, trigger label unassociated, no `aria-expanded` | D, C — **consensus** | A (overlay hook) · B (picker port) | ✅ Overlay hook + paint order in `7294c29`, `01a230c`; picker internals in `5d8bb2d` |
 | C4 | 🟠 | Balance survives API key clear/replace (shows account A's balance beside the no-key alert) | C | A | ✅ Fixed in `25a6f55` (host cache); the webview clears A's figures at once in `b19a691` (PR #13 review F-01) |
 | C5 | 🟠 | When `/credits` 403s, the key spend cap is labelled "Account balance" | C | A | ✅ Fixed in `609da39` |
-| S2 | 🟠 **pre** | Request ownership: no correlation ids; stale `referenceSvgText` (SVG text never recorded, but sent twice); a failed turn is resent with the next request; Refine eligibility uses the draft model, not the thread's; an enhance error clears the other tab's spinner; `persistedState` serialized every render | S | P2 (+ P5a for SVG refine) | ◐ Partial in `a2d5115` + `adcdb92` (everything except SVG refine eligibility, which is P5a) |
+| S2 | 🟠 **pre** | Request ownership: no correlation ids; stale `referenceSvgText` (SVG text never recorded, but sent twice); a failed turn is resent with the next request; Refine eligibility uses the draft model, not the thread's; an enhance error clears the other tab's spinner; `persistedState` serialized every render | S | P2 (+ P5a for SVG refine) | ✅ Fixed in `a2d5115` + `adcdb92` + `9128d89` (SVG refine eligibility) |
 | U5 | 🟠 | `openai/gpt-5-image-mini` expires 2026-12-01 | U | B | ✅ Fixed in 7038e87 (labelled "retiring Dec 1, 2026") |
 | C6 | 🟡 | Frame PR-12 review fixes lost: zero-cap reads "depleted"; "$-1.50"; invalid key vs offline identical (status dropped); per-handler debounce timer never disposed | C | A | ✅ Fixed in `25a6f55` (d), `609da39` (a–c) |
 | C7 | 🟡 | No balance cache or dedupe; `forceRefresh` ignored; every load sends 2 requests (4 HTTP calls) | C | A | ✅ Fixed in `25a6f55` |
@@ -100,7 +100,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | U6 | 🟡 | GPT-5.6 Sol / Sol Pro stored at $5/$30; live $4/$20 | U, C — **consensus** | B | ✅ Fixed in 7038e87 (superseded by GPT-6.1 Sol) |
 | M1 | 🟡 **pre** | SVG text client sends `max_tokens: 16384` (CLAUDE.md says 48 000). Reasoning models can truncate long SVGs | U | B | ✅ Fixed in a679286 (32,000) |
 | S3 | 🟡 **pre** | "Saved" shown by a 1 s timer even on cancel/error (Image and SVG); WebP/GIF saved as `.jpg` | S | P2 | ✅ Fixed in `a2d5115` |
-| S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ⏳ Open |
+| S4 | 🟡 **pre** | Webview-supplied `suggestedFilename` joined unchecked in SVG save (defence in depth) | S | P5a | ✅ Fixed in `9128d89` (Image save too) + `d14c5d5` (device names; output folder contained in the workspace) |
 | C11 | ⚪ | Post-generation balance refresh depends on `usage` being present | C | A | ✅ Fixed in `25a6f55` |
 | C12 | ⚪ | Session token totals now a dead pipeline; "Last request" persists across reloads and shows only a time of day | C | A | ✅ Fixed in `47f364e` |
 | C13 | ⚪ | Duplicate unavailable reason; headline blanks to "…" on refresh; stale `svgModel` description in `package.json` | C | A | ✅ Fixed in `609da39`, `76fddce` |
@@ -112,7 +112,7 @@ Planned in: **A** = design-pass fixups (stacked PR, this branch) · **B** = pick
 | V15 | ⚪ | Modal: no release-date pivot; selected card off-screen on open; cost chips wrap at 320 | V | B | ✅ Fixed in 5d8bb2d |
 | V16 | ⚪ | Vertical rhythm and three-edge stagger (header/tabs/well) | V | A | ✅ Fixed in `0d39415` |
 | V17 | ⚪ | Last-request cost hidden in the collapsed pill | V | ↪ Deferred: optional; expanded card already shows it | ↪ Deferred |
-| S5 | ⚪ **pre** | `MarkdownRenderer` claims to sanitize but inserts raw `marked` output (unused today) | S | P5a (remove or sanitize) | ⏳ Open |
+| S5 | ⚪ **pre** | `MarkdownRenderer` claims to sanitize but inserts raw `marked` output (unused today) | S | P5a (remove or sanitize) | ✅ Fixed in `9128d89` (removed) |
 | M2 | ⚪ **pre** | `temperature` sent to frontier models that don't support it (silently dropped) | U | ↪ Deferred: harmless; revisit with P3 | ↪ Deferred |
 
 ## Already right (don't regress)
@@ -146,8 +146,8 @@ From code review, keep and upstream to Frame:
 
 ## Validation still owed
 
-- **Keyed smoke test (U3/O1–O3).** Needs the owner's OpenRouter key; about $0.12. One cheap generation each through Pixel's current chat path for `recraft/recraft-v4.1-vector`, `black-forest-labs/flux.2-klein-4b` and `openai/gpt-image-1-mini`, plus a 16:9 Recraft vector call. Result decides whether P3's `/images` transport is a hotfix for released v1.3.0.
-- **Installed-VSIX check.** 360 px in Dark, Light and High Contrast after PR A lands; the harness substitutes for a real host.
+- **Keyed smoke test (U3/O1–O3).** ✅ Done 2026-11-07 with the owner's key ($0.111); see the audit addendum.
+- **Installed-VSIX check.** 360 px in Dark, Light and High Contrast, plus SVG animation in the isolated preview (R16-M1; a Chromium proxy passed 2026-11-12). Owner-run; the harness substitutes for a real host.
 
 ## Resolution Status
 
@@ -209,19 +209,28 @@ Branch `claude/pixel-minion-request-ownership-dhbqpd`, stacked on PR B.
 - **S2 (P2 part), `a2d5115`** (`claude/pixel-minion-request-ownership-dhbqpd`): correlation ids on generate, refine, enhance, clear and save in `useImageGeneration` / `useSVGGeneration`; responses and errors settle only their own request, and App gives every error to both hooks, which claim only their own (`handleError(): boolean`). Turns are built from a dispatch snapshot, so attached SVG text is recorded with its turn and sent to the model once. Refinements send the thread's settings and no draft attachments. `ImageOrchestrator` / `SVGOrchestrator` roll back failed turns, release a failed first turn and allow one provider request per conversation. `persistedState` is memoized in all four persisted hooks. Remaining: SVG Refine eligibility from the thread's model (P5a). Review follow-up in `adcdb92` (R5-S8/S9, below).
 - **S3, `a2d5115`**: "Saved" comes from the host's `*_SAVE_RESULT` (cancel is a distinct `cancelled` outcome, and a failure to open the written file no longer posts a second result). Saved images are named after their sniffed format (`.png` / `.jpg` / `.webp` / `.gif`); anything else is refused.
 
+### P5a — SVG safety
+
+Branch `claude/pixel-minion-svg-safety-dhbqpd`, stacked on P2.
+
+- **S1, `9128d89`** (`claude/pixel-minion-svg-safety-dhbqpd`): every SVG preview is an isolated `<img src="data:image/svg+xml;base64,…">`; no generated markup, `<style>` or id reaches the app DOM (render test with a hostile style-leak fixture). The shared `SVGDocumentPolicy` rejects (never rewrites) script, `on*` handlers, `<foreignObject>` and other embedding elements, links and CSS `url()` that leave the document, `@import`, `javascript:` URLs, SMIL on `href`, DOCTYPE entities, malformed or non-`<svg>` documents and anything over 2 MB. A rejected document isn't previewed or saved (webview and host), and its code stays visible with a message; the host logs the reason for text and native-vector output alike. Still owed: CSS/SMIL animation check in an installed VSIX.
+- **S2 (SVG Refine), `9128d89`**: Refine eligibility comes from the conversation's model in the view, the hook and the host; `SVGOrchestrator.continueSVG` refuses a native-vector thread before any provider call. S2 is now complete.
+- **S4, `9128d89`**: both save handlers accept only a plain file name (`plainSaveFileName`: no separators, `..`, `:`, control or reserved characters, no leading dot). The Image handler had the same gap.
+- **S5, `9128d89`**: `MarkdownRenderer`, the unmounted `HelloWorldView`, its hook and `markdown.css` removed; `marked` left the webview bundle. The host `HelloWorldHandler` (which still imports `marked`) is now unreachable scaffold, left for a cleanup PR.
+
 ### P2/P5a adversarial review follow-up
 
-An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the stacked P5a branch ran scratch regression tests against both. Ids are prefixed **R5-** so they don't collide with this ledger's S1–S6. R5-S8/S9 concern P2 and are fixed on this branch; R5-S1–S7 concern P5a (`claude/pixel-minion-svg-safety-dhbqpd`) and are tracked there.
+An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the stacked P5a branch ran scratch regression tests against both. Ids are prefixed **R5-** so they don't collide with this ledger's S1–S6. R5-S8/S9 concern P2 and are fixed on its branch; R5-S1–S7 concern P5a (`claude/pixel-minion-svg-safety-dhbqpd`) and are fixed there in `d14c5d5`.
 
 | ID | Sev | Finding | Branch | Status |
 | --- | --- | --- | --- | --- |
-| R5-S1 | 🟠 | Policy tokenizer: ASCII-only element names, so a name with a non-ASCII letter is cut short and the rest is scanned as attributes | P5a | ⏳ Open (P5a) |
-| R5-S2 | 🟠 | Quadratic `url(` regex in the policy (128 KB → 5.9 s; ~25 min at the 2 MB cap), on the host after every generation and in the webview render | P5a | ⏳ Open (P5a) |
-| R5-S3 | 🟡 | CSS checks run on attribute values only when a literal `url(` appears | P5a | ⏳ Open (P5a) |
-| R5-S4 | 🟡 | CSS comment stripping is not string-aware | P5a | ⏳ Open (P5a) |
-| R5-S5 | 🟡 | Any namespace declaration accepted | P5a | ⏳ Open (P5a) |
-| R5-S6 | ⚪ | SMIL rule covers `href` only (not `src` / `xml:base`); a non-UTF-8 XML `encoding` accepted | P5a | ⏳ Open (P5a) |
-| R5-S7 | ⚪ | Save file names: Windows device names, trailing dots/spaces and bidi controls accepted; a workspace `pixelMinion.outputDirectory` with `..` escapes the workspace | P5a | ⏳ Open (P5a) |
+| R5-S1 | 🟠 | Policy tokenizer: ASCII-only element names, so a name with a non-ASCII letter is cut short and the rest is scanned as attributes | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S2 | 🟠 | Quadratic `url(` regex in the policy (128 KB → 5.9 s; ~25 min at the 2 MB cap), on the host after every generation and in the webview render | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S3 | 🟡 | CSS checks run on attribute values only when a literal `url(` appears | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S4 | 🟡 | CSS comment stripping is not string-aware | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S5 | 🟡 | Any namespace declaration accepted | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S6 | ⚪ | SMIL rule covers `href` only (not `src` / `xml:base`); a non-UTF-8 XML `encoding` accepted | P5a | ✅ Fixed in `d14c5d5` |
+| R5-S7 | ⚪ | Save file names: Windows device names, trailing dots/spaces and bidi controls accepted; a workspace `pixelMinion.outputDirectory` with `..` escapes the workspace | P5a | ✅ Fixed in `d14c5d5` |
 | R5-S8 | 🟡 | A prompt-enhance answer that lands after Generate rewrites the prompt under the running request; after Clear it refills the cleared box (both tabs) | P2 | ✅ Fixed in `adcdb92` |
 | R5-S9 | 🟡 | (a) a throw before a handler's `try` (e.g. `prompt.substring` on a malformed payload) leaves the spinner running; (b) image rollback doesn't restore `turnNumber` / `lastImages`; (c) uncorrelated errors from request sources are dropped. Also: reload mid-request, host memory from unreleased conversations, first-turn raster refs on re-hydration | P2 | ◐ (a)–(c) fixed in `adcdb92`; rest ↪ Deferred (below) |
 
@@ -230,3 +239,11 @@ An independent adversarial review (round 5) of the P2 branch (`a2d5115`) and the
 - **R5-S9 (b)** ✅ `adcdb92`. `ImageOrchestrator` restores message count, turn number, seed and last images; `SVGOrchestrator` restores the turn number too. A turn that fails after its reply was recorded no longer leaves a phantom turn, and a failed first turn is still released.
 - **R5-S9 (c)** ✅ `adcdb92`. App drops an unclaimed error only when it carries an Image/SVG tab request id; any other error is shown in the visible tab.
 - **R5-S9, deferred:** ↪ *Reload mid-request* (Frame F-10): pending refs are deliberately not persisted, and a reloaded webview can't tell a still-running host request from a lost one; needs host-side request state. ↪ *Host memory from unreleased conversations*: Generate starts a new host conversation without releasing the previous one; P4's thread archive gives conversations an owner and a lifetime, so the release belongs there. ↪ *First-turn raster references on image re-hydration*: the webview doesn't persist per-request base64 references, so a re-hydrated thread loses them; P3's host transcript store replays them.
+- **R5-S2** ✅ `d14c5d5` (fixed first). The CSS `url()` and comment regexes, quadratic on unterminated openers (128 KB → 5.9 s, ~25 min at the 2 MB cap), are replaced by one linear CSS tokenizer; an unterminated `url(` or CSS comment is a rejection. Every other policy pattern was audited (single-position sticky or anchored, or a single character class). Twelve 2 MB worst cases run in well under a second each (`SVGDocumentPolicy.test.ts`); the reviewer's `perf.review.test.ts` now reports 0–3 ms at 128 KB. The audit missed one scanner path: the "inside `<style>`?" check re-read the open parent's name for every child, quadratic for a long name with many children (PR #16 review R16-1, fixed in `031477e`). The host's log-only check after generation stays, now cheap. `extractSVG`'s regexes in `SVGOrchestrator` (outside the policy) are quadratic on pathological provider output: ↪ deferred, bounded by the 32,000-token ceiling and only reachable from the user's own prompt.
+- **R5-S1** ✅ `d14c5d5`. Element and attribute names are ASCII XML names that must end at XML whitespace, `/`, `>` (or `=`); `<gé/>`, `<pé:rect/>`, `é=` and a name followed by U+FEFF are rejections. The reviewer's two tokenizer cases (which asserted the old acceptance) now fail closed.
+- **R5-S3** ✅ `d14c5d5`. The CSS checks run on every attribute value with escape decoding (`fill="\75 rl(…)"`, `&#92;55RL(`, SMIL `values=`).
+- **R5-S4** ✅ `d14c5d5`. Comments are recognized only outside strings and unquoted url tokens (CSS Syntax), so neither `"/*" … "*/"` nor `url(#a/*), url(https://…), url(#b*/)` hides a remote url. Also fixed: CDATA text was entity-decoded, which could invent a comment; only text outside CDATA is decoded now.
+- **R5-S5** ✅ `d14c5d5`. Namespace declarations must be SVG, XLink, XML or C2PA. The real Recraft V4.1 Vector response (2026-11-07 smoke test) declares `xmlns:c2pa`, and is now a fixture that must pass; no other metadata namespace was needed by generated output, so none is allowed.
+- **R5-S6** ✅ `d14c5d5`. SMIL can't target `href`, `src` or `xml:base`; the XML declaration must come first and name only UTF-8 (quoted).
+- **R5-S7** ✅ `d14c5d5`. File names refuse Windows device names (with or without an extension), trailing dots, C1 and bidi/format controls. `pixelMinion.outputDirectory` must be a relative path of safe folder names, and the joined folder is proven to be inside the workspace folder (`workspaceOutputDirectory`); an escaping value is refused with an error naming the setting. The setting keeps its default scope (per-workspace folders are legitimate; the extension doesn't run in Restricted Mode; containment makes a workspace value harmless). ↪ Deferred: the check is lexical, so a symlink the repository ships inside the workspace is still followed (no realpath in `workspace.fs`; names are timestamped, so nothing is overwritten).
+- **Routes**: `isNativeVectorSvgModel` now keys on the catalog `kind` for curated ids (fallback `recraft/` for ids the catalog doesn't list), so routing has one source of truth.

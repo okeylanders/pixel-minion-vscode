@@ -25,6 +25,8 @@ import {
 import { LoggingService } from '@logging';
 import { ImageOrchestrator, RehydrationTurn } from '@ai';
 import { imageExtensionForMime, sniffImageMime } from '../../../shared/media/imageFormats';
+import { plainSaveFileName } from '../saveFileName';
+import { workspaceOutputDirectory } from '../outputDirectory';
 
 export class ImageGenerationHandler {
   private readonly configSection = 'pixelMinion';
@@ -285,9 +287,10 @@ export class ImageGenerationHandler {
       this.logger.warn(`Image labelled ${mimeType} contains ${detectedMime}; saving as .${extension}`);
     }
 
-    // The name's extension always matches the bytes.
+    // A plain name, never a path; its extension always matches the bytes.
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-    const stem = (suggestedFilename || `image-${timestamp}`).replace(/\.[A-Za-z0-9]+$/, '');
+    const suggested = suggestedFilename ? plainSaveFileName(suggestedFilename) : `image-${timestamp}`;
+    const stem = suggested.replace(/\.[A-Za-z0-9]+$/, '');
     const filename = `${stem}.${extension}`;
 
     let fileUri: vscode.Uri;
@@ -311,8 +314,9 @@ export class ImageGenerationHandler {
       // Workspace available - save to output directory
       const workspaceRoot = workspaceFolders[0].uri;
       const config = vscode.workspace.getConfiguration(this.configSection);
-      const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
-      const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
+      // Contained in the workspace folder, whatever the (possibly
+      // repository-supplied) setting says.
+      const outputDirUri = workspaceOutputDirectory(workspaceRoot, config.get<string>('outputDirectory', 'pixel-minion'));
 
       try {
         await vscode.workspace.fs.createDirectory(outputDirUri);

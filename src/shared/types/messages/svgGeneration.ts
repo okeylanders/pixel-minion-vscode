@@ -18,6 +18,8 @@ export interface SVGConversationHistoryTurn {
   svgCode: string;
   turnNumber?: number;
   referenceSvgText?: string;
+  /** Raster reference (data URL) sent with this turn, replayed on re-hydration. */
+  referenceImage?: string;
   usage?: TokenUsage;
 }
 

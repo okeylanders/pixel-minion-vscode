@@ -36,3 +36,14 @@ coverage/**
 # Temporary files
 *.log
 .DS_Store
+
+# Repository-only material. vsce rewrites the README's relative image links
+# to github.com/…/raw/HEAD URLs, so screenshots/ need not ship; docs/ holds
+# plans, review ledgers and review witnesses (incl. a test file).
+docs/**
+screenshots/**
+AGENTS.md
+tsconfig.webview.json
+tsconfig.test.json
+tailwind.config.js
+postcss.config.js

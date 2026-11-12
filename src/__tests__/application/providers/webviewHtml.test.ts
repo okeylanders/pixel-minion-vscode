@@ -46,4 +46,13 @@ describe('buildWebviewHtml', () => {
     expect(html).toContain("script-src 'nonce-n0nce';");
     expect(html.match(/<script nonce="n0nce"/g)).toHaveLength(2);
   });
+
+  it('allows data: images, which the isolated SVG preview relies on, without allowing script', () => {
+    const csp = /http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(build())![1];
+    const directive = (name: string) => csp.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name} `));
+
+    // SVGPreview renders generated SVG as <img src="data:image/svg+xml;base64,…">.
+    expect(directive('img-src')?.split(/\s+/)).toContain('data:');
+    expect(directive('script-src')).toBe("script-src 'nonce-n0nce'");
+  });
 });

@@ -26,7 +26,11 @@ export interface SVGRehydrationTurn {
   svgCode: string;
   turnNumber?: number;
   referenceSvgText?: string;
+  /** Raster reference (data URL) the turn was sent with. */
+  referenceImage?: string;
 }
+
+type SVGUserContent = TextMessage['content'];
 
 /**
  * SVG system prompt - instructs the AI to generate clean SVG code
@@ -116,31 +120,25 @@ export class SVGConversationManager {
       throw new Error(`Conversation ${conversationId} not found`);
     }
 
-    // Build message content
-    let content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
-
-    // If an SVG text is provided, append it to the prompt as text.
-    if (referenceSvgText) {
-      const svgAppendix = `\n\nReference SVG:\n${referenceSvgText}`;
-      content = referenceImage
-        ? [
-            { type: 'text', text: `${prompt}${svgAppendix}` },
-            { type: 'image_url', image_url: { url: referenceImage } },
-          ]
-        : `${prompt}${svgAppendix}`;
-    } else if (referenceImage) {
-      content = [
-        { type: 'text', text: prompt },
-        { type: 'image_url', image_url: { url: referenceImage } }
-      ];
-    } else {
-      content = prompt;
-    }
-
     conversation.messages.push({
       role: 'user',
-      content
+      content: this.userContent(prompt, referenceImage, referenceSvgText)
     });
+  }
+
+  /**
+   * A user turn's content: the prompt, an attached SVG appended as text, and
+   * a raster reference as an image part. Shared by live turns and
+   * re-hydration, so a restored conversation replays exactly what was sent.
+   */
+  private userContent(prompt: string, referenceImage?: string, referenceSvgText?: string): SVGUserContent {
+    const text = referenceSvgText ? `${prompt}\n\nReference SVG:\n${referenceSvgText}` : prompt;
+    return referenceImage
+      ? [
+          { type: 'text', text },
+          { type: 'image_url', image_url: { url: referenceImage } },
+        ]
+      : text;
   }
 
   /**
@@ -205,12 +203,9 @@ export class SVGConversationManager {
     });
 
     for (const turn of history) {
-      const promptWithSvg = turn.referenceSvgText
-        ? `${turn.prompt}\n\nReference SVG:\n${turn.referenceSvgText}`
-        : turn.prompt;
       conversation.messages.push({
         role: 'user',
-        content: promptWithSvg
+        content: this.userContent(turn.prompt, turn.referenceImage, turn.referenceSvgText)
       });
       conversation.messages.push({
         role: 'assistant',
