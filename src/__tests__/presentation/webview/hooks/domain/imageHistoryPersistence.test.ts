@@ -11,6 +11,8 @@ import {
   IMAGE_HISTORY_DRAFT_RESERVE_BYTES,
   IMAGE_HISTORY_DRAFT_WARNING,
   IMAGE_HISTORY_STORAGE_WARNING,
+  IMAGE_HISTORY_ARCHIVE_WARNING,
+  IMAGE_HISTORY_ARCHIVE_AND_STORAGE_WARNING,
 } from '../../../../../presentation/webview/hooks/domain/imageHistoryPersistence';
 import type { ImageGenerationPersistence } from '../../../../../presentation/webview/hooks/domain/useImageGeneration';
 import type { ConversationTurn, GeneratedImage, ImageThreadSettings } from '@messages';
@@ -32,7 +34,14 @@ it('keeps the newest five persisted archives while leaving live history intact',
   expect(saved.archivedThreads).toHaveLength(MAX_PERSISTED_IMAGE_ARCHIVES);
   expect(saved.archivedThreads?.map(thread => thread.id)).toEqual(['img-1', 'img-2', 'img-3', 'img-4', 'img-5']);
   expect(live.archivedThreads).toHaveLength(6);
-  expect(saved.persistenceWarning).toContain('will not survive reload');
+  // Only the threads were left out: the note names only them.
+  expect(saved.persistenceWarning).toBe(IMAGE_HISTORY_ARCHIVE_WARNING);
+});
+
+it('says nothing about Earlier threads while five or fewer are kept', () => {
+  const live = state();
+  live.archivedThreads = Array.from({ length: MAX_PERSISTED_IMAGE_ARCHIVES }, (_, i) => ({ id: `img-${i}`, settings, turns: [turn(i)] }));
+  expect(boundedImageHistory(live, smallBudget).persistenceWarning).toBeUndefined();
 });
 
 it('bounds multi-megabyte images, preserves settings/counts/latest preview, and does not mutate the live result', () => {
@@ -49,9 +58,17 @@ it('bounds multi-megabyte images, preserves settings/counts/latest preview, and 
   expect(saved.conversationHistory[0].imagesOmitted).toBe(true);
   expect(saved.conversationHistory[1].images).toEqual(live.generatedImages);
   expect(saved.generatedImages).toEqual([]); // no duplicate of the latest result
-  expect(saved.persistenceWarning).toMatch(/Some images or older threads will not survive reload/);
+  // One archive, none dropped: only images were left out.
+  expect(saved.persistenceWarning).toBe(IMAGE_HISTORY_STORAGE_WARNING);
   expect(live.conversationHistory[0].images[0].data).toBe(huge);
   expect(live.archivedThreads[0].turns[0].images).toHaveLength(1);
+});
+
+it('names both limits when a snapshot drops older threads and images', () => {
+  const live = state();
+  const big = `data:image/png;base64,${'A'.repeat(600 * 1024)}`;
+  live.archivedThreads = Array.from({ length: 6 }, (_, i) => ({ id: `img-${i}`, settings, turns: [turn(i, big)] }));
+  expect(boundedImageHistory(live, smallBudget).persistenceWarning).toBe(IMAGE_HISTORY_ARCHIVE_AND_STORAGE_WARNING);
 });
 
 it('drops archive images before the current thread’s', () => {

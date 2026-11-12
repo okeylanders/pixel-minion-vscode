@@ -425,7 +425,7 @@ describe('bounded webview history', () => {
       ...existing, mode: 'edit', threadSettings: { ...settings, mode: 'edit' },
       conversationHistory: [{ ...turn, images: [], imagesOmitted: true }],
       // An earlier snapshot's warning is never restored; the flagged turn is what counts.
-      persistenceWarning: 'Local history keeps up to five earlier threads and a limited amount of image data. Some images or older threads will not survive reload. Save images you want to keep.',
+      persistenceWarning: 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.',
     };
     const restored = renderHook(() => useImageGeneration(omitted));
     expect(restored.result.current.persistenceWarning).toMatch(/previews from an earlier session were not kept/);
@@ -487,6 +487,6 @@ describe('request-size warnings (from the catalog’s maxRequestBytes)', () => {
     const { result } = renderHook(() => useImageGeneration({ ...existing, archivedThreads: archives }));
     expect(result.current.archivedThreads).toHaveLength(6);
     expect(result.current.persistedState.archivedThreads?.map(thread => thread.id)).toEqual(['img-1', 'img-2', 'img-3', 'img-4', 'img-5']);
-    expect(result.current.persistenceWarning).toContain('up to five earlier threads');
+    expect(result.current.persistenceWarning).toContain('five newest earlier threads');
   });
 });

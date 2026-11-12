@@ -7,7 +7,8 @@
  * first; prompts, turn counts and thread identity always survive, so a
  * Conversation can still recover its host transcript after a reload.
  *
- * The snapshot keeps at most the newest five Earlier threads.
+ * The snapshot keeps at most the newest five Earlier threads, and says so
+ * only while it is leaving older ones out.
  *
  * Pixel delta from Frame: no desktop budget override (Pixel is VS Code only,
  * so the 48 MiB extension default always applies).
@@ -28,8 +29,19 @@ export const MAX_IMAGE_HISTORY_STORAGE_BYTES = 48 * 1024 * 1024;
 export const IMAGE_HISTORY_DRAFT_RESERVE_BYTES = 64 * 1024;
 type ImageHistoryDraft = Pick<ImageGenerationPersistence, 'mode' | 'model' | 'aspectRatio' | 'resolution' | 'prompt'>;
 
-/** This snapshot leaves out image data, or Earlier threads, the live session still shows. */
-export const IMAGE_HISTORY_STORAGE_WARNING = 'Local history keeps up to five earlier threads and a limited amount of image data. Some images or older threads will not survive reload. Save images you want to keep.';
+/** This snapshot leaves out image data the live session still shows. */
+export const IMAGE_HISTORY_STORAGE_WARNING = 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.';
+/** This snapshot leaves out Earlier threads beyond the newest five. */
+export const IMAGE_HISTORY_ARCHIVE_WARNING = 'Local history keeps the five newest earlier threads. Older ones will not survive reload. Save images you want to keep.';
+/** This snapshot leaves out both. */
+export const IMAGE_HISTORY_ARCHIVE_AND_STORAGE_WARNING = 'Local history keeps the five newest earlier threads and a limited amount of image data. Older threads and some images will not survive reload. Save images you want to keep.';
+
+/** The note for what this snapshot left out, or undefined when it left out nothing. */
+function storageWarning(dropped: { archives: boolean; images: boolean }): string | undefined {
+  if (dropped.archives && dropped.images) return IMAGE_HISTORY_ARCHIVE_AND_STORAGE_WARNING;
+  if (dropped.archives) return IMAGE_HISTORY_ARCHIVE_WARNING;
+  return dropped.images ? IMAGE_HISTORY_STORAGE_WARNING : undefined;
+}
 /** The restored thread has turns an earlier snapshot saved without their previews (`imagesOmitted`). */
 export const IMAGE_HISTORY_RESTORED_WARNING = 'Some image previews from an earlier session were not kept in local history. Use your saved image files.';
 /** This snapshot holds a shortened copy of the draft controls. */
@@ -59,10 +71,11 @@ export function boundedImageHistory(state: ImageGenerationPersistence, budgetByt
     archivedThreads: archives.slice(-MAX_PERSISTED_IMAGE_ARCHIVES).map(thread => ({ ...thread, turns: [...thread.turns] })),
     conversationHistory: [...state.conversationHistory],
   };
-  if (snapshot.archivedThreads.length !== archives.length) snapshot.persistenceWarning = IMAGE_HISTORY_STORAGE_WARNING;
+  const archivesDropped = snapshot.archivedThreads.length !== archives.length;
+  snapshot.persistenceWarning = storageWarning({ archives: archivesDropped, images: false });
   let size = JSON.stringify(snapshot).length * 2;
   if (size <= budgetBytes) return snapshot;
-  snapshot.persistenceWarning = IMAGE_HISTORY_STORAGE_WARNING;
+  snapshot.persistenceWarning = storageWarning({ archives: archivesDropped, images: true });
   size = JSON.stringify(snapshot).length * 2;
   // Old archive images go first, then old active images. Preserve turn counts
   // and prompts so Conversation can still recover its opaque host transcript.
@@ -85,6 +98,7 @@ export function boundedImageHistory(state: ImageGenerationPersistence, budgetByt
     mode: state.mode, model: state.model.slice(0, 1024), aspectRatio: state.aspectRatio,
     resolution: state.resolution, prompt: state.prompt.slice(0, 8192),
     threadSettings: null, conversationId: null, archivedThreads: [],
-    conversationHistory: [], generatedImages: [], persistenceWarning: IMAGE_HISTORY_STORAGE_WARNING,
+    conversationHistory: [], generatedImages: [],
+    persistenceWarning: storageWarning({ archives: archives.length > 0, images: true }),
   };
 }
