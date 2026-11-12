@@ -232,9 +232,18 @@ it('keeps mode-less callers compatible while explicit sidebar ids stay strict, a
   expect(orchestrator.getConversation(result.conversationId)).toBeUndefined();
   expect(storage.write).not.toHaveBeenCalled();
   await expect(orchestrator.generateImage('A frame', { ...options, mode: 'edit' }, 'img-unseen')).rejects.toThrow('unavailable');
-  // Unknown after a restart: could be a Conversation, so it is tombstoned (Frame R-4).
+  // Unknown after a restart, but nothing is saved for it: no tombstone is written.
   await orchestrator.clearConversation('img-unseen');
-  expect(storage.write).toHaveBeenCalledTimes(1);
+  expect(storage.write).not.toHaveBeenCalled();
+});
+
+it('tombstones the saved record of a thread a restarted host has never seen', async () => {
+  const { create, files } = harness();
+  const first = await create().generateImage('A tree', options);
+  const file = [...files.keys()][0];
+  // Unknown after a restart: could be a Conversation, so its record is retired (Frame R-4).
+  await create().clearConversation(first.conversationId);
+  expect(JSON.parse(Buffer.from(files.get(file)!).toString('utf8'))).toEqual({ version: 1, deleted: true });
 });
 
 it.each(['{broken', 'null', '[]', '123', '{"version":1,"state":{"id":"img-x","mode":"edit"}}'])('gives the recovery guidance for corrupt JSON %s', async content => {

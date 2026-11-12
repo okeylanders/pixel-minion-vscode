@@ -8,8 +8,10 @@
  *
  * Records live under `<globalStorage>/image-conversations/<workspace hash>/`,
  * one JSON file per `img-…` thread, at most 64 MiB each. Clearing a thread
- * overwrites its record with a tombstone. Missing, oversized, corrupt or
- * mismatched records produce an explicit error, never a silent rebuild.
+ * overwrites its record with a tombstone, and a write never replaces a
+ * tombstone, so a cleared thread can't come back. Clearing a thread with no
+ * record writes nothing. Missing, oversized, corrupt or mismatched records
+ * produce an explicit error, never a silent rebuild.
  *
  * Pixel delta: the store writes through `GlobalStorage` (relative paths under
  * `context.globalStorageUri`) instead of Frame's `FileSystem` + `Workspace`
@@ -34,6 +36,10 @@ export const MAX_IMAGE_TRANSCRIPT_BYTES = 64 * 1024 * 1024;
 
 const INVALID_TRANSCRIPT = 'Saved image conversation is invalid. Start a new conversation from an image.';
 const TOO_LARGE = 'Image transcript exceeds the recovery size limit';
+const CLEARED = 'This image conversation was cleared; its transcript is not saved again.';
+const TOMBSTONE = Buffer.from(JSON.stringify({ version: 1, deleted: true }), 'utf8');
+/** A live record is far larger than this; only files this small are read to look for a tombstone. */
+const TOMBSTONE_MAX_BYTES = 256;
 
 /** Host-owned transcripts. Opaque signatures never travel through display history. */
 export class FileImageConversationStore implements ImageConversationStore {
@@ -78,12 +84,32 @@ export class FileImageConversationStore implements ImageConversationStore {
   }
 
   async write(state: ImageConversationState): Promise<void> {
+    const file = this.file(state.id);
+    // A late write must not bring a cleared thread back.
+    if (await this.stored(file) === 'tombstone') throw new Error(CLEARED);
     const bytes = Buffer.from(JSON.stringify({ version: 1, state }), 'utf8');
     if (bytes.byteLength > this.maxBytes) throw new Error(TOO_LARGE);
-    await this.storage.write(this.file(state.id), bytes);
+    await this.storage.write(file, bytes);
   }
 
   async clear(id: string): Promise<void> {
-    await this.storage.write(this.file(id), Buffer.from(JSON.stringify({ version: 1, deleted: true })));
+    const file = this.file(id);
+    // Only a record needs retiring: with nothing stored there is nothing a
+    // restarted host could resume, and a tombstone is already final.
+    if (await this.stored(file) !== 'record') return;
+    await this.storage.write(file, TOMBSTONE);
+  }
+
+  /** What the thread's file holds. A small file that isn't a tombstone counts as a record. */
+  private async stored(file: string): Promise<'none' | 'record' | 'tombstone'> {
+    const size = await this.storage.size(file);
+    if (size === undefined) return 'none';
+    if (size > TOMBSTONE_MAX_BYTES) return 'record';
+    try {
+      const saved = JSON.parse(Buffer.from(await this.storage.read(file)).toString('utf8'));
+      return saved && typeof saved === 'object' && saved.deleted === true ? 'tombstone' : 'record';
+    } catch {
+      return 'record';
+    }
   }
 }
