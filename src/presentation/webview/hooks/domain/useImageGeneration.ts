@@ -48,6 +48,7 @@ import {
   mergeImageHistoryDraft,
   MAX_IMAGE_HISTORY_STORAGE_BYTES,
   IMAGE_HISTORY_DRAFT_RESERVE_BYTES,
+  IMAGE_HISTORY_RESTORED_WARNING,
 } from './imageHistoryPersistence';
 
 // Sourceful models have a 4.5MB request size limit for reference images
@@ -198,8 +199,14 @@ export interface ImageGenerationState {
   threadSettings: ImageThreadSettings | null;
   /** The thread's last turn was generated, but its transcript could not be saved for restart recovery. */
   recoveryWarning?: string;
-  /** The saved snapshot left out some image data to stay within local storage limits. */
+  /**
+   * Local history can't hold this thread: the current snapshot leaves out
+   * images (they won't survive a reload), or the restored thread has turns
+   * whose previews an earlier snapshot left out. Recomputed from live state.
+   */
   persistenceWarning?: string;
+  /** The current snapshot holds a shortened copy of the draft (prompt or model id). */
+  draftWarning?: string;
   /** Images with a save request outstanding. */
   savingImageIds: ReadonlySet<string>;
   /** Images whose save the host confirmed. Cancelled or failed saves never appear here. */
@@ -253,7 +260,13 @@ export interface ImageGenerationPersistence {
   /** Absent in state saved before thread settings existed; may lack `mode` from before modes. */
   threadSettings?: ImageThreadSettings | null;
   recoveryWarning?: string;
+  /**
+   * What this snapshot left out, and whether its draft was shortened. Saved
+   * for reference only: they are never restored, because a restored warning
+   * would describe an older snapshot than the next one written.
+   */
   persistenceWarning?: string;
+  draftWarning?: string;
   generatedImages: GeneratedImage[];
   conversationHistory: ConversationTurn[];
 }
@@ -686,17 +699,26 @@ export function useImageGeneration(
   // App writes webview state whenever this identity changes, and it carries
   // every generated image as base64, so the bounded history is memoized on
   // its own and the cheap draft controls are merged afterwards: typing never
-  // re-serializes image history.
+  // re-serializes image history. Nothing read from `initialState` takes part:
+  // its warnings described an older snapshot.
   const persistedHistory = useMemo(() => boundedImageHistory({
     model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
     threadSettings, recoveryWarning, conversationId,
     generatedImages, conversationHistory,
-    persistenceWarning: initialState?.persistenceWarning,
   }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
-  [threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory, initialState?.persistenceWarning]);
+  [threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
   const persistedState = useMemo<ImageGenerationPersistence>(() => mergeImageHistoryDraft(persistedHistory, {
     model, prompt, aspectRatio, resolution,
   }), [persistedHistory, model, prompt, aspectRatio, resolution]);
+  // Live turns never carry `imagesOmitted` (only snapshot copies do), so a
+  // flagged turn is one restored from an earlier session. The note goes when
+  // Clear or Generate replaces those turns.
+  const restoredPreviewsOmitted = useMemo(
+    () => conversationHistory.some(turn => turn.imagesOmitted),
+    [conversationHistory]
+  );
+  const persistenceWarning = persistedHistory.persistenceWarning
+    ?? (restoredPreviewsOmitted ? IMAGE_HISTORY_RESTORED_WARNING : undefined);
 
   return {
     // State
@@ -716,7 +738,8 @@ export function useImageGeneration(
     conversationId,
     threadSettings,
     recoveryWarning,
-    persistenceWarning: persistedState.persistenceWarning,
+    persistenceWarning,
+    draftWarning: persistedState.draftWarning,
     savingImageIds,
     savedImageIds,
     isLoading,

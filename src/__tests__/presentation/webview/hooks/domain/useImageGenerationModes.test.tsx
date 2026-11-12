@@ -147,15 +147,18 @@ describe('bounded webview history', () => {
     const omitted: Partial<ImageGenerationPersistence> = {
       ...existing, threadSettings: { ...settings, mode: 'edit' },
       conversationHistory: [{ ...turn, images: [], imagesOmitted: true }],
+      // An earlier snapshot's warning is never restored; the flagged turn is what counts.
       persistenceWarning: 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.',
     };
     const restored = renderHook(() => useImageGeneration(omitted));
+    expect(restored.result.current.persistenceWarning).toMatch(/previews from an earlier session were not kept/);
     act(() => restored.result.current.continueChat('Continue'));
     expect(restored.result.current.error).toContain('latest image was not retained');
     expect(mockPost).not.toHaveBeenCalled();
     render(<View initial={omitted} />);
     expect(screen.getByText(/Image previews were not retained/)).toBeTruthy();
-    expect(screen.getByText(/Some images will not survive reload/)).toBeTruthy();
+    expect(screen.getByText(/previews from an earlier session were not kept/)).toBeTruthy();
+    expect(screen.queryByText(/Some images will not survive reload/)).toBeNull();
   });
 
   it('lets a Conversation continue without previews: the host keeps the transcript', () => {

@@ -83,6 +83,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     threadSettings,
     recoveryWarning,
     persistenceWarning,
+    draftWarning,
     savingImageIds,
     savedImageIds,
     isLoading,
@@ -178,6 +179,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             disabled={isLoading}
             rows={3}
           />
+          {draftWarning && <div className="generation-warning" role="status">{draftWarning}</div>}
 
           <div className="image-generation-actions-row">
             <ImageUploader
