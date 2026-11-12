@@ -8,12 +8,11 @@
  */
 import React from 'react';
 import { SecretInput } from '../common';
-import { ModelBrowserSelect, modelToBrowserOption } from '../shared';
+import { ModelSelector } from '../image/ModelSelector';
+import { SVGModelSelector } from '../svg/SVGModelSelector';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import { UseSettingsReturn } from '@hooks';
-import {
-  OPENROUTER_IMAGE_MODELS,
-  OPENROUTER_SVG_MODELS,
-} from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '@shared/models';
 
 export interface SettingsViewProps {
   settings: UseSettingsReturn;
@@ -74,19 +73,21 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           <h3 className="settings-section-title">Default models</h3>
         </div>
         <div className="settings-model-grid">
-          <ModelBrowserSelect
+          <ModelSelector
             label="Image model"
             subtitle="Choose the default raster image generator."
-            options={OPENROUTER_IMAGE_MODELS.map(model => modelToBrowserOption(model, 'image'))}
-            value={imageModel}
-            onChange={model => updateSetting('imageModel', model)}
+            models={OPENROUTER_IMAGE_MODELS}
+            selectedModel={imageModel}
+            onModelChange={model => updateSetting('imageModel', model)}
+            unavailableLabel={OFF_LIST_MODEL_HELP}
           />
-          <ModelBrowserSelect
+          <SVGModelSelector
             label="SVG model"
             subtitle="Choose native vector generation or an editable SVG-code model."
-            options={OPENROUTER_SVG_MODELS.map(model => modelToBrowserOption(model, 'svg'))}
-            value={svgModel}
-            onChange={model => updateSetting('svgModel', model)}
+            models={OPENROUTER_SVG_MODELS}
+            selectedModel={svgModel}
+            onModelChange={model => updateSetting('svgModel', model)}
+            unavailableLabel={OFF_LIST_MODEL_HELP}
           />
         </div>
       </section>

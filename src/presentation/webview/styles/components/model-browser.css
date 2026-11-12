@@ -1,6 +1,32 @@
+/*
+ * Ported from frame-minion@40e7949 packages/core/src/presentation/webview/styles/components/model-browser.css; keep in sync
+ *
+ * The browser keeps Frame's geometry and states; its `--mb-*` aliases resolve
+ * to Pixel's `--px-*` family tokens (design-tokens.css) instead of `--fm-*`.
+ *
+ * Pixel deltas:
+ *   - The trigger is one of Pixel's fields (input.css): field surface, 34px
+ *     control height, 12px value inset, the field focus ring, and a chevron
+ *     on the select chevron's edge. Frame's trigger uses the theme dropdown
+ *     colours, which render white beside Pixel's tan fields in Light Modern.
+ *   - Cost pills stay on one line in narrow layouts.
+ *   - Fields and wells: the search box (with the field focus ring) and the
+ *     pivot track are Pixel fields (`--px-field`), and card hover/selected use `--px-field-hover`; the
+ *     selected card's accent stays a border, ring and medallion. Frame uses
+ *     its inset well colour there (near-black / grey); Pixel keeps
+ *     `--px-inset` for code and preview wells only.
+ *   - Contrast: group headings, counts and chip counts use muted text (dim
+ *     is decoration-only), badges are 10.5px, and accent badges / the active
+ *     chip keep the accent as tint + border with foreground text (ember text
+ *     on the tint is ~3.1:1 in Light Modern).
+ *   - The warn badge uses `--px-warn`; the selected medallion `--px-on-accent`.
+ *   - High-contrast selected states live in design-tokens.css.
+ */
+
 .model-browser-backdrop {
   --model-browser-vertical-margin: clamp(12px, 4vh, 28px);
   --model-browser-vertical-gutter: clamp(24px, 8vh, 56px);
+
   position: fixed;
   inset: 0;
   /* Stack order comes from useOverlayDismiss (base + depth); this is the
@@ -11,6 +37,7 @@
   padding: var(--model-browser-vertical-margin) 20px;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.58);
+  -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
 }
 
@@ -19,6 +46,7 @@
   --mb-accent-hi: var(--px-accent-text);
   --mb-accent-soft: var(--px-accent-soft);
   --mb-accent-ring: var(--px-accent-ring);
+  --mb-bg: var(--px-bg);
   --mb-surface: var(--px-card);
   --mb-surface-2: var(--px-field);
   --mb-inset: var(--px-inset);
@@ -29,6 +57,7 @@
   --mb-muted: var(--px-text-muted);
   --mb-dim: var(--px-text-dim);
   --mb-mono: var(--px-mono);
+
   width: min(560px, calc(100vw - 24px));
   height: calc(100dvh - var(--model-browser-vertical-gutter));
   max-height: calc(100dvh - var(--model-browser-vertical-gutter));
@@ -38,8 +67,10 @@
   color: var(--mb-text);
   background: var(--mb-surface);
   border: 1px solid var(--mb-border-strong);
-  border-radius: 12px;
-  box-shadow: 0 34px 88px var(--px-shadow), 0 0 0 1px color-mix(in srgb, var(--px-shadow) 50%, transparent);
+  border-radius: var(--px-radius-sheet);
+  box-shadow:
+    0 34px 88px var(--px-shadow),
+    0 0 0 1px color-mix(in srgb, var(--px-shadow) 50%, transparent);
 }
 
 .model-browser-head {
@@ -57,18 +88,18 @@
   font-size: 19px;
   font-weight: 700;
   line-height: 1.2;
+  letter-spacing: 0;
 }
 
 .model-browser-head p {
-  max-width: 460px;
   margin: 6px 0 0;
+  max-width: 460px;
   color: var(--mb-muted);
   font-size: 12.5px;
   line-height: 1.5;
 }
 
-.model-browser-eyebrow,
-.model-browser-rule span {
+.model-browser-eyebrow {
   color: var(--mb-accent-hi);
   font-family: var(--mb-mono);
   font-size: 11px;
@@ -77,16 +108,25 @@
   text-transform: uppercase;
 }
 
+.model-browser-rule span {
+  color: var(--mb-muted);
+  font-family: var(--mb-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .model-browser-close {
-  display: grid;
+  flex: 0 0 auto;
   width: 32px;
   height: 32px;
-  flex: 0 0 auto;
+  display: grid;
   place-items: center;
-  color: var(--mb-text);
-  background: transparent;
   border: 1px solid transparent;
   border-radius: 7px;
+  color: var(--mb-text);
+  background: transparent;
   cursor: pointer;
 }
 
@@ -96,22 +136,23 @@
 }
 
 .model-browser-search {
-  display: grid;
   min-height: 40px;
+  display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   margin: 14px 16px 10px;
   padding: 0 12px;
-  color: var(--mb-dim);
-  background: var(--mb-inset);
+  color: var(--mb-muted);
+  background: var(--px-field);
   border: 1px solid var(--mb-border);
-  border-radius: 8px;
+  border-radius: var(--px-radius-card);
 }
 
+/* The field focus ring (input.css), which high contrast maps to focusBorder. */
 .model-browser-search:focus-within {
-  border-color: var(--mb-accent);
-  box-shadow: 0 0 0 2px var(--mb-accent-soft);
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
 .model-browser-search input {
@@ -125,17 +166,19 @@
   font-size: 12.5px;
 }
 
-.model-browser-search input::placeholder { color: var(--mb-dim); }
+.model-browser-search input::placeholder {
+  color: var(--vscode-input-placeholderForeground, var(--mb-dim));
+}
 
 .model-browser-pivots {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin: 0 16px 12px;
   padding: 4px;
-  background: var(--mb-inset);
+  background: var(--px-field);
   border: 1px solid var(--mb-border);
-  border-radius: 8px;
+  border-radius: var(--px-radius-card);
 }
 
 .model-browser-pivots button {
@@ -152,14 +195,14 @@
 
 .model-browser-pivots button.active {
   color: var(--mb-text);
-  background: var(--mb-surface-2);
+  background: var(--px-field-hover);
   border-color: var(--mb-border-strong);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--px-shadow) 45%, transparent);
 }
 
 .model-browser-chips {
-  display: flex;
   min-height: 44px;
+  display: flex;
   gap: 7px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -170,8 +213,8 @@
 }
 
 .model-browser-chips button {
-  min-height: 30px;
   flex: 0 0 auto;
+  min-height: 30px;
   padding: 0 11px;
   color: var(--mb-muted);
   background: var(--mb-surface-2);
@@ -185,22 +228,33 @@
 
 .model-browser-chips button span {
   margin-left: 4px;
-  color: var(--mb-dim);
-  opacity: 0.75;
+  color: var(--mb-muted);
 }
 
 .model-browser-chips button.active {
-  color: var(--mb-accent-hi);
+  color: var(--mb-text);
   background: var(--mb-accent-soft);
   border-color: var(--mb-accent-ring);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mb-accent) 16%, transparent);
 }
 
+/* Muted on the accent tint drops below AA; the active count takes the label colour. */
+.model-browser-chips button.active span {
+  color: inherit;
+}
+
 .model-browser-list {
-  min-height: 0;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 0 16px 16px;
+}
+
+@supports not (height: 100dvh) {
+  .model-browser {
+    height: calc(100vh - var(--model-browser-vertical-gutter));
+    max-height: calc(100vh - var(--model-browser-vertical-gutter));
+  }
 }
 
 .model-browser-rule {
@@ -211,12 +265,11 @@
 }
 
 .model-browser-rule span {
-  color: var(--mb-dim);
   white-space: nowrap;
 }
 
 .model-browser-rule em {
-  color: var(--mb-dim);
+  color: var(--mb-muted);
   font-family: var(--mb-mono);
   font-size: 11px;
   font-style: normal;
@@ -228,6 +281,23 @@
   border-top: 1px solid var(--mb-border-soft);
 }
 
+.model-browser-rule.provider-highlight {
+  margin-inline: -7px;
+  padding: 7px 9px;
+  background: linear-gradient(90deg, var(--mb-accent-soft), transparent 72%);
+  border-left: 2px solid var(--mb-accent);
+  border-radius: 5px;
+}
+
+.model-browser-rule.provider-highlight span,
+.model-browser-rule.provider-highlight em {
+  color: var(--mb-accent-hi);
+}
+
+.model-browser-rule.provider-highlight hr {
+  border-top-color: var(--mb-accent-ring);
+}
+
 .model-browser-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -236,41 +306,44 @@
 
 .model-browser-card {
   position: relative;
-  display: flex;
   min-height: 132px;
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: 0;
   padding: 14px;
-  color: var(--mb-text);
   text-align: left;
+  color: var(--mb-text);
   background: var(--mb-surface-2);
   border: 1px solid var(--mb-border);
-  border-radius: 8px;
+  border-radius: var(--px-radius-card);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--px-shadow) 35%, transparent);
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, transform 0.1s ease;
 }
 
 .model-browser-card:hover {
-  background: var(--mb-inset);
+  background: var(--px-field-hover);
   border-color: var(--mb-border-strong);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--px-shadow) 50%, transparent);
   transform: translateY(-2px);
 }
 
 .model-browser-card.selected {
-  background: var(--mb-inset);
+  background: var(--px-field-hover);
   border-color: var(--mb-accent);
-  box-shadow: inset 0 0 0 1px var(--mb-accent-ring), 0 14px 32px color-mix(in srgb, var(--px-shadow) 65%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--mb-accent-ring),
+    0 14px 32px color-mix(in srgb, var(--px-shadow) 65%, transparent);
 }
 
 .model-browser-selected {
   position: absolute;
   top: -8px;
   right: -7px;
-  display: grid;
   width: 22px;
   height: 22px;
+  display: grid;
   place-items: center;
   color: var(--px-on-accent);
   background: var(--mb-accent);
@@ -279,12 +352,21 @@
 }
 
 .model-browser-card-head {
-  display: grid;
   width: 100%;
+  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+/* Pixel: wraps everything after the head so it can describe the card
+   (aria-describedby) while laying out exactly as Frame's direct children. */
+.model-browser-card-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .model-browser-card-title {
@@ -297,17 +379,17 @@
 
 .model-browser-cost {
   min-width: 84px;
-  max-width: 220px;
+  max-width: 124px;
   padding: 7px 9px 6px;
   color: var(--mb-text);
-  text-align: right;
   background: var(--mb-surface);
   border: 1px solid var(--mb-border-strong);
-  border-radius: 8px;
+  border-radius: var(--px-radius-card);
   font-family: var(--mb-mono);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.3;
+  text-align: right;
 }
 
 .model-browser-badges {
@@ -318,8 +400,8 @@
 }
 
 .model-browser-badge {
-  display: inline-flex;
   min-height: 20px;
+  display: inline-flex;
   align-items: center;
   padding: 0 7px;
   color: var(--mb-text);
@@ -327,25 +409,38 @@
   border: 1px solid var(--mb-border);
   border-radius: 5px;
   font-family: var(--mb-mono);
-  font-size: 10px;
+  font-size: 10.5px;
 }
 
 .model-browser-badge.accent {
-  color: var(--mb-accent-hi);
+  color: var(--mb-text);
   background: var(--mb-accent-soft);
   border-color: var(--mb-accent-ring);
 }
 
-.model-browser-narrative,
-.model-browser-desc {
-  display: block;
+.model-browser-badge.warn {
+  color: var(--px-warn);
+  background: transparent;
+  border-color: currentColor;
+  border-style: dashed;
+}
+
+.model-browser-narrative {
   width: 100%;
+  display: block;
   color: var(--mb-text);
   font-size: 11.5px;
   line-height: 1.45;
 }
 
-.model-browser-desc { color: var(--mb-muted); }
+.model-browser-desc {
+  width: 100%;
+  display: block;
+  margin-top: 6px;
+  color: var(--mb-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
 
 .model-browser-empty {
   padding: 28px 8px;
@@ -368,50 +463,74 @@
 }
 
 .model-browser-foot span + span::before {
+  content: ".";
   margin-right: 7px;
   color: var(--mb-dim);
-  content: ".";
   opacity: 0.7;
 }
 
 .model-browser-live-dot {
   width: 8px;
   height: 8px;
-  background: var(--px-ok);
   border-radius: 999px;
+  background: var(--px-ok);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--px-ok) 25%, transparent);
 }
 
-.model-browser-live-dot + span::before { margin-right: 0; content: ""; }
+.model-browser-foot .model-browser-live-dot::before,
+.model-browser-live-dot + span::before {
+  content: "";
+  margin-right: 0;
+}
 
-.model-browser-select {
+/* ── Trigger: one of Pixel's fields ─────────────────────────────────────── */
+
+.model-selector.model-browser-select {
   display: flex;
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
 }
 
-.model-browser-select > label {
+.model-selector-label {
   color: var(--px-text-muted);
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
 }
 
 .model-browser-trigger {
-  display: flex;
   width: 100%;
   min-width: 0;
-  height: 44px;
+  height: var(--px-control-h);
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 7px 10px;
-  color: var(--px-text);
+  /* 11px + the 1px border = the fields' 12px value inset; the chevron sits
+     on the select chevron's 11px edge. */
+  padding: 0 10px 0 11px;
+  font-family: var(--px-sans);
+  font-size: 13px;
   text-align: left;
+  color: var(--px-text-input);
   background: var(--px-field);
   border: 1px solid var(--px-border);
-  border-radius: var(--px-radius);
+  border-radius: var(--px-radius-field);
   cursor: pointer;
+  transition: background 100ms, border-color 100ms, box-shadow 100ms;
+}
+
+.model-browser-trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-browser-trigger svg {
+  flex: 0 0 auto;
+  color: var(--px-text-muted);
 }
 
 .model-browser-trigger:hover:not(:disabled) {
@@ -419,33 +538,46 @@
   border-color: var(--px-border-strong);
 }
 
-.model-browser-trigger > span:first-child {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
+/* The field focus style, not the app's button outline (global.css), so the
+   trigger focuses like the select beside it. */
+.model-browser-trigger:focus,
+.app-container .model-browser-select .model-browser-trigger:focus-visible {
+  outline: none;
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
-.model-browser-trigger strong,
-.model-browser-trigger small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.model-browser-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.model-browser-trigger strong { font-size: 12px; font-weight: 600; }
-.model-browser-trigger small { color: var(--px-text-dim); font-family: var(--px-mono); font-size: 10px; }
-.model-browser-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
-
-@supports not (height: 100dvh) {
-  .model-browser { height: calc(100vh - var(--model-browser-vertical-gutter)); }
+.model-browser-helper {
+  margin: 0;
+  color: var(--px-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 @media (max-width: 520px) {
   .model-browser-backdrop {
     --model-browser-vertical-margin: 8px;
     --model-browser-vertical-gutter: 16px;
+
     padding-inline: 8px;
   }
-  .model-browser-card-head { grid-template-columns: 1fr; }
-  .model-browser-cost { justify-self: start; max-width: none; text-align: left; }
+
+  .model-browser-card-head {
+    grid-template-columns: 1fr;
+  }
+
+  /* Pixel: one line in the sidebar; every curated label fits a 320px card. */
+  .model-browser-cost {
+    justify-self: start;
+    max-width: 100%;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

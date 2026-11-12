@@ -24,6 +24,9 @@ import {
 } from '@messages';
 import { LoggingService } from '@logging';
 import { ImageOrchestrator, RehydrationTurn } from '@ai';
+import { imageExtensionForMime, sniffImageMime } from '../../../shared/media/imageFormats';
+import { plainSaveFileName } from '../saveFileName';
+import { workspaceOutputDirectory } from '../outputDirectory';
 
 export class ImageGenerationHandler {
   private readonly configSection = 'pixelMinion';
@@ -89,7 +92,7 @@ export class ImageGenerationHandler {
    * Handle conversation continuation request
    */
   async handleContinueRequest(message: MessageEnvelope<ImageGenerationContinuePayload>): Promise<void> {
-    const { prompt, conversationId, history, model, aspectRatio, referenceSvgText } = message.payload;
+    const { prompt, conversationId, history, model, aspectRatio } = message.payload;
     this.logger.info(`Image generation continue: ${prompt.substring(0, 50)}...`);
 
     this.sendLoadingStatus(true, message.correlationId);
@@ -102,13 +105,14 @@ export class ImageGenerationHandler {
         referenceSvgText: h.referenceSvgText,
       }));
 
+      // A refinement carries only its prompt; references and SVG text stay
+      // with the turns that sent them (in the transcript or `history`).
       const result = await this.orchestrator.continueConversation(
         conversationId,
         prompt,
         rehydrationHistory,
         model,
-        aspectRatio,
-        referenceSvgText
+        aspectRatio
       );
 
       // Apply token usage if available
@@ -147,7 +151,20 @@ export class ImageGenerationHandler {
   handleClearConversation(message: MessageEnvelope<{ conversationId: string }>): void {
     const { conversationId } = message.payload;
     this.logger.info(`Clearing conversation: ${conversationId}`);
-    this.orchestrator.clearConversation(conversationId);
+    try {
+      this.orchestrator.clearConversation(conversationId);
+    } catch (error) {
+      this.logger.warn('Image conversation clear refused', error);
+      this.postMessage(createEnvelope(
+        MessageType.ERROR,
+        'extension.imageGeneration',
+        {
+          message: error instanceof Error ? error.message : 'Could not clear the conversation',
+          code: 'IMAGE_CLEAR_ERROR',
+        },
+        message.correlationId
+      ));
+    }
   }
 
   /**
@@ -157,18 +174,9 @@ export class ImageGenerationHandler {
     const { imageId, data, mimeType, suggestedFilename } = message.payload;
     this.logger.info(`Saving image: ${suggestedFilename}`);
 
+    let fileUri: vscode.Uri | undefined;
     try {
-      const fileUri = await this.saveImage(data, mimeType, suggestedFilename);
-
-      this.postMessage(createEnvelope<ImageSaveResultPayload>(
-        MessageType.IMAGE_SAVE_RESULT,
-        'extension.imageGeneration',
-        { success: true, imageId, filePath: fileUri.fsPath },
-        message.correlationId
-      ));
-
-      await vscode.commands.executeCommand('vscode.open', fileUri);
-      this.logger.info(`Image saved and opened: ${fileUri.fsPath}`);
+      fileUri = await this.saveImage(data, mimeType, suggestedFilename);
     } catch (error) {
       this.logger.error('Image save failed', error);
       this.postMessage(createEnvelope<ImageSaveResultPayload>(
@@ -181,6 +189,35 @@ export class ImageGenerationHandler {
         },
         message.correlationId
       ));
+      return;
+    }
+
+    if (!fileUri) {
+      this.logger.info('Image save cancelled');
+      this.postMessage(createEnvelope<ImageSaveResultPayload>(
+        MessageType.IMAGE_SAVE_RESULT,
+        'extension.imageGeneration',
+        { success: false, cancelled: true, imageId },
+        message.correlationId
+      ));
+      return;
+    }
+
+    // Exactly one result per request, sent once the file is written.
+    this.postMessage(createEnvelope<ImageSaveResultPayload>(
+      MessageType.IMAGE_SAVE_RESULT,
+      'extension.imageGeneration',
+      { success: true, imageId, filePath: fileUri.fsPath },
+      message.correlationId
+    ));
+
+    // Opening the file is a convenience: failing to open it can't undo a
+    // completed write, so it must not turn into a second, failed result.
+    try {
+      await vscode.commands.executeCommand('vscode.open', fileUri);
+      this.logger.info(`Image saved and opened: ${fileUri.fsPath}`);
+    } catch (error) {
+      this.logger.warn(`Image saved to ${fileUri.fsPath} but could not be opened`, error);
     }
   }
 
@@ -226,22 +263,40 @@ export class ImageGenerationHandler {
     }));
   }
 
-  private async saveImage(dataUrl: string, mimeType: string, suggestedFilename: string): Promise<vscode.Uri> {
+  /**
+   * Write the image and return where it went, or undefined when the user
+   * cancels the save dialog. The extension comes from the image bytes, so a
+   * WebP is saved as `.webp` whatever name the webview suggested, and data we
+   * can't identify as PNG, JPEG, WebP or GIF is refused instead of being
+   * written as `.jpg`.
+   */
+  private async saveImage(dataUrl: string, mimeType: string, suggestedFilename: string): Promise<vscode.Uri | undefined> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
 
-    // Generate filename if not provided
-    let filename = suggestedFilename;
-    if (!filename) {
-      const extension = mimeType === 'image/png' ? 'png' : 'jpg';
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
-      filename = `image-${timestamp}.${extension}`;
+    const match = dataUrl.match(/^data:image\/[\w.+-]+;base64,(.+)$/);
+    if (!match) {
+      throw new Error('Invalid image data URL');
     }
+    const buffer = Buffer.from(match[1], 'base64');
+    const detectedMime = sniffImageMime(buffer);
+    const extension = imageExtensionForMime(detectedMime);
+    if (!detectedMime || !extension) {
+      throw new Error(`Can't save this image: its format (${mimeType || 'unknown'}) isn't PNG, JPEG, WebP or GIF.`);
+    }
+    if (imageExtensionForMime(mimeType) !== extension) {
+      this.logger.warn(`Image labelled ${mimeType} contains ${detectedMime}; saving as .${extension}`);
+    }
+
+    // A plain name, never a path; its extension always matches the bytes.
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+    const suggested = suggestedFilename ? plainSaveFileName(suggestedFilename) : `image-${timestamp}`;
+    const stem = suggested.replace(/\.[A-Za-z0-9]+$/, '');
+    const filename = `${stem}.${extension}`;
 
     let fileUri: vscode.Uri;
 
     if (!workspaceFolders || workspaceFolders.length === 0) {
       // No workspace open - show save dialog
-      const extension = mimeType === 'image/png' ? 'png' : 'jpg';
       const result = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(filename),
         filters: {
@@ -252,15 +307,16 @@ export class ImageGenerationHandler {
       });
 
       if (!result) {
-        throw new Error('Save cancelled');
+        return undefined;
       }
       fileUri = result;
     } else {
       // Workspace available - save to output directory
       const workspaceRoot = workspaceFolders[0].uri;
       const config = vscode.workspace.getConfiguration(this.configSection);
-      const outputDir = config.get<string>('outputDirectory', 'pixel-minion');
-      const outputDirUri = vscode.Uri.joinPath(workspaceRoot, outputDir);
+      // Contained in the workspace folder, whatever the (possibly
+      // repository-supplied) setting says.
+      const outputDirUri = workspaceOutputDirectory(workspaceRoot, config.get<string>('outputDirectory', 'pixel-minion'));
 
       try {
         await vscode.workspace.fs.createDirectory(outputDirUri);
@@ -270,12 +326,7 @@ export class ImageGenerationHandler {
 
       fileUri = vscode.Uri.joinPath(outputDirUri, filename);
     }
-    const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/);
-    if (!match) {
-      throw new Error('Invalid image data URL');
-    }
 
-    const buffer = Buffer.from(match[1], 'base64');
     await vscode.workspace.fs.writeFile(fileUri, buffer);
 
     return fileUri;

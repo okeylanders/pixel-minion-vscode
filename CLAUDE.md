@@ -89,7 +89,7 @@ Each suite consists of three layers:
 - **Messages**: `TextMessage[]` with role-based structure
 - **State**: `TextConversation` with turn counting and max turns limit
 - **Rehydration**: Supported in infrastructure (handler/orchestrator) but currently not wired from the webview
-- **Default**: `max_tokens: 48000`
+- **Default**: `max_tokens: 16384` (client default)
 
 #### Image Suite
 
@@ -106,6 +106,7 @@ Each suite consists of three layers:
 - **Messages**: `TextMessage[]` with multimodal content (images optional)
 - **State**: Tracks prompts, SVG code, aspect ratio
 - **Special**: Extracts SVG code from markdown responses; re-hydration supported and uses stored model/aspect per conversation
+- **Output budget**: every SVG turn sends `max_tokens: SVG_MAX_OUTPUT_TOKENS` (32,000, `SVGOrchestrator.ts`). Reasoning tokens count against `max_tokens` on OpenRouter and the recommended code models reason by default, so the 16,384 client default could truncate an SVG. Keep the value under the smallest output cap of any endpoint serving a curated code model (65,536 on 2026-11-07)
 
 ### Dependency Injection Pattern
 
@@ -393,7 +394,10 @@ Pixel Minion shares a design family with Frame Minion and Prose Minion and is co
 - **Balances:** one shared `AccountBalanceService` (`src/infrastructure/account/`) owns the cache, in-flight dedupe, forced-refresh floor, and post-generation debounce. `MessageHandler` arms a refresh only on `TERMINAL_AI_RESPONSE_TYPES`. A guard test fails if a new `*_RESPONSE` AI type is left out, so add new generation response types there.
 - **Balance ownership:** every `OpenRouterBalancePayload` carries the `accountEpoch` its fetch started under. A key save/replace/clear posts `OPENROUTER_BALANCE_RESET` (new epoch, no figures) before fetching, and `useOpenRouterBalance` drops any payload from an older epoch. Any new path that posts a balance must take its epoch from the service (a fallback uses the epoch read *before* its load), never from "now". A transient refresh failure carries a figure's last good read marked `stale`; a 401/403 forgets it; nothing crosses an epoch.
 - **Models must be reachable through `/chat/completions` until the Image API transport lands (roadmap P3).** OpenRouter rejects some image models on chat with 404 "is an image generation model and cannot be used with the chat/completions endpoint". The probed list is pinned in `OpenRouterImageClient.test.ts`; never add one of those ids to a catalog before P3. Every catalog image id needs an entry in the modality snapshot map in that test, from the live `/api/v1/images/models` feed.
+- **Every image model must accept at least one reference image until capability-aware controls land (P3/P4).** Refine always sends the previous turn's image and attachments survive a model switch, so a zero-reference model (Recraft V4.1 Flash) would receive image input it can't take. `shared/models/catalog.test.ts` enforces `referenceImages.max ≥ 1`; models that *require* references (Recraft V4 Styles, Krea K3 Edit) stay out for the mirror-image reason.
 - **Retired model ids** go in `RETIRED_MODELS` with a reason (`'delisted' | 'images-api-only'`) and a catalog replacement. `SettingsHandler` migrates saved `imageModel` / `svgModel` values on read and logs why; when the replacement is what that scope would fall back to (for user settings, the package.json default) it clears the value instead of pinning today's default.
+- **Request ownership (P2):** every Image/SVG request carries a `newRequestId('image-…' | 'svg-…')` correlation id, and a response, error or save result settles only the request whose id it echoes (`handleError` settles the generation, enhance or save it owns and returns whether it did). A turn is recorded from the dispatch snapshot, never from current state. An enhance answer applies only while it is still outstanding and the prompt box still holds the text that was sent: Generate and Clear drop it. `MessageHandler.handleMessage` answers any throw from a route with a correlated `ERROR` (`extension.router`), so a handler bug can't leave a spinner running. App drops an unclaimed error only if it carries a tab request id (stale); anything else is shown in the visible tab. A failed turn restores everything it changed (messages, turn number, seed, last images) and a failed first turn releases its conversation.
+- **SVG safety (P5a):** generated SVG never enters the app DOM: every preview is an `<img src="data:image/svg+xml;base64,…">`, an isolated document (no script, no remote loads, its styles and ids scoped to it). `SVGDocumentPolicy` (`src/shared/svg/`) protects what the isolation can't: a saved `.svg`, which a browser opens with full privileges. It rejects, never rewrites, and is run by the webview (preview, Save) and the host (save handler, a diagnostic log after generation). It must stay linear in the document size (up to 2 MB of provider output, on the host after every generation): no regex that can backtrack across the document; scan with indexOf, single-position sticky matches and the one-pass CSS tokenizer, and add a 2 MB worst case to its tests for any new pattern. Per-token work must depend only on that token: classify an element once when it is pushed (the stack holds `{ name, isStyle }`), never re-read an open ancestor's name, and add long-name-with-many-children and deep-nesting 2 MB cases for any new stack logic. Any `ping` (hyperlink auditing) is refused, like an external `href`. Namespace declarations are allowlisted (SVG, XLink, XML, C2PA for Recraft's provenance metadata); widen the list only with a real generated sample as a fixture. SVG routing and Refine eligibility come from `svgRoutes.ts` (catalog `kind`, `recraft/` fallback for unlisted ids). Saves go to `plainSaveFileName` names inside `workspaceOutputDirectory()`, never a path the webview or a workspace setting chose.
 - **Type checking and tests:** `tsc -p tsconfig.webview.json` now really checks the webview (it previously inherited an exclude and checked nothing). `.tsx` tests opt into jsdom with a per-file `@jest-environment jsdom` docblock.
 - **Review ledgers:** reviews are committed as `docs/pr-reviews/pr-NN-<slug>-review.md` with a status-by-item table (`⏳ Open` / `✅ Fixed in <sha>` / `↪ Deferred (why)`). Deferred rows are the tech-debt backlog for that area; flip them when a later PR clears them.
 
@@ -1619,7 +1623,7 @@ export class OpenRouterTextClient implements TextClient {
     options?: TextCompletionOptions
   ): Promise<TextCompletionResult> {
     // ... OpenRouter API call with this.model
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1664,7 +1668,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
     // Use model from options if provided, otherwise fall back to currentModel
     const model = options?.model ?? this.currentModel;
     // ... OpenRouter API call with model variable
-    // Default: max_tokens: 48000
+    // Default: max_tokens: 16384
   }
 }
 ```
@@ -1893,6 +1897,6 @@ interface ImageGenerationClient {
 
 ### Default Parameters
 
-- **Text clients**: `max_tokens: 48000`, `temperature: 0.7`
+- **Text clients**: `max_tokens: 16384`, `temperature: 0.7`
 - **Image clients**: Uses OpenRouter defaults per model
-- **SVG clients**: `max_tokens: 48000`, `temperature: 0.7`
+- **SVG turns**: `max_tokens: 32000` (`SVG_MAX_OUTPUT_TOKENS`), `temperature: 0.7`

@@ -1,7 +1,7 @@
 import { OpenRouterImageClient } from '../../../../infrastructure/ai/clients/OpenRouterImageClient';
 import type { SecretStorageService } from '../../../../infrastructure/secrets/SecretStorageService';
 import type { LoggingService } from '../../../../infrastructure/logging/LoggingService';
-import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '../../../../shared/models';
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
@@ -105,6 +105,7 @@ describe('OpenRouterImageClient', () => {
      * When the catalog changes, re-check the live feed and update this map.
      */
     const DECLARED_OUTPUT_MODALITIES_2026_11_07: Record<string, string[]> = {
+      'google/gemini-nano-banana-2.1': ['image', 'text'],
       'google/gemini-3.1-flash-image': ['image', 'text'],
       'google/gemini-3.1-flash-image-preview': ['image', 'text'],
       'google/gemini-3-pro-image': ['image', 'text'],
@@ -114,17 +115,24 @@ describe('OpenRouterImageClient', () => {
       'openai/gpt-5.4-image-2': ['image', 'text'],
       'openai/gpt-5-image': ['image', 'text'],
       'openai/gpt-5-image-mini': ['image', 'text'],
+      'microsoft/mai-image-2.6': ['image'],
+      'microsoft/mai-image-2.6-flash': ['image'],
       'microsoft/mai-image-2.5-pro': ['image'],
       'microsoft/mai-image-2.5': ['image'],
       'black-forest-labs/flux.2-klein-4b': ['image'],
       'black-forest-labs/flux.2-pro': ['image'],
       'black-forest-labs/flux.2-flex': ['image'],
       'black-forest-labs/flux.2-max': ['image'],
+      'sourceful/riverflow-v2.6-pro': ['image'],
       'sourceful/riverflow-v2.5-pro': ['image'],
       'sourceful/riverflow-v2.5-fast': ['image'],
       'sourceful/riverflow-v2-pro': ['image'],
       'sourceful/riverflow-v2-fast': ['image'],
+      'bytedance-seed/seedream-5-0-pro': ['image'],
+      'bytedance-seed/seedream-5-0-lite': ['image'],
+      'bytedance-seed/seedream-5-0-flash': ['image'],
       'bytedance-seed/seedream-4.5': ['image'],
+      'x-ai/grok-imagine-image-2.0': ['image'],
       'recraft/recraft-v4.1-pro': ['image'],
       'recraft/recraft-v4.1': ['image'],
       'recraft/recraft-v4.1-utility-pro': ['image'],

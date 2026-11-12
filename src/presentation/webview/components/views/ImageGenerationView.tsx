@@ -5,7 +5,7 @@
  * Responsibilities:
  * - Compose ModelSelector, AspectRatioSelector, ImageUploader, ConversationThread
  * - Receive hook instance as prop (prose-minion pattern)
- * - Handle image save state tracking
+ * - Show each image's save state, as reported by the host (via the hook)
  *
  * Layout: generation-view.css (shared with the SVG tab, after Frame's
  * sprint-06 Image tab): stacked controls card, then an output card that
@@ -19,13 +19,13 @@ import { ImageUploader } from '../image/ImageUploader';
 import { ConversationThread } from '../image/ConversationThread';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
-import { OPENROUTER_IMAGE_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_IMAGE_MODELS } from '@shared/models';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
 import { LineGlyph } from '../common/LineGlyph';
 import { TabImageIcon } from '../layout/tabIcons';
-import { GeneratedImage } from '@messages';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import '../../styles/components/generation-view.css';
 import '../../styles/components/image-generation-view.css';
 
@@ -63,6 +63,8 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     clearReferenceImages,
     conversationHistory,
     conversationId,
+    savingImageIds,
+    savedImageIds,
     isLoading,
     isEnhancing,
     error,
@@ -91,24 +93,6 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     return firstPrompt.length > 25 ? `${firstPrompt.slice(0, 25)}...` : firstPrompt;
   };
 
-  // Track which images are being saved/have been saved
-  const [savingIds, setSavingIds] = React.useState<Set<string>>(new Set());
-  const [savedIds, setSavedIds] = React.useState<Set<string>>(new Set());
-
-  const handleSaveImage = React.useCallback((image: GeneratedImage) => {
-    setSavingIds(prev => new Set(prev).add(image.id));
-    saveImage(image);
-    // Mark as saved after a delay (the actual save result comes via message)
-    setTimeout(() => {
-      setSavingIds(prev => {
-        const next = new Set(prev);
-        next.delete(image.id);
-        return next;
-      });
-      setSavedIds(prev => new Set(prev).add(image.id));
-    }, 1000);
-  }, [saveImage]);
-
   return (
     <div className="generation-view image-generation-view">
       {/* Input well: Model, Aspect Ratio, Seed, Prompt, Reference Images, Generate button */}
@@ -119,7 +103,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             models={OPENROUTER_IMAGE_MODELS}
             selectedModel={model}
             onModelChange={setModel}
-            kind="image"
+            unavailableLabel={OFF_LIST_MODEL_HELP}
             disabled={isLoading}
           />
           <AspectRatioSelector
@@ -168,6 +152,11 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           {referenceSvgText && (
             <div className="generation-note">
               {referenceSvgWarning ?? 'SVG will be sent as text context (not as image).'}
+            </div>
+          )}
+          {conversationId && referenceImages.length > 0 && (
+            <div className="generation-note">
+              References apply to the next Generate. Refine continues from the latest image.
             </div>
           )}
           {referenceImageSizeWarning && (
@@ -236,9 +225,9 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
           {/* Conversation thread - chat-style display of all turns */}
           <ConversationThread
             turns={conversationHistory}
-            onSaveImage={handleSaveImage}
-            savingImageIds={savingIds}
-            savedImageIds={savedIds}
+            onSaveImage={saveImage}
+            savingImageIds={savingImageIds}
+            savedImageIds={savedImageIds}
           />
 
           {/* Loading indicator - appears at bottom where new content will show */}

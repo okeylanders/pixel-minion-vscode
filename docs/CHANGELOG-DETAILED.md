@@ -83,6 +83,263 @@ Draft PR #12 brings Pixel Minion onto the Frame Minion design-system skeleton (w
 - `tsc -p tsconfig.webview.json` now actually type-checks the webview. It previously inherited `exclude: ["src/presentation/webview"]` and checked 0 of 52 files.
 - Tests: 18 suites / 174 tests on the PR #12 head → 28 / 322 on PR A → 30 / 341 after its R4 follow-up → 31 / 370 after the PR #13 review follow-up.
 
+### PR B — Model picker parity and catalog refresh
+
+Stacked on PR A (`claude/pixel-minion-design-review-dhbqpd`). Branch `claude/pixel-minion-picker-catalog-dhbqpd`. Roadmap row B in [docs/plans/frame-parity-roadmap.md](plans/frame-parity-roadmap.md); review rows in [docs/pr-reviews/pr-12-design-system-alignment-review.md](pr-reviews/pr-12-design-system-alignment-review.md).
+
+| Commit | What |
+| --- | --- |
+| `5d8bb2d` | Catalogs move to `src/shared/models` with Frame's unit-aware types; Frame sprint-06 picker ported |
+| `7038e87` | Catalog refresh from the 2026-11-07 audit, chat-routable models only |
+| `a679286` | SVG turns send `max_tokens: 32000` (M1) |
+| `5507ed9` | Visual-pass polish: browser search focus ring; regrouping scrolls the list to the top |
+
+#### Catalogs and types (`5d8bb2d`)
+
+- `[+] src/shared/models/{ImageModels,SVGModels,RetiredModels,index}.ts`. `OPENROUTER_IMAGE_MODELS`, `OPENROUTER_SVG_MODELS`, `DEFAULT_IMAGE_MODEL`, `DEFAULT_SVG_MODEL`, `RETIRED_MODELS` / `RETIRED_MODEL_REPLACEMENTS` now live in `shared`, so the webview stops importing `src/infrastructure` (it did from `ImageGenerationView`, `SVGGenerationView`, `SettingsView` and both hooks). `infrastructure/ai/providers/OpenRouterProvider.ts` keeps only `OPENROUTER_CONFIG` (Frame's layout; no re-exports).
+- `src/shared/types/providers.ts`:
+  - Verbatim from frame-minion@40e7949: `ImagePricingUnit`, `ImagePricing` (`unit`, `output`, `input?`, `approxUsdPerImage?`, `approxNote?`, `approxBasis?`) and `ImageModelDefinition` (`transport?`, `supportsSeed?`, `referenceImages?`, `referenceMimeTypes?`, `imagePricing?`, `supportedResolutions?`, `supportedAspectRatios?`). The old unit-mixed `ModelDefinition { inputCost, outputCost }` is gone.
+  - Pixel-only: `ImageApiAspectRatio` (Frame's 25-value `AspectRatio` union under a new name, because Pixel's `AspectRatio` is still the 7 ratios the tabs send; the rename to `SVGAspectRatio` is P3's), `TextPricing { inputPer1M, outputPer1M }`, and `SvgModelDefinition = NativeVectorSvgModelDefinition (ImageModelDefinition & { kind: 'native-vector' }) | CodeSvgModelDefinition ({ kind: 'code', textPricing, acceptsImageInput, reasoning? })`. `reasoning` copies the chat feed's `mandatory` / `default_enabled` / `default_effort`.
+  - Removed the unused `AIProvider` interface and with it the type import from `infrastructure/ai/clients/TextClient`.
+  - The capability fields are documented `⚠️ Not yet consumed`: they're recorded from the Image API endpoint records for P3 and Frame parity, and no request reads them. `transport` is left unset on every row (no row claims a route Pixel doesn't use).
+- Image rows (27 ids at this commit) copied from Frame's catalog, which changes visible names (e.g. "Nano Banana 2 (Google: Gemini 3.1 Flash Image)", "Microsoft: MAI-Image 2.5") and families (derived from the label after any "Vendor:" prefix). Nano Banana Pro keeps Pixel's ⭐ (documented delta).
+- Provenance headers (`// Ported from frame-minion@40e7949 packages/core/src/<path>; keep in sync`) on `ImageModels.ts`, `providers.ts`, `ModelBrowserModal.tsx`, `ModelBrowserSelect.tsx`, `modelBrowserOptions.ts`, `model-browser.css` and `image/ModelSelector.tsx`, each listing its Pixel deltas.
+
+#### Picker (`5d8bb2d`, `5507ed9`)
+
+- `ModelBrowserModal.tsx` is Frame's: search over 11 fields, pivots By Provider / By Family / By Release Date (strict `YYYY-MM-DD`; invalid dates such as `2026-02-30` group as "Release date unavailable"; months newest first), group chips with counts, the OpenRouter provider highlight, and Frame's card anatomy (cost pill, release / meta / tone badges incl. `warn`, `costDescription`, narrative, supporting description).
+- Pixel deltas kept or added (upstream candidates):
+  - `useOverlayDismiss` wiring from PR A (Escape scoped to the top overlay, focus to search on open and back to the trigger on close, inert frame, Tab trap). Frame's own window Escape listener is not ported, and there's no `autoFocus`.
+  - `role="dialog"` on the panel, presentational backdrop that closes on mousedown.
+  - Pivots are a WAI-ARIA tablist (roving Tab stop, Left/Right/Home/End via PR A's `tabKeyboard.nextTabIndex`) controlling the list as a `tabpanel`; group chips are `role="group"` toggles with `aria-pressed`; cards are `aria-pressed`, named by their title (`aria-labelledby`) and described by the cost pill and details (`aria-describedby`) so a screen reader doesn't read a 300-character name.
+  - The selected card is scrolled into view on open (`scrollIntoView({ block: 'center' })`, guarded for jsdom); a pivot or chip change scrolls the list to the top.
+  - The query and group chip reset on close; the pivot is kept.
+  - `footerLabel` prop (default "Curated by Pixel Minion").
+- `modelBrowserTypes.ts` stays (Frame declares the option types in the `.tsx`): the host `tsc -p tsconfig.json` compiles the webview's `.ts` tests without JSX, and `modelBrowserOptions.ts` must not pull a `.tsx` into that program. The modal re-exports the types.
+- `ModelBrowserSelect.tsx` is Frame's single-line trigger (label, chevron, `helperText`, `loadingLabel`, `Custom: <id>` fallback, `aria-label` "Browse … options. Current model: …"), plus `htmlFor` label association, `aria-haspopup="dialog"` and `aria-expanded`. Pixel's two-line 44 px trigger with its estimate sub-line is gone.
+- `modelBrowserOptions.ts`: Frame's `providerFromId`, `familyFromLabel`, `stripRecommended`, `costPair`, `formatUsd`, `imageNativePricingLabel`, `imagePricingLabel`, `imagePricingDescription`, `imageUnitBadgeLabel`, `recommendedBadge` and `modelDefinitionToBrowserOption`. No `startsWith(` remains; units come from `imagePricing.unit`. Deltas: `PROVIDER_LABELS` is Frame's image/text subset plus `krea` and `qwen`; label helpers take an output noun ("| SVG"); metadata can carry `retiresOn` → a `warn` badge.
+- `svgModelToBrowserOption` (Pixel-only): family is the kind ("Native SVG" / "SVG code"), which fixes Gemini 3.1 Pro being grouped as "Gemini Image" by a label regex. Native vector: `≈ $0.3 | SVG`, badges `native SVG` + `per SVG`. Code: `$4/$20 per 1M` in the pill; the 1k-in + 4k-out house estimate moves to `costDescription` with a caveat when the model reasons by default (`mandatory || default_enabled`); badges `SVG code`, `per token`, `image input`.
+- `image/ModelSelector.tsx` (Frame's, with `label` / `subtitle` props) and `[+] svg/SVGModelSelector.tsx` keep an off-list selection visible as a "Custom: <id>" card with helper text ("Not in Pixel Minion's curated list. Requests still use this model id."). The tabs and Settings all use these selectors.
+- `model-browser.css` is Frame's sheet on `--px-*` tokens. Deltas:
+  - The trigger is a Pixel field: `--px-control-h` (34 px), `padding: 0 10px 0 11px` (12 px value inset, chevron on the select chevron's 11 px edge), `--px-field` surface, field focus ring (overrides PR A's global button outline at higher specificity). Measured in the harness: height, inset, chevron edge, surface, font and radius equal the Aspect Ratio select. Frame's trigger uses the dropdown colours and renders white beside Pixel's tan fields in Light Modern.
+  - Search box and pivot track on `--px-field` (Frame: near-black / grey inset), search focus = field focus ring; card hover/selected on `--px-field-hover` (accent stays border + ring + medallion). `--px-inset` remains for code and preview wells.
+  - Contrast (measured in the harness, Dark / Light Modern / Flame): group headings, counts and chip counts use muted text (Frame: dim, ~1.7:1 for counts); badges 10.5 px; accent badges and the active chip keep the accent as tint + border with foreground text (ember on the tint was ~3.1:1 in Light Modern). All measured text is ≥ 4.5:1 except the eyebrow in Light Modern (3.78:1), which uses the family `--px-accent-text` token; flagged for the token owner rather than forked here.
+  - Cost pills stay on one line at ≤ 520 px (`white-space: nowrap`, ellipsis safety net; every curated label fits a 320 px card).
+  - One `z-index` (the backdrop's, 1000), commented, so overlay stacking stays in one place.
+  - High-contrast selected states remain in `design-tokens.css` (class names unchanged).
+
+#### Catalog refresh (`7038e87`)
+
+Source: [docs/model-catalog-audit-2026-11-07.md](model-catalog-audit-2026-11-07.md) §1e / §2d, filtered by the same day's `/chat/completions` probe. Models the probe found Image-API-only (GPT Image 2.5 / 2.6, FLUX.3, Qwen Image, Krea, Muse) are not added; `OpenRouterImageClient.test.ts` still fails if any reaches a catalog. Every new or changed price has a source comment (`[endpoints]`, `[chat feed]`, `[bench]`).
+
+- Image: 27 → 35.
+  - Added (8): `google/gemini-nano-banana-2.1` ⭐ (out $30/1M; prompt $1.5/1M; estimate ≈ $0.036 @ 1K is OpenRouter's measured benchmark median and says so, because Google's token count couldn't be verified), `bytedance-seed/seedream-5-0-{pro,lite,flash}`, `microsoft/mai-image-2.6`, `microsoft/mai-image-2.6-flash`, `sourceful/riverflow-v2.6-pro`, `x-ai/grok-imagine-image-2.0`.
+  - Left out although chat-routable: `recraft/recraft-v4-styles` / `-styles-pro` (refs 1–10 required; no Generate gating until P3/P4) and `recraft/recraft-v4.1-flash` (refs 0–0; Refine always sends the previous image, so it waits for the same gating). Commented in `ImageModels.ts`. Flash was in the first cut of this PR; the PR #14 review (F-01) caught it and `8e53acd` deferred it.
+  - Drift: input-image rates for GPT-5.4 Image 2 ($8/1M), GPT-5 Image ($10), GPT-5 Image Mini ($2.5); Riverflow V2 Pro / Fast `input: 0.2` per reference with a basis that says so; measured-above-list notes for Riverflow V2.6 Pro ($0.157), V2.5 Pro ($0.248), V2.5 Fast ($0.029) (audit O6); `@ 1K` qualifiers on tiered Riverflow rows; `supportsSeed: false` wherever the endpoint record lists no `seed` (Gemini, GPT, MAI, Riverflow, Recraft, Grok).
+  - `openai/gpt-5-image-mini`: `retiresOn: '2026-12-01'` (chat feed `expiration_date`) → "retiring Dec 1, 2026" warn badge. Not added to `RETIRED_MODELS`: it is still served.
+- SVG: 8 → 12 (2 native vector + 10 code), per audit §2d.
+  - Added: `anthropic/claude-opus-5.5` ⭐ ($4/$20), `anthropic/claude-fable-5.1` ⭐ ($10/$50), `anthropic/claude-sonnet-5.5` ($2/$10), `anthropic/claude-haiku-5.5` ($0.10/$0.50), `openai/gpt-6.1-sol` ⭐ ($2/$10), `openai/gpt-6-astra` ($10/$50), `openai/gpt-6.1-terra` ($1/$5), `google/gemini-4-argon` ($2/$10), `google/gemini-3.8-flash` ($0.75/$3.75), `x-ai/grok-4.7` ($2/$6). ⭐ follows the owner's slots onto their successors (Opus, Fable, OpenAI high-end). No SVG-quality benchmark exists (audit O7).
+  - Removed (superseded, still live): `claude-fable-5`, `claude-opus-5`, `gpt-5.6-sol`, `gpt-5.6-sol-pro` (stored $5/$30 vs live $4/$20: U6), `gpt-5.4`, `gemini-3.1-pro-preview`. **Intentionally not migrated**: OpenRouter still serves them, so a saved pick keeps working and shows as "Custom" rather than silently changing model and price.
+  - Left out: `recraft/recraft-v4-styles-pro-vector` / `-styles-vector` (refs 1–10 required).
+- `RETIRED_MODELS`: `grok-imagine-image-quality` → `grok-imagine-image-2.0`; `claude-opus-4` and `claude-opus-5-fast` → `claude-opus-5.5` (Opus 5 is no longer in the catalog).
+- Metadata: release date (OpenRouter `created`) and narrative for every new row.
+- Defaults unchanged (`google/gemini-3.1-flash-image`, `recraft/recraft-v4.1-pro-vector`).
+- `package.json` `imageModel` / `svgModel` descriptions name the current recommendations.
+
+#### SVG output budget (`a679286`, review M1)
+
+- `SVGOrchestrator` sends `maxTokens: SVG_MAX_OUTPUT_TOKENS` (32,000) on every turn; the text client's default stays 16,384 for Enhance and chat. On OpenRouter `max_tokens` covers reasoning + visible output on most providers, and the recommended code models reason by default (Opus 5.5 / Fable 5.1 / Sonnet 5.5 / Grok 4.7 at high effort), so 16,384 could end a long SVG at `finish_reason: "length"`.
+- Why not 48,000: 32,000 doubles the headroom, stays under the smallest output cap of any endpoint serving a curated code model (65,536 for Gemini 3.8 Flash and Gemini 4 Argon on vertex/us, 2026-11-07), and bounds a runaway turn at $1.60 on Fable 5.1's output rate ($2.40 at 48,000).
+- `CLAUDE.md` / `AGENTS.md` claimed 48,000 for text and SVG clients; corrected to 16,384 / 32,000.
+
+#### PR #14 review follow-up (`8e53acd`)
+
+- **F-01: Recraft V4.1 Flash deferred.** The row's `referenceImages: { min: 0, max: 0 }` was descriptive only. `ImageOrchestrator.continueConversation` sends `conversation.lastImages` as references on every Refine, attachments survive a model switch, and the uploader stays enabled, so normal use would send `image_url` parts to a text-only endpoint. The owner chose deferral over gating now: the row, its browser metadata and its modality-snapshot entry are removed, and `ImageModels.ts` records it beside Recraft V4 Styles (both return with P3/P4 capability-aware controls).
+- **Guard:** `shared/models/catalog.test.ts` now requires every curated image model to accept at least one reference image (`referenceImages.max ≥ 1`). It replaces the review witness `pr-14-text-only-image-repro.cjs`, which asserted the defect and is deleted.
+
+#### Not in this PR
+
+- No request or routing change apart from M1: modalities still come from id prefixes (catalog-driven modalities and the Image API transport are P3), `SVGOrchestrator.selectClient` and the Refine gate still key on `recraft/` (P5b; a catalog test pins that every native-vector row is `recraft/` until then), no aspect ratio is sent to vector models, and no capability field is enforced.
+- Image-API-only models, Recraft Styles (both kinds), Recraft V4.1 Flash and Krea K3 Edit wait for P3 (transport + reference gating).
+- The GPT per-image estimate basis ("@ 1K · high" vs OpenRouter's measured medians, audit O5) is unchanged pending the family-wide decision.
+- `README.md`'s model tables were already stale before this PR (they list Claude Opus 4.7 and GPT-5.1 Codex); left for the release pass.
+
+#### Tests
+
+- 28 suites / 322 tests → 32 suites / 497 tests. `tsc` (host and webview) clean; `npm run build` passes; ESLint unchanged (11 pre-existing errors, 22 warnings).
+- After merging PR A's review follow-ups and the PR #14 review fix: 35 suites / 575 tests.
+- Ported from Frame: `ModelBrowserModal.test.tsx` (7), `ModelBrowserSelect.test.tsx` (2), the "image pricing labels" block of `modelBrowserOptions.test.ts` (limited to Pixel's rows). Sample data renamed away from fal.ai.
+- New: modal overlay/ARIA/scroll/reset/footer cases; select label, `aria-expanded` and helper cases; `SVGModelSelector.test.tsx` (kind grouping, custom cards); `shared/models/catalog.test.ts` (defaults shipped, no retired id listed, every retired id moves to a shipped model, coherent capabilities, SVG pricing shape per kind, native vector ⇔ `recraft/` while routing keys on it); refresh-specific label, rate, date and retiring-badge cases; the modality snapshot gained the 8 new image ids; `SVGOrchestrator` pins `maxTokens: 32000`.
+- `modelBrowserOptions.test.ts` moved to `__tests__/presentation/webview/components/shared/` to mirror the source.
+
+### P2: request ownership hardening (`claude/pixel-minion-request-ownership-dhbqpd`)
+
+Roadmap phase P2 ([frame-parity-roadmap.md](plans/frame-parity-roadmap.md), [parity plan §5](plans/frame-image-parity-plan.md)). Fixes the pre-existing ownership defects confirmed in the PR #12 review (ledger S2, S3). Stacked on PR B (`claude/pixel-minion-picker-catalog-dhbqpd`). Commits `a2d5115` (ownership), `adcdb92` (adversarial-review follow-up, R5-S8/S9 below).
+
+#### User-facing
+
+- Stale, late or duplicated responses, errors and save results can't settle a newer request; an enhance error in one tab no longer clears the other tab's spinner.
+- A failed turn is never replayed in the next request; a second concurrent refinement of one conversation is refused.
+- The Image tab sends an attached SVG once (it was sent twice) and records it with its turn, so re-hydration replays it.
+- Refinements use the conversation's thread settings and carry no draft attachments. New note under each tab's attachments while a conversation is active.
+- "Saved" reflects the host's save result; cancel is a distinct, silent outcome; WebP/GIF save as `.webp`/`.gif`; unidentified data is refused.
+- Enhance Prompt never rewrites a prompt the user moved on from: Generate and Clear discard a running enhancement, and an edit made while it runs is kept.
+- A request the host fails to process (e.g. a malformed payload) is answered with an error instead of spinning forever; an error that matches no request appears in the visible tab instead of nowhere.
+
+#### Webview
+
+- **Correlation ids** (`src/presentation/webview/utils/requestId.ts`, `newRequestId(prefix)`): `image-` / `svg-` + `generate`, `continue`, `enhance`, `save`, `clear`. The host already echoed `correlationId` on responses, statuses and errors; no host routing change was needed.
+- **Dispatch snapshots** (`useImageGeneration.ts`, `useSVGGeneration.ts`): a `pending` ref holds `{ correlationId, prompt, settings, referenceSvgText }`. The response handler ignores any other correlation id and builds the turn from the snapshot. This replaces `pendingPrompt` state plus a `useCallback(..., [])` that always read the first render's `referenceSvgText` (null), so attached SVG text was never recorded with a turn.
+- **Ownership-aware errors**: `handleError` now returns `boolean` (owned or not). It settles the pending generation, enhance or (since `fddaf41`) save it matches, or shows an error for its own `*-clear-` request; anything else returns `false` and changes nothing. `App.tsx` gives every `ERROR` to both hooks. An error from a non-request host (`extension.settings`, …) that neither hook owns is shown in the active tab through the new `showError(text)` action, without touching any spinner. Previously enhance and settings errors went to both hooks and cleared both spinners.
+- **SVG text once**: `generate()` sends the raw prompt plus `referenceSvgText`; only `ImageConversationManager.addUserMessage` appends `Reference SVG:` (it was appended in the hook and again in the manager). The SVG tab already sent it once on generate, but re-sent the draft attachment on every refinement.
+- **Thread settings**: new `ImageThreadSettings` / `SVGThreadSettings` (`{ model, aspectRatio }`) in `@messages`, set from the dispatch snapshot on success, persisted as optional `threadSettings`. `continueChat` sends them instead of the draft controls. In memory the host already ignored the draft values, but re-hydration after a host restart used them, so the effective model depended on whether the host had restarted. Persisted state without `threadSettings` falls back to its saved `model`/`aspectRatio`, which is exactly what the old code sent. Frame's P3 `ImageThreadSettings` (mode, resolution) extends this shape.
+- **No draft attachments on refine**: `referenceSvgText` was removed from `ImageGenerationContinuePayload` and `SVGGenerationContinuePayload`; `continueChat` sends only prompt, id, history and thread settings. The Image host already dropped draft raster references (the payload had no field for them).
+- **Truthful save state**: the 1 s "Saved" timers in `ImageGenerationView` / `SVGGenerationView` are gone. The image hook tracks `pendingSaves` (correlation id → image id) and exposes `savingImageIds` / `savedImageIds`; the SVG hook exposes `isSaving` / `isSaved` for the SVG on screen, and a newer save supersedes an older one. `ImageSaveResultPayload` / `SVGSaveResultPayload` gained `cancelled?: boolean`.
+- **Save extension**: the suggested file name uses `imageExtensionForMime` (`src/shared/media/imageFormats.ts`); an unsupported MIME is refused in the webview without posting.
+- **Memoized persistence**: `persistedState` is a `useMemo` in `useImageGeneration`, `useSVGGeneration`, `useSettings` and `useTokenTracking`. All four were new objects on every render, so App's save effect called `vscode.setState` (with every base64 image) on every render.
+- `clearConversation` now also posts `*_GENERATION_CLEAR` (with a `*-clear-` id), so the host frees the conversation; it was never told before.
+
+#### Review follow-up (`adcdb92`)
+
+An independent adversarial review of `a2d5115` (round 5) found two webview/host gaps, fixed here; ids R5-S8 / R5-S9 in the [ledger](pr-reviews/pr-12-design-system-alignment-review.md).
+
+- **R5-S8, late enhance** (`useImageGeneration`, `useSVGGeneration`): `pendingEnhance` is now `{ correlationId, prompt }`. `generate()` and `clearConversation()` call `dropPendingEnhance()` (ref cleared, `isEnhancing` false), so the answer is ignored; before, Generate dispatched "a fox" and the answer then replaced the box with the enhanced text under the running request, and Clear left the spinner running and was refilled. The answer is applied with a functional update only while `current.trim()` still equals the sent prompt, so an edit made during the enhance wins. Generate is **not** blocked while enhancing: it commits to the text on screen (which the turn snapshot records), and blocking it would make a lost enhance reply disable Generate too. The discarded enhance still costs its one small text call.
+- **R5-S9a, throws outside a handler's try** (`MessageHandler.handleMessage`): any rejection from `router.route` is logged and answered with `ERROR` (`source: 'extension.router'`, `code: 'UNHANDLED_ERROR'`, a generic message pointing at the output log) carrying the request's `correlationId`. Example: `EnhanceHandler` and both generation handlers log `prompt.substring(0, 50)` before their `try`, so a payload without a prompt threw into the provider's log-only catch and the request's spinner never stopped. If a domain handler had already answered, the extra error is stale and the webview drops it. A message that is not an envelope is ignored with a `warn`. New `MessageSource` `'extension.router'`.
+- **R5-S9c, uncorrelated errors** (`App.tsx`): the unclaimed-error rule now keys on the id, not the source. An error neither hook claims is dropped only when its `correlationId` is an Image/SVG tab id (`isGenerationTabRequestId`, `utils/requestId.ts`): such an error answers a request that is no longer outstanding. Everything else, including an error from `extension.imageGeneration` / `svgGeneration` / `enhance` with no id, is shown in the visible tab (P2 dropped those). `REQUEST_SOURCES` is gone.
+
+#### PR #15 review follow-up (`fddaf41`, `2252c30`)
+
+- **N-01, router errors for saves** (`useImageGeneration`, `useSVGGeneration`): the router fallback's correlated `ERROR` for an outstanding `image-save-…` / `svg-save-…` id returned `false` from both hooks, so App dropped it as stale and the save stayed on "Saving…". `handleError` now claims it: the image hook deletes that `pendingSaves` entry and recomputes `savingImageIds` (other images' saves stay pending), the SVG hook clears `pendingSave` and `saveState`; both show the error and return `true`. The generation / enhance refs are untouched, so a refinement or new generation keeps running. A repeat or unknown save id is still unclaimed (dropped), and a late `*_SAVE_RESULT` for the settled save is ignored.
+- Tests: a hook case per tab (refinement running; image also with a second save pending) and two `AppErrorRouting.test.tsx` cases through the real App router (image refine and SVG new generation running). The review witness `docs/pr-reviews/witnesses/pr-15-request-ownership.test.tsx` now passes 10 / 10 and is kept.
+- `2252c30`: `AppErrorRouting.test.tsx`'s balance push carries `accountEpoch` (required since the merged #13 fix) and `satisfies OpenRouterBalancePayload`.
+
+#### Host
+
+- **Rollback, in-flight guard, first-turn release** (`ImageOrchestrator.ts`, ported from frame-minion@40e7949 `ImageOrchestrator.ts:102-166`; same pattern in `SVGOrchestrator.ts`): a turn records the message count, turn number and (image) seed and last images before adding the user message (turn number and last images since `adcdb92`, R5-S9b: a result without an `images` array made `addAssistantResponse` throw after it had advanced `turnNumber`, so the rollback left a phantom turn and a failed first turn was never released); any failure, including an SVG reply with no `<svg>`, splices back to it, and a conversation whose first turn failed is removed. A per-conversation `inFlight` set rejects an overlapping request (`already generating`) and a clear while a turn runs (`Wait for … to finish`). Without it, a second continuation could push its user message into the array the first request was about to serialize.
+- **Deep copy** (`ImageConversationManager.addAssistantResponse`, Frame `:141`): the provider's assistant message is copied with JSON round-trip, so the transcript shares no nested parts with the result the handler reads. A non-array `content` keeps its string text (Frame `:162`).
+- **Clear errors**: `handleClearConversation` in both handlers catches a refused clear and posts `ERROR` with the request's correlation id.
+- **Save outcomes** (`ImageGenerationHandler`, `SVGGenerationHandler`): exactly one `*_SAVE_RESULT` per request. A dismissed dialog returns `cancelled: true` (it threw `Save cancelled` before). Opening the written file is in its own `try`; a failure there is a `warn` and no longer posts a second, failed result after the success.
+- **Image extension from the bytes**: `saveImage` decodes the data URL, identifies PNG/JPEG/GIF/WebP by signature (`sniffImageMime`) and names the file after it, replacing any suggested extension. A label that disagrees with the bytes is logged; unidentified data is refused.
+
+#### Intentionally not in P2
+
+- Generate does not release the previous host conversation, and there are no archived threads (P4). Host memory therefore grows by one conversation per Generate until the extension restarts (R5-S9, deferred to P4's archives, which give conversations an owner and a lifetime).
+- Typing in the prompt still re-serializes the whole history, because the draft and history share one persisted object; bounded persistence with a separate draft reserve is P3 (Frame R-3).
+- Reloading the webview mid-generation still loses the pending request (Frame F-10, R5-S9); pending refs are not persisted by design, and a reloaded webview cannot tell a request still running on the host from one that died with it.
+- Re-hydrating an image conversation after a host restart does not replay the raster references of its first turn (R5-S9): the webview doesn't persist them (base64, per-request). Replaying them needs P3's host transcript store.
+- Host-side save-filename validation is P5a (ledger S4).
+- Upstream to Frame: the open-after-save second result and the "Saved" timer exist in Frame's Image tab too.
+
+#### Test coverage
+
+516 → 569 tests (34 → 40 suites) at `a2d5115`; 583 tests (41 suites) with `adcdb92`. Counts are on top of PR B (34 suites / 516 tests). After merging the #13 / #14 review fixes and N-01: 646 tests (42 suites).
+
+- `ImageOrchestrator.test.ts` (new; adapted from Frame `ImageConversationModes.test.ts:120,163,203`, without modes and store): rollback of prompt and seed, first-turn release, a re-hydrated thread keeps its history on failure, one provider request under concurrency, clear refused mid-turn, SVG sent once (fresh and after re-hydration). Drives the real `OpenRouterImageClient` against a mocked `fetch`, so assertions are on request bodies.
+- `SVGOrchestrator.test.ts`: rollback after a provider error and after a reply with no SVG, first-turn release, concurrency, SVG text once.
+- `ImageConversationManager.test.ts`: the stored message is isolated from the provider result; Gemini stripping leaves the result intact.
+- `useImageGenerationOwnership.test.tsx` / `useSVGGenerationOwnership.test.tsx` (jsdom): stale and duplicate responses and errors ignored (adapted from Frame `useImageGenerationModes.test.tsx:41`), turn recorded from the snapshot, refine payload has thread settings and no attachments, legacy state continues with saved controls, enhance and clear correlation, Saved only on success (not on cancel, failure, unknown or superseded result), `.webp`/`.gif` names, unsupported MIME refused, `persistedState` referentially stable while idle.
+- `AppErrorRouting.test.tsx` (jsdom, renders `App`): an Image enhance error leaves the SVG generation running and error-free; only its own error settles it; a settings error shows in the visible tab only; an unrelated re-render doesn't call `setState`.
+- `GenerationSaveHandlers.test.ts`: `.webp` from WebP bytes, bytes beat a wrong label, unidentified data refused, cancel reported as `cancelled`, open failure keeps the single success result, refused clear correlated.
+- `imageFormats.test.ts`: extension map and signature sniffing.
+- `adcdb92`: a late enhance after Generate, after Clear and after an edit, in both hooks (each fails without the fix); `MessageHandlerFailures.test.ts` (real domain handlers: an enhance without a prompt and a generation without a payload are answered with a correlated `extension.router` error; non-envelopes are ignored); `AppErrorRouting.test.tsx` shows an uncorrelated generation-host error and settles / drops correlated router errors; rollback after a recorded reply restores turn number, seed and last images and still releases a failed first turn (image), and restores the turn number (SVG).
+
+Lint: 11 → 9 errors (two invalid `react-hooks` disable comments removed with the effects they annotated), 22 → 20 warnings (unused `pendingPrompt`).
+
+### P5a: SVG safety and ownership (`claude/pixel-minion-svg-safety-dhbqpd`, stacked on P2)
+
+Roadmap phase P5a. Fixes the pre-existing SVG defects confirmed in the PR #12 review (ledger S1, S4, S5, and the SVG Refine part of S2). Stacked on P2. Commits `9128d89` (isolation, policy, ownership, saving), `d14c5d5` (adversarial-review follow-up, R5-S1–S7 below).
+
+#### User-facing
+
+- Generated SVG never enters the app's DOM; a hostile `<style>` or duplicate ids can't affect the panel.
+- Documents that fail the new policy show a message and their code (the code view opens by itself); Save is disabled in the webview and refused by the host.
+- Refine follows the conversation's model; previews use the conversation's aspect ratio.
+- Re-hydrated SVG conversations replay their raster reference.
+- Save refuses file names that aren't plain names, and an output folder outside the workspace.
+- Checking a document is linear in its size; a pathological 2 MB document can't stall the host or the webview.
+
+#### Isolated preview
+
+- `SVGPreview.tsx` renders `<img src="data:image/svg+xml;base64,…">` for all five previews (inline, 32/64/128, full) instead of `dangerouslySetInnerHTML`. Chromium renders an `<img>` SVG as a separate document in secure animated mode: no script, no external fetches, CSS and SMIL animation allowed, and its styles and ids are scoped to that document. The webview CSP already had `img-src … data: blob:`; `webviewHtml.test.ts` now pins `data:` there and that `script-src` stays nonce-only.
+- `svgPreviewSource.ts` caches the last document's verdict and data URL, so the five previews scan and encode once per result. Base64 goes through `encodeURIComponent` → one char per UTF-8 byte → `btoa` (no `TextEncoder`, which jsdom lacks).
+- An `<img>` that fails to decode (malformed in ways the scanner tolerates, e.g. case-mismatched tags) shows "couldn't be rendered" instead of a broken image.
+
+#### `SVGDocumentPolicy` (`src/shared/svg/SVGDocumentPolicy.ts`)
+
+- Shared by webview (preview, Save button, hook) and host (save handler, orchestrator log). The plan named `infrastructure/svg/`; it lives in `shared/` because the webview needs it too and must not import infrastructure.
+- **Rejects, never rewrites**: a single-pass scanner over prolog, elements, attributes, text, comments and CDATA, plus a single-pass CSS tokenizer (since `d14c5d5`; see the follow-up below, which also corrected the original claim that the sticky regexes made the whole check linear). It decodes XML entities in attribute values and `<style>` text outside CDATA, and CSS comments and escapes, before checking. Unknown or unparseable input is a rejection (fail closed).
+- **Accepts** ordinary SVG: `<style>` with `@keyframes`, SMIL, gradients, filters, `<text>`, `href="#…"` / `url(#…)`, embedded `data:image/{png,jpeg,gif,webp}` and `data:font/*`, the XML declaration and a public DOCTYPE.
+- **Rejects** documents over 2 MiB (UTF-8, counted without allocating), without exactly one `<svg>` root, or with mismatched/unclosed tags, control characters or unpaired surrogates; `<script>`, `<foreignObject>`, `<iframe>`, `<embed>`, `<object>`, `<handler>` (any namespace or case); `on*` attributes; `href` / `src` / `xml:base` that leave the document (including protocol-relative URLs and `data:image/svg+xml`); CSS `url()` that leaves it (in `<style>`, `style=`, or any attribute such as `fill=`); `@import`, `image-set()`, `expression()`, `-moz-binding`, `behavior:`; `javascript:` / `vbscript:` / `data:text/html` anywhere in an attribute; SMIL animating `href`; a DOCTYPE with an internal subset; processing instructions other than `<?xml …?>`. Since `b853fef`: any non-empty `ping` and SMIL on `ping` (PR #16 review R16-2, below).
+- **Tradeoff, intentionally strict**: an SVG that loads a web font with `@import` or `url(https://…)` is rejected. In the `<img>` preview the font wouldn't load anyway, and a saved file would fetch it when opened. The message names the cause, so the user can ask for a version without it.
+
+#### Ownership
+
+- `src/shared/svg/svgRoutes.ts`: `isNativeVectorSvgModel` / `svgModelSupportsRefinement`, the single copy of the routing rule. `SVGOrchestrator.selectClient` routes with it. Since `d14c5d5` it keys on PR B's catalog `kind` for curated ids and falls back to the `recraft/` prefix only for ids the catalog doesn't list (custom or superseded), so the route has one source of truth; `catalog.test.ts` keeps the catalog's native-vector rows on `recraft/` so a model routes the same way after it leaves the catalog.
+- Refine eligibility: `SVGGenerationView` uses `threadSettings.model` (P2) instead of the draft picker; `useSVGGeneration.continueChat` refuses a native-vector thread; `SVGOrchestrator.continueSVG` throws before re-hydrating or calling a provider when the thread's model (in memory, or the payload's model for re-hydration) is native-vector. Before, switching the picker to a text model enabled Refine on a Recraft thread, and the host sent the text transcript to the vector client.
+- Raster reference on replay: `SVGConversationHistoryTurn.referenceImage` / `SVGRehydrationTurn.referenceImage`. The hook records the image actually sent (none when the attachment was an SVG, which travels as text) in the dispatch snapshot, and sends it in `history`. `SVGConversationManager.userContent()` builds live and re-hydrated user turns, so a restored request equals the live one (tested). Cost: each such turn persists the reference data URL in webview state.
+- Previews use `threadSettings.aspectRatio`.
+
+#### Saving
+
+- `src/application/handlers/saveFileName.ts` `plainSaveFileName()`: both save handlers refuse a suggested name that is empty, over 200 characters, contains `/ \ : * ? " < > |` or control characters, contains `..`, or starts with `.`. Refused, not repaired: the webview only ever sends `pixel-minion-<timestamp>.<ext>`. Before, the SVG handler joined the name onto the output folder unchecked (`..` escaped it); the image handler had the same gap.
+- `SVGGenerationHandler.saveSVG` runs the policy before the dialog or write; `useSVGGeneration.saveSVG` refuses first, so a refused save never shows as in progress.
+
+#### Review follow-up (`d14c5d5`)
+
+An independent adversarial review of `9128d89` (round 5) ran scratch tests against the policy and the save path; ids R5-S1–S7 in the [ledger](pr-reviews/pr-12-design-system-alignment-review.md). Every fix rejects rather than repairs.
+
+- **R5-S2, quadratic CSS regexes**: `checkCss` matched `url\(\s*(?:"…"|'…'|([^)]*))\s*\)` with `matchAll`, so each unterminated `url(` rescanned to the end of the CSS: 128 KB took 5.9 s and the 2 MB cap about 25 minutes, on the extension host after every generation and in the webview render. The comment-stripping `/\/\*[\s\S]*?\*\//g` was quadratic on `/*` the same way. Both are replaced by `tokenizeCss`, a single pass that advances on every step (indexOf for comments). An unterminated `url(` is a rejection: a browser still loads it, and the old regex simply didn't match it. Audit of every other pattern: the scanner's sticky regexes match at one position and span only the token they read (an `END_TAG` that fails backtracks within one name and then rejects); `EMBEDDED_DATA` and the DOCTYPE/PI patterns are anchored to one short slice; entity decoding, `compact` and the control-character tests are single character classes. 2 MB worst cases (url( / url(" / `/*` / string / escape / entity floods, 400k attributes, 700k nested elements, comment and end-tag openers, url(#id) references) now take 30–350 ms under jest, a typical code-model SVG ~0.3 ms and the 18 KB Recraft response ~0.1 ms. `SVGOrchestrator`'s log-only `inspectSvgDocument` call stays: it is diagnostic, and now cheap. Not in the policy and left as it was: `SVGOrchestrator.extractSVG`'s `<svg[\s\S]*<\/svg>` / fenced-block regexes are quadratic on many `<svg` / fence openers without a close; their input is bounded by the 32,000-token output ceiling and only the user's own prompt can produce it.
+- **R5-S4, comments vs strings and url tokens**: `tokenizeCss` follows CSS Syntax: a comment is recognized only outside strings and outside an unquoted url token, escapes are decoded, strings are kept. So `content:"/*"} b{background:url(https://…)} c{content:"*/"` and `url(#a/*), url(https://…), url(#b*/)` (a browser reads three url tokens; the old stripper removed the middle one) are both rejected. A CSS comment that never closes is a rejection. `<style>` text is entity-decoded per chunk outside CDATA only, as the XML parser does: decoding a CDATA `&#47;*` invented a comment that hid the CSS after it (found while fixing this; regression fixture added).
+- **R5-S3, CSS in every attribute**: `checkCss` runs on every attribute value (it ran only when a literal `url(` appeared), so `fill="\75 rl(https://…)"`, an entity-encoded `&#92;55RL(` and a CSS-escaped url in SMIL `values=` are caught. A cheap pre-check skips values without `( : @ / \`, which no check can match. `src(` and `image(` are treated like `url(`.
+- **R5-S1, names**: element names are `[A-Za-z_][A-Za-z0-9_.:-]*`, attribute names may also start with `:`, end tags use the same pattern, and a name must end at XML whitespace, `/`, `>` (or `=`). `<gé/>` was read as `<g>` with an attribute `é`; it, `<pé:rect/>`, an attribute `é=` and a name followed by U+FEFF (whitespace to JavaScript, a name character to XML) are now rejections. Generated SVG uses ASCII names (including editor prefixes such as `sodipodi:`), so nothing real is lost.
+- **R5-S5, namespaces**: `xmlns` / `xmlns:*` must be exactly SVG, XLink, the XML namespace or `http://c2pa.org/manifest`. The real Recraft V4.1 Vector response from the 2026-11-07 smoke test declares `xmlns:c2pa` for its C2PA provenance `<metadata>`, so that namespace is required; no other metadata namespace (Inkscape, RDF, Dublin Core) was seen in generated output, so none is allowed. The response is a fixture (`__tests__/fixtures/recraft-v4.1-vector-2026-11-07.svg`) that must pass. Other `xmlns*` attribute names are rejected as reserved.
+- **R5-S6**: SMIL may not set `attributeName` to `href`, `src` or `xml:base` (any prefix). The XML declaration must be the first thing in the document (after an optional BOM), its target exactly `xml`, and any mention of an encoding must be a quoted UTF-8 label: the saved file is UTF-8, and a declared `ISO-2022-JP` (or an unquoted label a browser might still sniff) would make it read different markup than the scanner did.
+- `FORBIDDEN_ELEMENTS` / the SMIL table are `Map`s: as plain objects, an element named `constructor` was "a function Object() element".
+
+Saving (R5-S7):
+
+- `plainSaveFileName` also refuses Windows device names with or without an extension (`CON`, `nul.tar.gz`, `NUL .svg`, `COM0`–`COM9`, `LPT0`–`LPT9`, the superscript-digit forms, `CONIN$` / `CONOUT$`), names ending in a dot (Windows drops trailing dots and spaces; leading/trailing whitespace is still trimmed), C1 controls and bidi/format controls (U+061C, U+200E/200F, U+202A–202E, U+2066–2069).
+- `pixelMinion.outputDirectory` is read by `outputDirectorySegments()` (`saveFileName.ts`): a relative path of folder names that pass the same segment rules; absolute paths, drive or UNC prefixes, `..`, `:` and device names are refused with an error naming the setting. `workspaceOutputDirectory()` (new `outputDirectory.ts`) joins the segments and then proves, with `path.posix.relative` on the URI paths, that the folder is inside the first workspace folder. Before, `Uri.joinPath` resolved `../outside` (or an absolute value) out of the workspace, and a repository's `.vscode/settings.json` can set the value.
+- **Scope left at the default** (resource-level): per-workspace output folders are a legitimate use, `machine` or `application` scope would silently ignore every existing workspace value, and the extension declares no `untrustedWorkspaces` capability, so it doesn't run in Restricted Mode at all; with containment, a workspace value can only choose a folder inside that workspace.
+- Not covered: the containment check is lexical. A symlink inside the workspace that points elsewhere is followed by `workspace.fs.writeFile` (the API has no realpath). Writing needs the repository to ship the symlink, and file names are timestamped, so nothing existing is overwritten; left for the release pass.
+
+#### PR #16 review follow-up (`031477e`, `b853fef`)
+
+- **R16-1, a quadratic stack check** (`031477e`): `Scanner.inStyle()` re-derived the open element's local name (`lastIndexOf` + `slice` + `toLowerCase`) at every text run and start tag, so a long parent name with many children cost O(name × children): `'g'.repeat(n)` around n `<g/>` took 5.7 s at 384 KB in review and would take minutes at the cap. The R5-S2 audit above covered patterns, not this. Stack entries are now `{ name, isStyle }`, classified once when pushed; `inStyle()` reads the top entry and `endTag()` uses the popped entry's flag, while end-tag matching still compares the lower-cased qualified name. Audit of the rest of the per-token work: nothing else re-reads another token or walks the stack (names, values, entities and CSS are each read in time proportional to their own bytes; classification is by local name, so there is no namespace-prefix resolution, and no ancestor check beyond the top entry). New 2 MB cases, each accepted in well under a second (they run for minutes without the fix): a long open name with many children, the same prefixed, with many text runs, balanced deep nesting, deep nesting of 1,000-character names, and a long open name around a `<style>` with many CDATA runs; plus end-tag and prefixed-`<style>` behaviour checks.
+- **R16-2, hyperlink auditing** (`b853fef`): `<a href="#x" ping="https://tracker.example/ping">` was accepted, and following the link in a saved `.svg` POSTs to every `ping` URL whatever `href` says. Any non-empty `ping` (entity-decoded, any element, any prefix or case) is now refused, since the space-separated list can mix local and remote entries; an empty `ping=""` is allowed. SMIL animating `ping` is refused like SMIL on `href`. Considered and left alone: `target`, `download`, `rel`, `hreflang`, `type`, `referrerpolicy` on `<a>`, which only qualify the navigation `href` makes, and `href` is already held to the document. Fixtures: direct, entity-encoded (partly and entirely), several destinations (local then external, all local), whitespace-only, no `href`, `xlink:ping`, `<svg:a>`, a non-`<a>` element, `PING`, SMIL on `ping`; an empty ping is accepted; the host save handler refuses the review's example without writing.
+
+#### Removed (S5)
+
+- `MarkdownRenderer.tsx` (claimed to sanitize, inserted raw `marked` HTML), the never-mounted `HelloWorldView.tsx`, its `useHelloWorld.ts` hook, `markdown.css`, their barrel exports and `PersistenceState.helloWorld`. Verified unreferenced. Because the components barrel re-exported `HelloWorldView`, `marked` was in the webview bundle: `webview.js` 414 KiB → 384 KiB.
+- **Kept**: the `marked` dependency and the host `HelloWorldHandler` / `HELLO_WORLD_*` messages, which still import it. With the webview hook gone nothing sends `HELLO_WORLD_REQUEST`, so that host route is dead scaffold too; removing it touches `MessageHandler`, message types, two test files and `package.json`, and is left for a cleanup PR.
+
+#### Not done here
+
+- CSS and SMIL animation inside the `<img>` preview can't be checked in jsdom; it needs the manual installed-VSIX check (parity plan §7). Script inside the preview never runs, by design.
+- Duplicate ids within one generated document are the document's own business; they no longer collide with the app's ids.
+
+#### Test coverage
+
+583 → 673 tests (41 → 45 suites) at `9128d89`; 781 tests (47 suites) with `d14c5d5`. Counts are on top of P2. After merging the #13 / #14 / #15 review fixes and R16-1 / R16-2: 865 tests (48 suites).
+
+- `SVGDocumentPolicy.test.ts` with `__tests__/fixtures/svgDocuments.ts`: 9 accepted fixtures (gradients, CSS animation, SMIL, entities, embedded PNG and font, namespaced root, prolog), 31 rejected (script in any case/namespace, handlers quoted/unquoted/SMIL, foreignObject form, external image/use/link/filter/xml:base, protocol-relative, javascript: plain/entity-encoded/NUL-split, SMIL href, remote `fill=url()`, `@import` plain/entity-encoded/comment-split, CSS-escaped `url()`, nested SVG and HTML data URLs, xml-stylesheet, DOCTYPE entities, HTML root, two roots, unclosed element, control characters, unpaired surrogate), the style-leak document accepted (isolation is the preview's job), the size cap in UTF-8 bytes, non-SVG input, and linear time.
+- `SVGGenerationViewIsolation.test.tsx` (renders the view): five `<img>` previews whose data URLs decode to the source; no generated `<style>`, `#pixel-leak-marker`, `#monitor-frame` or `#skull` in the app DOM; the opened code view holds the markup as text; UTF-8 round trip; a rejected document has no preview, shows the message and its source, and Save is disabled and posts nothing; Refine follows the thread's model in both directions.
+- `useSVGGenerationSafety.test.tsx`: native-vector refine refused without posting; rejected document never posted for save; raster reference recorded with the turn and sent in `history`; an SVG attachment's preview isn't recorded as a raster reference.
+- `SVGOrchestrator.test.ts`: native-vector refine refused before any provider call, in memory and for re-hydration; a rejected native-vector document is returned and logged; a re-hydrated request equals the live one, raster reference included. `SVGConversationManager.test.ts`: re-hydrated user turn equals the live one.
+- `GenerationSaveHandlers.test.ts` and `saveFileName.test.ts`: traversal, separators, drive/stream `:`, hidden names, control and reserved characters refused with no write, for both handlers; a policy-rejected SVG never reaches the dialog or disk.
+- `webviewHtml.test.ts`: `img-src` allows `data:`; `script-src` is nonce-only.
+- `d14c5d5`: the R5 fixtures in `svgDocuments.ts` (each rejected before the fix, or accepted for the wrong reason), the Recraft response, a typical code-model SVG (gradients, defs/use, filter, clip-path, mask, `<style>` with local `url(#id)`, a comment with parentheses and an apostrophe, quoted font families, CSS animation, SMIL, an apostrophe in `aria-label`) and Object-member names, all accepted; twelve 2 MB worst cases under one second each; `svgRoutes.test.ts` (curated ids by kind, the fallback, and a mocked catalog where kind and prefix disagree); device names, trailing dots and controls in `saveFileName.test.ts`, plus `outputDirectorySegments`; `outputDirectory.test.ts` (the post-join containment check); both save handlers refuse an escaping output folder without creating or writing anything, and save into a nested one. The reviewer's scratch tests now show every listed name refused except plain look-alikes (`%2e%2e%2fx.svg`, U+2215), and the two tokenizer cases that asserted the old acceptance fail closed.
+
+Lint unchanged (9 errors, 20 warnings, all pre-existing).
+
+---
+
+
+### Packaging (pre-merge cleanup)
+
+- `.vscodeignore` now excludes `docs/**`, `screenshots/**`, `AGENTS.md`, `tsconfig.webview.json`, `tsconfig.test.json`, `tailwind.config.js` and `postcss.config.js`. The VSIX shrinks from 21.2 MB / 89 files to 10.4 MB / 22 files. `vsce` already rewrites the README's relative image links to `github.com/…/raw/HEAD/…`, so the Marketplace page keeps its screenshots, and review-witness test files no longer ship.
+- Not changed: `package.json` says `"license": "SEE LICENSE IN LICENSE"` but the repository has no `LICENSE` file (vsce warns; pre-existing). Adding one is the owner's call.
+
 ## [1.3.0] - 2026-05-20
 
 ### Overview

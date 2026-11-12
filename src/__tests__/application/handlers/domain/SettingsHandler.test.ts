@@ -134,8 +134,8 @@ describe('SettingsHandler', () => {
         payload: {
           maxConversationTurns: 10,
           openRouterModel: 'openai/gpt-5.1',
-          imageModel: 'google/gemini-3.1-flash-image',
-          svgModel: 'anthropic/claude-opus-5',
+          imageModel: 'x-ai/grok-imagine-image-2.0',
+          svgModel: 'anthropic/claude-opus-5.5',
         },
       }));
     });
@@ -151,15 +151,14 @@ describe('SettingsHandler', () => {
       await requestSettings();
 
       expect(mockConfig.update.mock.calls).toEqual([
-        // The replacement is the contributed default: clear, don't pin today's default.
-        ['imageModel', undefined, vscode.ConfigurationTarget.Global],
-        ['svgModel', 'anthropic/claude-opus-5', vscode.ConfigurationTarget.Workspace],
+        ['imageModel', 'x-ai/grok-imagine-image-2.0', vscode.ConfigurationTarget.Global],
+        ['svgModel', 'anthropic/claude-opus-5.5', vscode.ConfigurationTarget.Workspace],
       ]);
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; clearing the user imageModel setting so it falls back to google/gemini-3.1-flash-image'
+        'Model x-ai/grok-imagine-image-quality is no longer available on OpenRouter; switching imageModel to x-ai/grok-imagine-image-2.0'
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Model anthropic/claude-opus-5-fast is no longer available on OpenRouter; switching svgModel to anthropic/claude-opus-5'
+        'Model anthropic/claude-opus-5-fast is no longer available on OpenRouter; switching svgModel to anthropic/claude-opus-5.5'
       );
     });
 
@@ -214,12 +213,13 @@ describe('SettingsHandler', () => {
       await requestSettings();
 
       expect(mockConfig.update.mock.calls).toEqual([
-        ['svgModel', 'anthropic/claude-opus-5', vscode.ConfigurationTarget.Global],
+        ['svgModel', 'anthropic/claude-opus-5.5', vscode.ConfigurationTarget.Global],
         ['svgModel', undefined, vscode.ConfigurationTarget.Workspace],
       ]);
     });
 
-    it('leaves live model selections alone', async () => {
+    it('leaves live model selections alone, including ones the curated list has superseded', async () => {
+      // Claude Opus 5 left the SVG list for Opus 5.5 but OpenRouter still serves it.
       savedScopes({
         imageModel: { globalValue: 'openai/gpt-5.4-image-2' },
         svgModel: { globalValue: 'anthropic/claude-opus-5' },
@@ -243,7 +243,7 @@ describe('SettingsHandler', () => {
       );
       expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
         type: MessageType.SETTINGS_DATA,
-        payload: expect.objectContaining({ imageModel: 'google/gemini-3.1-flash-image' }),
+        payload: expect.objectContaining({ imageModel: 'x-ai/grok-imagine-image-2.0' }),
       }));
     });
   });

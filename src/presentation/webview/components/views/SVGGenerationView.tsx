@@ -3,22 +3,25 @@
  *
  * Pattern: Composition of existing SVG generation components
  * Responsibilities:
- * - Compose ModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
+ * - Compose SVGModelSelector, AspectRatioSelector, SingleImageUploader, SVGPreview, SVGCodeView
  * - Receive hook instance as prop (prose-minion pattern)
- * - Handle SVG save state tracking
+ * - Show the save state the host reported (via the hook)
  *
  * Layout: generation-view.css (shared with the Image tab).
  */
 import React from 'react';
 import { UseSVGGenerationReturn } from '../../hooks/domain/useSVGGeneration';
-import { ModelSelector } from '../image/ModelSelector';
+import { SVGModelSelector } from '../svg/SVGModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { SingleImageUploader } from '../svg/SingleImageUploader';
 import { SVGPreview } from '../svg/SVGPreview';
 import { SVGCodeView } from '../svg/SVGCodeView';
+import { svgPreviewSource } from '../svg/svgPreviewSource';
+import { svgModelSupportsRefinement } from '../../../../shared/svg/svgRoutes';
 import { ContinueChatInput } from '../shared/ContinueChatInput';
 import { LoadingIndicator } from '../shared/LoadingIndicator';
-import { OPENROUTER_SVG_MODELS } from '../../../../infrastructure/ai/providers/OpenRouterProvider';
+import { OPENROUTER_SVG_MODELS } from '@shared/models';
+import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
 import { Textarea } from '../common/Textarea';
 import { Button } from '../common/Button';
 import { SaveButton } from '../shared/SaveButton';
@@ -46,6 +49,9 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     svgCode,
     conversationHistory,
     conversationId,
+    threadSettings,
+    isSaving,
+    isSaved,
     isLoading,
     error,
     generate,
@@ -59,23 +65,12 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
     ? conversationHistory[conversationHistory.length - 1].usage
     : undefined;
 
-  const [saving, setSaving] = React.useState(false);
-  const [saved, setSaved] = React.useState(false);
-
-  // Reset save states when a new SVG arrives
-  React.useEffect(() => {
-    setSaving(false);
-    setSaved(false);
-  }, [svgCode, conversationId]);
-
-  const handleSave = React.useCallback(() => {
-    setSaving(true);
-    saveSVG();
-    setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-    }, 1000);
-  }, [saveSVG]);
+  // The result belongs to its conversation: its own aspect ratio frames the
+  // previews, and its own model decides whether it can be refined.
+  const resultAspectRatio = threadSettings?.aspectRatio ?? aspectRatio;
+  const canRefine = threadSettings ? svgModelSupportsRefinement(threadSettings.model) : false;
+  const verdict = svgCode ? svgPreviewSource(svgCode).verdict : null;
+  const rejectedReason = verdict && !verdict.accepted ? verdict.reason : null;
 
   const renderSizedPreview = React.useCallback((size: number) => (
     <div key={size} className="svg-sized-preview">
@@ -83,11 +78,16 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         className="svg-sized-preview-box"
         style={{ width: size, height: size }}
       >
-        <SVGPreview svgCode={svgCode ?? ''} aspectRatio={aspectRatio} />
+        <SVGPreview
+          svgCode={svgCode ?? ''}
+          aspectRatio={resultAspectRatio}
+          alt={`${size}×${size} preview`}
+          variant="thumbnail"
+        />
       </div>
       <span className="svg-sized-label">{size}x{size}</span>
     </div>
-  ), [svgCode, aspectRatio]);
+  ), [svgCode, resultAspectRatio]);
 
   return (
     <div className="generation-view svg-generation-view">
@@ -95,11 +95,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
       <div className="well">
         {/* Header: Model and Aspect Ratio, stacked full width */}
         <div className="generation-header">
-          <ModelSelector
+          <SVGModelSelector
             models={OPENROUTER_SVG_MODELS}
             selectedModel={model}
             onModelChange={setModel}
-            kind="svg"
+            unavailableLabel={OFF_LIST_MODEL_HELP}
             disabled={isLoading}
           />
           <AspectRatioSelector
@@ -124,6 +124,11 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
             onAttachmentChange={setReferenceAttachment}
             disabled={isLoading}
           />
+          {conversationId && (referenceImage || referenceSvgText) && (
+            <div className="generation-note">
+              The attachment applies to the next Generate. Refine keeps this conversation&apos;s context.
+            </div>
+          )}
 
           <Button
             onClick={generate}
@@ -164,18 +169,34 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
                 <div className="svg-result-title">
                   <h3>Generated SVG</h3>
                   <div className="svg-inline-preview">
-                    <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
+                    <SVGPreview svgCode={svgCode} aspectRatio={resultAspectRatio} alt="Thumbnail" variant="thumbnail" />
                   </div>
                 </div>
                 <div className="svg-result-actions">
-                  <SaveButton onClick={handleSave} saving={saving} saved={saved} />
+                  <SaveButton
+                    onClick={saveSVG}
+                    saving={isSaving}
+                    saved={isSaved}
+                    disabled={rejectedReason !== null}
+                  />
                 </div>
               </div>
+              {rejectedReason && (
+                <div className="generation-warning" role="status">
+                  ⚠️ Preview and Save are off because this SVG {rejectedReason}. The code is below, so you
+                  can inspect or copy it.
+                </div>
+              )}
               <div className="svg-preview-grid">
                 {[32, 64, 128].map(renderSizedPreview)}
               </div>
-              <SVGPreview svgCode={svgCode} aspectRatio={aspectRatio} />
-              <SVGCodeView svgCode={svgCode} onCopy={copySVG} />
+              <SVGPreview svgCode={svgCode} aspectRatio={resultAspectRatio} />
+              <SVGCodeView
+                key={rejectedReason ? 'rejected' : 'accepted'}
+                svgCode={svgCode}
+                onCopy={copySVG}
+                initiallyExpanded={rejectedReason !== null}
+              />
               {latestUsage && (
                 <div className="generation-usage">
                   {latestUsage.totalTokens.toLocaleString()} tokens
@@ -197,25 +218,21 @@ export const SVGGenerationView: React.FC<SVGGenerationViewProps> = ({
         </div>
       </div>
 
-      {/* Continue chat input - fixed at bottom. Recraft vector models don't
-          support multi-turn refinement (they regenerate from scratch instead
-          of iterating), so disable Refine and explain why. */}
+      {/* Continue chat input - fixed at bottom. Native vector (Recraft)
+          conversations can't be refined (the model regenerates from scratch
+          instead of iterating), so Refine is disabled with an explanation.
+          The conversation's model decides, not the picker's current value. */}
       {conversationId && svgCode && (
-        (() => {
-          const isRecraftVector = model.startsWith('recraft/');
-          return (
-            <ContinueChatInput
-              onSubmit={continueChat}
-              disabled={isLoading || isRecraftVector}
-              isLoading={isLoading}
-              placeholder={
-                isRecraftVector
-                  ? 'Refine not supported for Recraft — start a new generation to iterate'
-                  : 'Refine: Add a gradient fill...'
-              }
-            />
-          );
-        })()
+        <ContinueChatInput
+          onSubmit={continueChat}
+          disabled={isLoading || !canRefine}
+          isLoading={isLoading}
+          placeholder={
+            canRefine
+              ? 'Refine: Add a gradient fill...'
+              : 'Refine not supported for Recraft — start a new generation to iterate'
+          }
+        />
       )}
     </div>
   );
