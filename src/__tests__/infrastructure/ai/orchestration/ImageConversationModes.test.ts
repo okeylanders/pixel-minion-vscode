@@ -196,11 +196,45 @@ it('refuses a transcript over the 64 MiB recovery limit, on read and on write', 
   const first = await create().generateImage('A tree', options);
   const file = [...files.keys()][0];
   storage.size.mockResolvedValueOnce(MAX_IMAGE_TRANSCRIPT_BYTES + 1);
-  await expect(store.read(first.conversationId)).rejects.toThrow('recovery size limit');
+  await expect(store.read(first.conversationId)).rejects.toThrow('too large to recover after a restart');
   expect(storage.read).not.toHaveBeenCalledWith(file);
   const huge = `data:image/png;base64,${'A'.repeat(MAX_IMAGE_TRANSCRIPT_BYTES)}`;
   const result = await create().generateImage('A tree', { ...options, referenceImages: [huge] });
-  expect(result.recoveryWarning).toContain('could not be saved');
+  expect(result.recoveryWarning).toContain('too large to recover after a restart');
+});
+
+it('retires a thread whose turn crosses the recovery limit, and says so now and after a restart', async () => {
+  const { files, storage } = memoryGlobalStorage();
+  const store = new FileImageConversationStore(storage, ['file:///project'], 4096);
+  const create = () => {
+    const orchestrator = new ImageOrchestrator(logger, store);
+    orchestrator.setClient(new OpenRouterImageClient(secrets, logger));
+    return orchestrator;
+  };
+  const orchestrator = create();
+  const first = await orchestrator.generateImage('Keep the knight blue', options);
+  expect(first.recoveryWarning).toBeUndefined();
+
+  // The second turn's (larger) image takes the transcript past the limit.
+  const big = `data:image/png;base64,${'A'.repeat(4096)}`;
+  const bigAssistant = { ...signedAssistant, images: [{ image_url: { url: big }, thought_signature: 'opaque-image-signature' }] };
+  mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ choices: [{ message: bigAssistant }] }) });
+  const second = await orchestrator.continueConversation(first.conversationId, 'Use this texture', [...history], model, '16:9', '4K', undefined, 'conversation');
+  expect(second.result.images).toHaveLength(1);
+  expect(second.recoveryWarning).toBe('This conversation is now too large to recover after a restart. It continues while VS Code stays open; to keep restart recovery, start a new conversation from an image.');
+  // The stale one-turn record is gone, so a restart can't resume the thread from it.
+  expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'))).toEqual({ version: 1, deleted: true, reason: 'too-large' });
+
+  // The thread goes on in this session; each turn repeats the warning.
+  const third = await orchestrator.continueConversation(first.conversationId, 'Brighter', undefined, undefined, undefined, undefined, undefined, 'conversation');
+  expect(third.turnNumber).toBe(3);
+  expect(third.recoveryWarning).toContain('too large to recover');
+
+  // After a restart the follow-up is refused with the same guidance, before any provider call.
+  const calls = mockFetch.mock.calls.length;
+  await expect(create().continueConversation(first.conversationId, 'Continue', [...history, ...history, ...history], model, '16:9', '4K', undefined, 'conversation'))
+    .rejects.toThrow('This conversation is too large to recover after a restart. Start a new conversation from an image.');
+  expect(mockFetch).toHaveBeenCalledTimes(calls);
 });
 
 it('allows only one provider request for concurrent continuations of a restored thread', async () => {

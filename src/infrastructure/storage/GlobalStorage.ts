@@ -14,6 +14,13 @@ export interface GlobalStorage {
   read(path: string): Promise<Uint8Array>;
   /** Writes the file, creating missing parent folders first. */
   write(path: string, bytes: Uint8Array): Promise<void>;
+  /**
+   * Moves a file onto another path, replacing what is there. Callers replace
+   * a file whole by writing a sibling and renaming it over the original, so
+   * a crash mid-write leaves the previous file intact (VS Code's disk
+   * provider renames a file over a file with Node's `fs.rename`).
+   */
+  rename(from: string, to: string): Promise<void>;
 }
 
 /** A missing file, as `vscode.workspace.fs` (or Node, under it) reports it. */
@@ -54,5 +61,9 @@ export class VsCodeGlobalStorage implements GlobalStorage {
       await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.root, ...segments.slice(0, -1)));
     }
     await vscode.workspace.fs.writeFile(this.uri(path), bytes);
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    await vscode.workspace.fs.rename(this.uri(from), this.uri(to), { overwrite: true });
   }
 }

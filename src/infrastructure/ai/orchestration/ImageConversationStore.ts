@@ -7,11 +7,15 @@
  * conversation without them is rejected or degrades.
  *
  * Records live under `<globalStorage>/image-conversations/<workspace hash>/`,
- * one JSON file per `img-…` thread, at most 64 MiB each. Clearing a thread
- * overwrites its record with a tombstone, and a write never replaces a
- * tombstone, so a cleared thread can't come back. Clearing a thread with no
- * record writes nothing. Missing, oversized, corrupt or mismatched records
- * produce an explicit error, never a silent rebuild.
+ * one JSON file per `img-…` thread, at most 64 MiB each. Every write
+ * replaces a file whole (a temp file renamed over it), so a crash mid-write
+ * leaves the previous record. Clearing a thread overwrites its record with a
+ * tombstone, and a write never replaces a tombstone, so a cleared thread
+ * can't come back. Clearing a thread with no record writes nothing. A turn
+ * that takes the transcript past the limit retires it with a `too-large`
+ * tombstone: the old record would otherwise resume a stale thread after a
+ * restart. Missing, oversized, corrupt or mismatched records produce an
+ * explicit error, never a silent rebuild.
  *
  * Pixel delta: the store writes through `GlobalStorage` (relative paths under
  * `context.globalStorageUri`) instead of Frame's `FileSystem` + `Workspace`
@@ -35,22 +39,37 @@ export function isImageConversationId(id: string): boolean {
 export const MAX_IMAGE_TRANSCRIPT_BYTES = 64 * 1024 * 1024;
 
 const INVALID_TRANSCRIPT = 'Saved image conversation is invalid. Start a new conversation from an image.';
-const TOO_LARGE = 'Image transcript exceeds the recovery size limit';
 const CLEARED = 'This image conversation was cleared; its transcript is not saved again.';
 const TOMBSTONE = Buffer.from(JSON.stringify({ version: 1, deleted: true }), 'utf8');
+const TOO_LARGE_TOMBSTONE = Buffer.from(JSON.stringify({ version: 1, deleted: true, reason: 'too-large' }), 'utf8');
 /** A live record is far larger than this; only files this small are read to look for a tombstone. */
 const TOMBSTONE_MAX_BYTES = 256;
 
+/**
+ * The transcript is (or would be) over the recovery limit, so a restart can't
+ * resume this conversation. The message is the guidance shown after a restart.
+ */
+export class ImageTranscriptTooLargeError extends Error {
+  constructor() {
+    super('This conversation is too large to recover after a restart. Start a new conversation from an image.');
+    this.name = 'ImageTranscriptTooLargeError';
+  }
+}
+
 /** Host-owned transcripts. Opaque signatures never travel through display history. */
 export class FileImageConversationStore implements ImageConversationStore {
-  private readonly maxBytes = MAX_IMAGE_TRANSCRIPT_BYTES;
   private readonly directory: string;
 
   /**
    * @param workspaceFolders URIs of the open workspace folders; a different
    *   workspace gets a different directory, so it can't read these records.
+   * @param maxBytes The recovery limit per thread (tests lower it).
    */
-  constructor(private readonly storage: GlobalStorage, workspaceFolders: readonly string[]) {
+  constructor(
+    private readonly storage: GlobalStorage,
+    workspaceFolders: readonly string[],
+    private readonly maxBytes = MAX_IMAGE_TRANSCRIPT_BYTES
+  ) {
     const scope = createHash('sha256').update(JSON.stringify(workspaceFolders)).digest('hex');
     this.directory = `image-conversations/${scope}`;
   }
@@ -64,14 +83,17 @@ export class FileImageConversationStore implements ImageConversationStore {
     const file = this.file(id);
     const size = await this.storage.size(file);
     if (size === undefined) return undefined;
-    if (size > this.maxBytes) throw new Error(TOO_LARGE);
+    if (size > this.maxBytes) throw new ImageTranscriptTooLargeError();
     const bytes = await this.storage.read(file);
-    if (bytes.byteLength > this.maxBytes) throw new Error(TOO_LARGE);
+    if (bytes.byteLength > this.maxBytes) throw new ImageTranscriptTooLargeError();
     let saved;
     try { saved = JSON.parse(Buffer.from(bytes).toString('utf8')); }
     catch { throw new Error(INVALID_TRANSCRIPT); }
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) throw new Error(INVALID_TRANSCRIPT);
-    if (saved.deleted === true) return undefined;
+    if (saved.deleted === true) {
+      if (saved.reason === 'too-large') throw new ImageTranscriptTooLargeError();
+      return undefined;
+    }
     const state = saved.state as ImageConversationState | undefined;
     if (saved.version !== 1 || state?.id !== id || state.mode !== 'conversation' ||
         typeof state.model !== 'string' || typeof state.aspectRatio !== 'string' ||
@@ -83,13 +105,23 @@ export class FileImageConversationStore implements ImageConversationStore {
     return state;
   }
 
+  /**
+   * @throws ImageTranscriptTooLargeError when the transcript is over the
+   *   limit; the thread is then retired, since the previous record is stale.
+   */
   async write(state: ImageConversationState): Promise<void> {
     const file = this.file(state.id);
-    // A late write must not bring a cleared thread back.
-    if (await this.stored(file) === 'tombstone') throw new Error(CLEARED);
+    // A late write must not bring a cleared thread back, and a transcript
+    // only grows, so one retired as too large stays retired.
+    const stored = await this.stored(file);
+    if (stored === 'cleared') throw new Error(CLEARED);
+    if (stored === 'too-large') throw new ImageTranscriptTooLargeError();
     const bytes = Buffer.from(JSON.stringify({ version: 1, state }), 'utf8');
-    if (bytes.byteLength > this.maxBytes) throw new Error(TOO_LARGE);
-    await this.storage.write(file, bytes);
+    if (bytes.byteLength > this.maxBytes) {
+      await this.replace(file, TOO_LARGE_TOMBSTONE);
+      throw new ImageTranscriptTooLargeError();
+    }
+    await this.replace(file, bytes);
   }
 
   async clear(id: string): Promise<void> {
@@ -97,17 +129,29 @@ export class FileImageConversationStore implements ImageConversationStore {
     // Only a record needs retiring: with nothing stored there is nothing a
     // restarted host could resume, and a tombstone is already final.
     if (await this.stored(file) !== 'record') return;
-    await this.storage.write(file, TOMBSTONE);
+    await this.replace(file, TOMBSTONE);
+  }
+
+  /**
+   * Replace the file whole: write a sibling, then rename it over the file. A
+   * crash during the write leaves the previous file (and at worst a stale
+   * `.tmp` that the next write replaces).
+   */
+  private async replace(file: string, bytes: Uint8Array): Promise<void> {
+    const temp = `${file}.tmp`;
+    await this.storage.write(temp, bytes);
+    await this.storage.rename(temp, file);
   }
 
   /** What the thread's file holds. A small file that isn't a tombstone counts as a record. */
-  private async stored(file: string): Promise<'none' | 'record' | 'tombstone'> {
+  private async stored(file: string): Promise<'none' | 'record' | 'cleared' | 'too-large'> {
     const size = await this.storage.size(file);
     if (size === undefined) return 'none';
     if (size > TOMBSTONE_MAX_BYTES) return 'record';
     try {
       const saved = JSON.parse(Buffer.from(await this.storage.read(file)).toString('utf8'));
-      return saved && typeof saved === 'object' && saved.deleted === true ? 'tombstone' : 'record';
+      if (!saved || typeof saved !== 'object' || saved.deleted !== true) return 'record';
+      return saved.reason === 'too-large' ? 'too-large' : 'cleared';
     } catch {
       return 'record';
     }

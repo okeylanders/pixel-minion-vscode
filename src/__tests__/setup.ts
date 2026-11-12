@@ -26,7 +26,8 @@ jest.mock('vscode', () => ({
       readFile: jest.fn(),
       writeFile: jest.fn(),
       stat: jest.fn(),
-      createDirectory: jest.fn()
+      createDirectory: jest.fn(),
+      rename: jest.fn()
     }
   },
   Uri: {

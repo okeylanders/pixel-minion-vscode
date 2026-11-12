@@ -1,10 +1,11 @@
 /**
  * FileImageConversationStore on its own (orchestrator-level recovery is in
  * ImageConversationModes.test.ts): tombstones are final, clearing writes only
- * when there is a record to retire, and a record must belong to the thread
- * whose file it is in.
+ * when there is a record to retire, a record must belong to the thread whose
+ * file it is in, a write that dies part-way leaves the previous record, and a
+ * transcript that crosses the recovery limit is retired, not left stale.
  */
-import { FileImageConversationStore } from '../../../../infrastructure/ai/orchestration/ImageConversationStore';
+import { FileImageConversationStore, ImageTranscriptTooLargeError } from '../../../../infrastructure/ai/orchestration/ImageConversationStore';
 import type { ImageConversationState } from '../../../../infrastructure/ai/orchestration/ImageConversationManager';
 import { memoryGlobalStorage } from '../../../helpers/memoryGlobalStorage';
 
@@ -66,5 +67,63 @@ describe('record ownership', () => {
     files.set(fileA, files.get(fileB)!);
     await expect(store.read('img-a')).rejects.toThrow('Saved image conversation is invalid.');
     expect((await store.read('img-b'))?.id).toBe('img-b');
+  });
+});
+
+describe('crash-safe writes', () => {
+  it('writes a sibling temp file and renames it over the record', async () => {
+    const { store, storage, files } = harness();
+    await store.write(state('img-a'));
+    const [[tempPath]] = storage.write.mock.calls;
+    expect(tempPath).toMatch(/\/img-a\.json\.tmp$/);
+    expect(storage.rename).toHaveBeenCalledWith(tempPath, tempPath.replace(/\.tmp$/, ''));
+    expect([...files.keys()]).toEqual([tempPath.replace(/\.tmp$/, '')]);
+  });
+
+  it('keeps the previous record when a write dies part-way through', async () => {
+    const { store, storage, files } = harness();
+    await store.write(state('img-a', 1));
+    // The host dies after writing half the bytes.
+    storage.write.mockImplementationOnce(async (path: string, bytes: Uint8Array) => {
+      files.set(path, bytes.slice(0, Math.floor(bytes.byteLength / 2)));
+      throw new Error('extension host exited');
+    });
+    await expect(store.write(state('img-a', 2))).rejects.toThrow('exited');
+    expect((await store.read('img-a'))?.turnNumber).toBe(1);
+    // The next write replaces the leftover temp file.
+    await store.write(state('img-a', 2));
+    expect((await store.read('img-a'))?.turnNumber).toBe(2);
+    expect([...files.keys()].filter(path => path.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it('writes the tombstone the same way', async () => {
+    const { store, storage } = harness();
+    await store.write(state('img-a'));
+    await store.clear('img-a');
+    expect(storage.rename).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the recovery limit', () => {
+  const big = (id: string, turnNumber: number) => ({ ...state(id, turnNumber), lastImages: [`data:image/png;base64,${'A'.repeat(2048)}`] });
+
+  it('retires a thread whose transcript crosses the limit instead of leaving its stale record', async () => {
+    const { files, storage } = memoryGlobalStorage();
+    const store = new FileImageConversationStore(storage, ['file:///project'], 1024);
+    await store.write(state('img-a', 1));
+    await expect(store.write(big('img-a', 2))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);
+    expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'))).toEqual({ version: 1, deleted: true, reason: 'too-large' });
+    await expect(store.read('img-a')).rejects.toThrow('This conversation is too large to recover after a restart. Start a new conversation from an image.');
+  });
+
+  it('keeps a too-large thread retired: a later write is refused and clear leaves the tombstone', async () => {
+    const { files, storage } = memoryGlobalStorage();
+    const store = new FileImageConversationStore(storage, ['file:///project'], 1024);
+    await expect(store.write(big('img-a', 1))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);
+    const writes = storage.write.mock.calls.length;
+    await expect(store.write(state('img-a', 2))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);
+    await store.clear('img-a');
+    expect(storage.write).toHaveBeenCalledTimes(writes);
+    expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8')).reason).toBe('too-large');
   });
 });

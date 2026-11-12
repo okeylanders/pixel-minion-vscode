@@ -18,7 +18,7 @@ import {
   ImageGenerationResult,
 } from '../clients/ImageGenerationClient';
 import { TokenUsage, ImageGenerationMode, ImageThreadSettings, AspectRatio, ImageResolution } from '@messages';
-import { isImageConversationId, type ImageConversationStore } from './ImageConversationStore';
+import { ImageTranscriptTooLargeError, isImageConversationId, type ImageConversationStore } from './ImageConversationStore';
 import { imageRouteCapabilities } from '../../../shared/models';
 import { ImageConversationManager, RehydrationTurn } from './ImageConversationManager';
 import { LoggingService } from '@logging';
@@ -151,7 +151,9 @@ export class ImageOrchestrator {
         try { await this.store.write(conversation); }
         catch (error) {
           this.logger.warn('Could not save image conversation for restart recovery', { conversationId: conversation.id, error: error instanceof Error ? error.message : String(error) });
-          recoveryWarning = 'The image was generated, but conversation recovery could not be saved. Keep this session open or start a new conversation from an image after restarting.';
+          recoveryWarning = error instanceof ImageTranscriptTooLargeError
+            ? 'This conversation is now too large to recover after a restart. It continues while VS Code stays open; to keep restart recovery, start a new conversation from an image.'
+            : 'The image was generated, but conversation recovery could not be saved. Keep this session open or start a new conversation from an image after restarting.';
         }
       }
 

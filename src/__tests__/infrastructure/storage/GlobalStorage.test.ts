@@ -3,12 +3,13 @@
  * adapter must guarantee (and a future one must copy): a missing file reads
  * as `undefined` size rather than an error, any other failure surfaces, and
  * a write creates the parent folders first, because `workspace.fs.writeFile`
- * fails on a missing parent.
+ * fails on a missing parent, and a rename replaces its target (the store's
+ * crash-safe write renames a finished temp file over the record).
  */
 import * as vscode from 'vscode';
 import { VsCodeGlobalStorage } from '../../../infrastructure/storage/GlobalStorage';
 
-const fs = vscode.workspace.fs as unknown as Record<'stat' | 'readFile' | 'writeFile' | 'createDirectory', jest.Mock>;
+const fs = vscode.workspace.fs as unknown as Record<'stat' | 'readFile' | 'writeFile' | 'createDirectory' | 'rename', jest.Mock>;
 const root = { fsPath: '/global', path: '/global' } as unknown as vscode.Uri;
 
 beforeEach(() => {
@@ -49,4 +50,12 @@ it('creates the parent folders before writing', async () => {
 it('reads bytes back through workspace.fs', async () => {
   fs.readFile.mockResolvedValue(new Uint8Array([7]));
   await expect(new VsCodeGlobalStorage(root).read('a/b.json')).resolves.toEqual(new Uint8Array([7]));
+});
+
+it('renames over an existing file under the storage root', async () => {
+  await new VsCodeGlobalStorage(root).rename('a/img-1.json.tmp', 'a/img-1.json');
+  expect(fs.rename).toHaveBeenCalledTimes(1);
+  const [from, to, options] = fs.rename.mock.calls[0];
+  expect([from.path, to.path]).toEqual(['/global/a/img-1.json.tmp', '/global/a/img-1.json']);
+  expect(options).toEqual({ overwrite: true });
 });
