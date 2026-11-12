@@ -10,20 +10,58 @@
  * the provider is called. One request goes to one endpoint: a provider failure
  * is reported, never retried on the other (billable) endpoint.
  *
- * Pixel deltas from Frame: Pixel's `HTTP-Referer` / `X-Title`, and the debug
- * log keeps the assistant-message signature diagnostics for Conversation.
+ * Pixel deltas from Frame: Pixel's `HTTP-Referer` / `X-Title`; the debug log
+ * keeps the assistant-message signature diagnostics for Conversation; and a
+ * failure says why, with the provider's `error.message` (one plain line, at
+ * most 300 characters, the API key masked), including a 200 response that
+ * carries an error and no images.
  */
 import {
   ImageGenerationClient,
   ImageGenerationRequest,
   ImageGenerationResult,
   ImageConversationMessage,
+  GeneratedImageData,
 } from './ImageGenerationClient';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import { imageRouteCapabilities } from '../../../shared/models';
 import type { AspectRatio, ImageResolution } from '@messages';
 import { openRouterImageTransport } from './OpenRouterImageTransport';
+
+/** The longest provider reason a user-facing error carries. */
+const MAX_PROVIDER_REASON_CHARS = 300;
+/** Control characters, and the invisible or direction-changing ones that could disguise a message. */
+function isUnprintable(code: number): boolean {
+  return code <= 0x1f || (code >= 0x7f && code <= 0x9f) || code === 0xad || code === 0x61c || code === 0x180e ||
+    (code >= 0x200b && code <= 0x200f) || (code >= 0x2028 && code <= 0x202e) ||
+    (code >= 0x2060 && code <= 0x2069) || code === 0xfeff;
+}
+
+/**
+ * The provider's own explanation (the body's `error.message`) as one line of
+ * plain text short enough for an error banner, or undefined when the body has
+ * none. Nothing else from the response, and nothing from the request, is
+ * shown; the API key is masked in case a provider echoes it.
+ */
+export function providerErrorReason(body: unknown, apiKey: string): string | undefined {
+  const error = body && typeof body === 'object' ? (body as { error?: unknown }).error : undefined;
+  const message = error && typeof error === 'object' ? (error as { message?: unknown }).message : undefined;
+  if (typeof message !== 'string') return undefined;
+  // Bound the work before cleaning; only the first few hundred characters are shown.
+  const masked = (apiKey ? message.split(apiKey).join('[redacted]') : message).slice(0, 4 * MAX_PROVIDER_REASON_CHARS);
+  const line = Array.from(masked, character => (isUnprintable(character.codePointAt(0) ?? 0) ? ' ' : character))
+    .join('').replace(/\s+/g, ' ').trim();
+  if (!line) return undefined;
+  const characters = Array.from(line);
+  return characters.length > MAX_PROVIDER_REASON_CHARS
+    ? `${characters.slice(0, MAX_PROVIDER_REASON_CHARS - 1).join('').trimEnd()}…`
+    : line;
+}
+
+function withReason(message: string, reason: string | undefined): Error {
+  return new Error(reason ? `${message} — ${reason}` : message);
+}
 
 export class OpenRouterImageClient implements ImageGenerationClient {
   private readonly baseUrl = 'https://openrouter.ai/api/v1';
@@ -105,11 +143,21 @@ export class OpenRouterImageClient implements ImageGenerationClient {
     if (!response.ok) {
       const errorText = await response.text();
       this.logger.error(`OpenRouter image generation error: ${response.status} ${errorText}`);
-      throw new Error(`OpenRouter image generation error: ${response.status} ${response.statusText}`);
+      let errorBody: unknown;
+      try { errorBody = JSON.parse(errorText); } catch { errorBody = undefined; }
+      throw withReason(`OpenRouter image generation error: ${response.status} ${response.statusText}`, providerErrorReason(errorBody, apiKey));
     }
 
     const result = await response.json();
-    const images = transport.parseImages(result, this.logger);
+    // A 200 can still carry an error instead of images; say what it was.
+    const reason = providerErrorReason(result, apiKey);
+    let images: GeneratedImageData[];
+    try {
+      images = transport.parseImages(result, this.logger);
+    } catch (error) {
+      throw withReason(error instanceof Error ? error.message : String(error), reason);
+    }
+    if (images.length === 0) throw withReason('Failed to parse images from OpenRouter response', reason);
     return {
       ...this.parseResponse(result, images, supportedRequest.seed),
       seedSupported: supportsSeed,
@@ -118,10 +166,6 @@ export class OpenRouterImageClient implements ImageGenerationClient {
   }
 
   private parseResponse(result: any, images: ImageGenerationResult['images'], requestedSeed?: number): ImageGenerationResult {
-    if (images.length === 0) {
-      throw new Error('Failed to parse images from OpenRouter response');
-    }
-
     const promptTokens = result.usage?.native_tokens_prompt ?? result.usage?.prompt_tokens ?? 0;
     const completionTokens = result.usage?.native_tokens_completion ?? result.usage?.completion_tokens ?? 0;
     const hasNativeUsage = result.usage?.native_tokens_prompt !== undefined || result.usage?.native_tokens_completion !== undefined;

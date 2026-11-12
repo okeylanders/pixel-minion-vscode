@@ -325,6 +325,58 @@ describe('Conversation: chat/completions', () => {
   });
 });
 
+describe('provider failure reasons', () => {
+  const failure = (status: number, statusText: string, text: string) => ({ ok: false, status, statusText, text: async () => text });
+  const singleShot = () => client().generateImages({ model: 'recraft/recraft-v4.1', mode: 'edit', aspectRatio: '1:1', messages: prompt('A tree') });
+  const failureOf = async () => {
+    try { await singleShot(); } catch (error) { return error as Error; }
+    throw new Error('expected the request to fail');
+  };
+
+  it('adds the provider’s error.message to an HTTP failure', async () => {
+    mockFetch.mockResolvedValue(failure(404, 'Not Found', JSON.stringify({ error: { code: 404, message: 'No endpoints found that can be served by your own provider keys.' } })));
+    await expect(singleShot()).rejects.toThrow(/^OpenRouter image generation error: 404 Not Found — No endpoints found that can be served by your own provider keys\.$/);
+  });
+
+  it('keeps the reason to one plain line of at most 300 characters', async () => {
+    const message = `Line one\r\nline\ttwo \u202Eflipped\u0007 ${'x'.repeat(1000)}`;
+    mockFetch.mockResolvedValue(failure(400, 'Bad Request', JSON.stringify({ error: { message } })));
+    const error = await failureOf();
+    const reason = error.message.split(' — ')[1];
+    expect(reason.startsWith('Line one line two flipped x')).toBe(true);
+    expect(Array.from(reason)).toHaveLength(300);
+    expect(reason.endsWith('…')).toBe(true);
+    for (const unprintable of ['\r', '\n', '\t', '\u0007', '\u202E']) expect(error.message).not.toContain(unprintable);
+  });
+
+  it('never shows the API key, headers or the request body', async () => {
+    mockFetch.mockResolvedValue(failure(401, 'Unauthorized', JSON.stringify({
+      error: { message: 'Invalid key test-api-key for this request', metadata: { raw: 'secret upstream detail' } },
+      user_id: 'user-123',
+    })));
+    const error = await failureOf();
+    expect(error.message).toBe('OpenRouter image generation error: 401 Unauthorized — Invalid key [redacted] for this request');
+    for (const leak of ['test-api-key', 'Bearer', 'HTTP-Referer', 'secret upstream detail', 'user-123', '"prompt"']) expect(error.message).not.toContain(leak);
+  });
+
+  it('reports only the status when the body has no error.message', async () => {
+    mockFetch.mockResolvedValue(failure(502, 'Bad Gateway', '<html><body>upstream exploded</body></html>'));
+    await expect(singleShot()).rejects.toThrow(/^OpenRouter image generation error: 502 Bad Gateway$/);
+    mockFetch.mockResolvedValue(failure(500, 'Internal Server Error', JSON.stringify({ error: { message: 42 } })));
+    await expect(singleShot()).rejects.toThrow(/^OpenRouter image generation error: 500 Internal Server Error$/);
+  });
+
+  it('explains a 200 that carries an error and no images, on either endpoint', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ error: { message: 'The prompt was refused by the provider.' } }) });
+    await expect(singleShot()).rejects.toThrow('No images returned from OpenRouter Image API — The prompt was refused by the provider.');
+    await expect(client().generateImages({ mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree') }))
+      .rejects.toThrow('No images returned from OpenRouter chat image response — The prompt was refused by the provider.');
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { images: [{ image_url: { url: 'https://example.com/a.png' } }] } }], error: { message: 'Partial failure' } }) });
+    await expect(client().generateImages({ mode: 'conversation', model: 'google/gemini-3.1-flash-image', aspectRatio: '1:1', messages: prompt('A tree') }))
+      .rejects.toThrow('Failed to parse images from OpenRouter response — Partial failure');
+  });
+});
+
 describe('catalog-wide routes', () => {
   const declaredOutput = (id: string) =>
     chatRoutes.chatEndpoints.find(entry => entry.id === id)?.architecture.output_modalities ?? [];
