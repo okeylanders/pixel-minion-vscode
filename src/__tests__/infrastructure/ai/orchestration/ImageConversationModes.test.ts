@@ -31,7 +31,7 @@ const history = [{ prompt: 'Keep the knight blue', images: [{ data: image, seed:
 
 function harness() {
   const { files, storage } = memoryGlobalStorage();
-  const store = new FileImageConversationStore(storage, ['file:///project']);
+  const store = new FileImageConversationStore(storage);
   const create = () => {
     const orchestrator = new ImageOrchestrator(logger, store);
     orchestrator.setClient(new OpenRouterImageClient(secrets, logger));
@@ -56,7 +56,7 @@ it('replays the full signed conversation, including original references and SVG 
   expect(body(0).image_config).toEqual({ aspect_ratio: '16:9', image_size: '4K' });
   expect(body(0).modalities).toEqual(['image', 'text']);
   expect(files.size).toBe(1);
-  expect([...files.keys()][0]).toMatch(/^image-conversations\/[0-9a-f]{64}\/img-[a-zA-Z0-9-]+\.json$/);
+  expect([...files.keys()][0]).toMatch(/^image-conversations\/img-[a-zA-Z0-9-]+\.json$/);
 
   const restored = create();
   const next = await restored.continueConversation(result.conversationId, 'Add a tree', history, model, '16:9', '4K', undefined, 'conversation');
@@ -171,12 +171,12 @@ it('reports recovery-write failures without discarding a generated image', async
   expect(result.recoveryWarning).toContain('could not be saved');
 });
 
-it('clears persisted transcripts and blocks traversal, corrupt records, and another workspace', async () => {
-  const { create, store, storage, files } = harness();
+it('clears persisted transcripts and blocks traversal and corrupt records', async () => {
+  const { create, store, files } = harness();
   const orchestrator = create();
   const first = await orchestrator.generateImage('A tree', options);
-  const other = new FileImageConversationStore(storage, ['file:///other']);
-  expect(await other.read(first.conversationId)).toBeUndefined();
+  // Another workspace's store is built on its own storage folder (workspaceStorageRoot).
+  expect(await new FileImageConversationStore(memoryGlobalStorage().storage).read(first.conversationId)).toBeUndefined();
   await expect(store.read('img-../../escape')).rejects.toThrow('identifier');
   const file = [...files.keys()][0];
   const saved = files.get(file)!;
@@ -205,7 +205,7 @@ it('refuses a transcript over the 64 MiB recovery limit, on read and on write', 
 
 it('retires a thread whose turn crosses the recovery limit, and says so now and after a restart', async () => {
   const { files, storage } = memoryGlobalStorage();
-  const store = new FileImageConversationStore(storage, ['file:///project'], 4096);
+  const store = new FileImageConversationStore(storage, 4096);
   const create = () => {
     const orchestrator = new ImageOrchestrator(logger, store);
     orchestrator.setClient(new OpenRouterImageClient(secrets, logger));

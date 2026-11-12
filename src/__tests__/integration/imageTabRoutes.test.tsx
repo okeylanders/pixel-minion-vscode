@@ -59,7 +59,7 @@ const toWebview: MessageEnvelope[] = [];
 /** A fresh extension host: a new orchestrator (empty memory) over the same storage. */
 function startHost(): void {
   host?.dispose();
-  const orchestrator = new ImageOrchestrator(logger as never, new FileImageConversationStore(storage.storage, ['file:///project']));
+  const orchestrator = new ImageOrchestrator(logger as never, new FileImageConversationStore(storage.storage));
   orchestrator.setClient(new OpenRouterImageClient(secrets as never, logger as never));
   host = new MessageHandler(
     (message) => {

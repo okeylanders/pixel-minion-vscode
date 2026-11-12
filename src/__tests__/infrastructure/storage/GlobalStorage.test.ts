@@ -7,7 +7,7 @@
  * crash-safe write renames a finished temp file over the record).
  */
 import * as vscode from 'vscode';
-import { VsCodeGlobalStorage } from '../../../infrastructure/storage/GlobalStorage';
+import { VsCodeGlobalStorage, workspaceStorageRoot } from '../../../infrastructure/storage/GlobalStorage';
 
 const fs = vscode.workspace.fs as unknown as Record<'stat' | 'readFile' | 'writeFile' | 'createDirectory' | 'rename', jest.Mock>;
 const root = { fsPath: '/global', path: '/global' } as unknown as vscode.Uri;
@@ -58,4 +58,23 @@ it('renames over an existing file under the storage root', async () => {
   const [from, to, options] = fs.rename.mock.calls[0];
   expect([from.path, to.path]).toEqual(['/global/a/img-1.json.tmp', '/global/a/img-1.json']);
   expect(options).toEqual({ overwrite: true });
+});
+
+describe('workspaceStorageRoot', () => {
+  const globalStorageUri = { fsPath: '/global', path: '/global' } as unknown as vscode.Uri;
+
+  it('uses this workspace’s storage folder, whatever folders it holds', () => {
+    const storageUri = { fsPath: '/workspaceStorage/abc/pixel', path: '/workspaceStorage/abc/pixel' } as unknown as vscode.Uri;
+    expect(workspaceStorageRoot({ storageUri, globalStorageUri })).toBe(storageUri);
+  });
+
+  it('uses one fixed folder under global storage in a window with no workspace', () => {
+    expect(workspaceStorageRoot({ storageUri: undefined, globalStorageUri }).path).toBe('/global/empty-window');
+  });
+
+  it('creates the whole folder chain, the root included, on the first write', async () => {
+    const root = workspaceStorageRoot({ storageUri: undefined, globalStorageUri });
+    await new VsCodeGlobalStorage(root).write('image-conversations/img-1.json.tmp', new Uint8Array([1]));
+    expect(fs.createDirectory.mock.calls[0][0].path).toBe('/global/empty-window/image-conversations');
+  });
 });

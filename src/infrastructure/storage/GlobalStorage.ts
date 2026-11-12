@@ -3,8 +3,9 @@
  *
  * Pixel has no platform ports (Frame has `FileSystem` / `Workspace`); this is
  * the smallest seam that keeps a store testable without VS Code. Paths are
- * relative to the extension's global storage folder and '/'-separated; the
- * store decides them, never the webview.
+ * relative to the storage folder the adapter was built on (see
+ * `workspaceStorageRoot`) and '/'-separated; the store decides them, never
+ * the webview.
  */
 import * as vscode from 'vscode';
 
@@ -30,8 +31,20 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * `context.globalStorageUri` through `vscode.workspace.fs`, which works for
- * any URI scheme (remote and web hosts included), unlike Node's `fs`.
+ * Where workspace-scoped host data lives: VS Code's storage folder for this
+ * workspace (`context.storageUri`, stable when folders are added, removed or
+ * reordered), or, in a window with no workspace, one fixed folder under
+ * global storage shared by every empty window. VS Code doesn't create either
+ * folder; the first write does.
+ */
+export function workspaceStorageRoot(context: Pick<vscode.ExtensionContext, 'storageUri' | 'globalStorageUri'>): vscode.Uri {
+  return context.storageUri ?? vscode.Uri.joinPath(context.globalStorageUri, 'empty-window');
+}
+
+/**
+ * A storage folder (see `workspaceStorageRoot`) through `vscode.workspace.fs`,
+ * which works for any URI scheme (remote and web hosts included), unlike
+ * Node's `fs`. A write creates the whole folder chain, the root included.
  */
 export class VsCodeGlobalStorage implements GlobalStorage {
   constructor(private readonly root: vscode.Uri) {}

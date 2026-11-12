@@ -104,7 +104,7 @@ it('replays a GPT-5 Conversation from its transcript after a restart in the shap
   const second = call('J2');
   mockFetch.mockResolvedValueOnce(chatResponse(first.response)).mockResolvedValueOnce(chatResponse(second.response));
   const { storage } = memoryGlobalStorage();
-  const store = new FileImageConversationStore(storage, ['file:///project']);
+  const store = new FileImageConversationStore(storage);
   const make = () => {
     const orchestrator = new ImageOrchestrator(logger, store);
     orchestrator.setClient(new OpenRouterImageClient(secrets, logger));

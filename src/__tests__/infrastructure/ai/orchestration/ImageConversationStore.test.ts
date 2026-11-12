@@ -17,7 +17,7 @@ const state = (id: string, turnNumber = 1): ImageConversationState => ({
 
 function harness() {
   const { files, storage } = memoryGlobalStorage();
-  const store = new FileImageConversationStore(storage, ['file:///project']);
+  const store = new FileImageConversationStore(storage);
   const json = () => JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'));
   return { files, storage, store, json };
 }
@@ -109,7 +109,7 @@ describe('the recovery limit', () => {
 
   it('retires a thread whose transcript crosses the limit instead of leaving its stale record', async () => {
     const { files, storage } = memoryGlobalStorage();
-    const store = new FileImageConversationStore(storage, ['file:///project'], 1024);
+    const store = new FileImageConversationStore(storage, 1024);
     await store.write(state('img-a', 1));
     await expect(store.write(big('img-a', 2))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);
     expect(JSON.parse(Buffer.from([...files.values()][0]).toString('utf8'))).toEqual({ version: 1, deleted: true, reason: 'too-large' });
@@ -118,7 +118,7 @@ describe('the recovery limit', () => {
 
   it('keeps a too-large thread retired: a later write is refused and clear leaves the tombstone', async () => {
     const { files, storage } = memoryGlobalStorage();
-    const store = new FileImageConversationStore(storage, ['file:///project'], 1024);
+    const store = new FileImageConversationStore(storage, 1024);
     await expect(store.write(big('img-a', 1))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);
     const writes = storage.write.mock.calls.length;
     await expect(store.write(state('img-a', 2))).rejects.toBeInstanceOf(ImageTranscriptTooLargeError);

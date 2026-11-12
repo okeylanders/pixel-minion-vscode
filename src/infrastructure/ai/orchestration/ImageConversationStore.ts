@@ -6,8 +6,10 @@
  * (Gemini thought signatures, reasoning details), and replaying a
  * conversation without them is rejected or degrades.
  *
- * Records live under `<globalStorage>/image-conversations/<workspace hash>/`,
- * one JSON file per `img-…` thread, at most 64 MiB each. Every write
+ * Records live under `<workspace storage>/image-conversations/` (an empty
+ * window uses one folder under global storage instead; see
+ * `workspaceStorageRoot`), one JSON file per `img-…` thread, at most 64 MiB
+ * each. Every write
  * replaces a file whole (a temp file renamed over it), so a crash mid-write
  * leaves the previous record. Clearing a thread overwrites its record with a
  * tombstone, and a write never replaces a tombstone, so a cleared thread
@@ -18,10 +20,11 @@
  * explicit error, never a silent rebuild.
  *
  * Pixel delta: the store writes through `GlobalStorage` (relative paths under
- * `context.globalStorageUri`) instead of Frame's `FileSystem` + `Workspace`
- * ports, and takes the workspace folder URIs that scope it directly.
+ * the workspace's storage folder) instead of Frame's `FileSystem` +
+ * `Workspace` ports. Frame scopes records by a hash of the open folders,
+ * which changes when a folder is added, removed or reordered; VS Code's
+ * per-workspace storage folder doesn't.
  */
-import { createHash } from 'crypto';
 import type { GlobalStorage } from '../../storage/GlobalStorage';
 import type { ImageConversationState } from './ImageConversationManager';
 
@@ -58,21 +61,17 @@ export class ImageTranscriptTooLargeError extends Error {
 
 /** Host-owned transcripts. Opaque signatures never travel through display history. */
 export class FileImageConversationStore implements ImageConversationStore {
-  private readonly directory: string;
+  private readonly directory = 'image-conversations';
 
   /**
-   * @param workspaceFolders URIs of the open workspace folders; a different
-   *   workspace gets a different directory, so it can't read these records.
+   * @param storage This workspace's storage folder, so another workspace
+   *   can't read these records.
    * @param maxBytes The recovery limit per thread (tests lower it).
    */
   constructor(
     private readonly storage: GlobalStorage,
-    workspaceFolders: readonly string[],
     private readonly maxBytes = MAX_IMAGE_TRANSCRIPT_BYTES
-  ) {
-    const scope = createHash('sha256').update(JSON.stringify(workspaceFolders)).digest('hex');
-    this.directory = `image-conversations/${scope}`;
-  }
+  ) {}
 
   private file(id: string): string {
     if (!isImageConversationId(id)) throw new Error('Invalid image conversation identifier');

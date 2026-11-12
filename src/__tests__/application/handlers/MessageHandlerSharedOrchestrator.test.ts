@@ -44,7 +44,7 @@ beforeEach(() => {
   global.fetch = mockFetch as unknown as typeof fetch;
   mockFetch.mockReset().mockImplementation(async () => chatOk());
   storage = memoryGlobalStorage();
-  orchestrator = new ImageOrchestrator(logger as never, new FileImageConversationStore(storage.storage, ['file:///project']));
+  orchestrator = new ImageOrchestrator(logger as never, new FileImageConversationStore(storage.storage));
   orchestrator.setClient(new OpenRouterImageClient(secrets as never, logger as never));
 });
 
