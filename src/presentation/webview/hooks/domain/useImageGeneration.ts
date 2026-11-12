@@ -126,6 +126,19 @@ export function referenceImageIssue(
 const CLEAR_REQUEST_PREFIX = 'image-clear';
 
 /**
+ * The thread a Generate replaces. It stays alive on the host until the new
+ * thread exists: released when the new one succeeds, put back on screen when
+ * it fails.
+ */
+interface ReplacedThread {
+  conversationId: string;
+  threadSettings: ImageThreadSettings | null;
+  generatedImages: GeneratedImage[];
+  conversationHistory: ConversationTurn[];
+  recoveryWarning?: string;
+}
+
+/**
  * What the hook dispatched for the outstanding generate or refine. The
  * response is matched against `correlationId` and builds its turn from this
  * snapshot, never from state that may have changed while the request ran.
@@ -136,6 +149,8 @@ interface PendingGeneration {
   settings: ImageThreadSettings;
   /** A failed new thread clears its optimistic settings; a failed follow-up keeps them. */
   isNewThread: boolean;
+  /** Generate only: the thread it replaces, if one was on screen. */
+  replaces?: ReplacedThread;
   referenceSvgText?: string;
 }
 
@@ -325,6 +340,12 @@ export function useImageGeneration(
   // Outstanding requests, matched by correlation id. Refs, not state: the
   // App-level message handlers must see the latest value synchronously.
   const pending = useRef<PendingGeneration | null>(null);
+  // The same replaced thread, as state, so the snapshot can keep it while
+  // the Generate that replaces it runs.
+  const [replacedThread, setReplacedThread] = useState<ReplacedThread | null>(null);
+  // A release (clear) error that arrived while a generation ran: that
+  // generation's success would hide it, so it is shown once it settles.
+  const heldReleaseError = useRef<string | null>(null);
   // The outstanding enhance and the prompt text it was asked to improve.
   const pendingEnhance = useRef<PendingEnhance | null>(null);
   /** Outstanding saves: correlation id → image id. */
@@ -381,6 +402,34 @@ export function useImageGeneration(
     [model, mode, imagesForApi]
   );
 
+  /** Release a thread the user can no longer reach: host memory and its saved transcript. */
+  const releaseThread = useCallback((id: string) => {
+    // Its only possible answer is an error (e.g. still generating),
+    // recognised by the prefix.
+    vscode.postMessage(createEnvelope(
+      MessageType.IMAGE_GENERATION_CLEAR,
+      'webview.imageGeneration',
+      { conversationId: id },
+      newRequestId(CLEAR_REQUEST_PREFIX)
+    ));
+  }, [vscode]);
+
+  /** Put a replaced thread back on screen (its Generate failed; the host still holds it). */
+  const restoreThread = useCallback((thread: ReplacedThread) => {
+    setConversationId(thread.conversationId);
+    setThreadSettings(thread.threadSettings);
+    setGeneratedImages(thread.generatedImages);
+    setConversationHistory(thread.conversationHistory);
+    setRecoveryWarning(thread.recoveryWarning);
+  }, []);
+
+  /** A release error held while a generation ran, once; null when there is none. */
+  const takeHeldReleaseError = useCallback((): string | null => {
+    const held = heldReleaseError.current;
+    heldReleaseError.current = null;
+    return held;
+  }, []);
+
   // Message handlers (exposed for App-level routing)
   const handleGenerationResponse = useCallback((message: MessageEnvelope) => {
     const dispatch = pending.current;
@@ -404,8 +453,15 @@ export function useImageGeneration(
       referenceSvgText: dispatch.referenceSvgText,
     }]);
     setIsLoading(false);
-    setError(null);
-  }, []);
+    // The new thread exists, so the one it replaced can go: it can't be
+    // reached again (earlier-thread archives arrive with P4). A failed
+    // release reports an error after this response, which stays shown.
+    if (dispatch.replaces && dispatch.replaces.conversationId !== payload.conversationId) {
+      releaseThread(dispatch.replaces.conversationId);
+    }
+    setReplacedThread(null);
+    setError(takeHeldReleaseError());
+  }, [releaseThread, takeHeldReleaseError]);
 
   const handleSaveResult = useCallback((message: MessageEnvelope) => {
     const imageId = message.correlationId ? pendingSaves.current.get(message.correlationId) : undefined;
@@ -440,12 +496,22 @@ export function useImageGeneration(
   }, []);
 
   const handleError = useCallback((message: MessageEnvelope): boolean => {
-    const text = (message.payload as { message?: string } | undefined)?.message ?? 'Something went wrong';
+    let text = (message.payload as { message?: string } | undefined)?.message ?? 'Something went wrong';
     if (pending.current && message.correlationId === pending.current.correlationId) {
-      // A failed new thread never existed: drop its optimistic settings.
-      if (pending.current.isNewThread) setThreadSettings(null);
+      const { isNewThread, replaces } = pending.current;
+      // A failed new thread never existed: the thread it was replacing
+      // (never released) comes back; with none, its optimistic settings go.
+      if (replaces) restoreThread(replaces);
+      else if (isNewThread) setThreadSettings(null);
       pending.current = null;
+      setReplacedThread(null);
       setIsLoading(false);
+      const held = takeHeldReleaseError();
+      if (held) text = `${text} ${held}`;
+    } else if (message.correlationId?.startsWith(`${CLEAR_REQUEST_PREFIX}-`) && pending.current) {
+      // A generation is running: its success would clear this at once.
+      heldReleaseError.current = text;
+      return true;
     } else if (pendingEnhance.current && message.correlationId === pendingEnhance.current.correlationId) {
       pendingEnhance.current = null;
       setIsEnhancing(false);
@@ -459,7 +525,7 @@ export function useImageGeneration(
     }
     setError(text);
     return true;
-  }, []);
+  }, [restoreThread, takeHeldReleaseError]);
 
   const showError = useCallback((text: string) => setError(text), []);
 
@@ -507,18 +573,6 @@ export function useImageGeneration(
     setReferenceSvgIndex(null);
   }, []);
 
-  /** Release a thread the user can no longer reach: host memory and its saved transcript. */
-  const releaseThread = useCallback((id: string) => {
-    // Its only possible answer is an error (e.g. still generating),
-    // recognised by the prefix.
-    vscode.postMessage(createEnvelope(
-      MessageType.IMAGE_GENERATION_CLEAR,
-      'webview.imageGeneration',
-      { conversationId: id },
-      newRequestId(CLEAR_REQUEST_PREFIX)
-    ));
-  }, [vscode]);
-
   const generate = useCallback(() => {
     if (pending.current) return;
     if (!prompt.trim()) {
@@ -551,17 +605,21 @@ export function useImageGeneration(
       },
       newRequestId('image-generate')
     );
+    // The thread on screen is replaced, but released only once the new one
+    // succeeds: if this request fails, it comes back.
+    const replaces: ReplacedThread | undefined = conversationId
+      ? { conversationId, threadSettings, generatedImages, conversationHistory, recoveryWarning }
+      : undefined;
     pending.current = {
       correlationId: message.correlationId!,
       prompt,
       settings,
       isNewThread: true,
+      replaces,
       referenceSvgText: referenceSvgText ?? undefined,
     };
+    setReplacedThread(replaces ?? null);
 
-    // The thread being replaced can't be reached again (earlier-thread
-    // archives arrive with P4), so the host can let go of it too.
-    if (conversationId) releaseThread(conversationId);
     // Generate takes the prompt on screen. An enhance still running is
     // dropped, so its answer can't rewrite the box under this request.
     dropPendingEnhance();
@@ -573,7 +631,7 @@ export function useImageGeneration(
     setGeneratedImages([]);    // Clear previous images
     setConversationHistory([]); // Clear history for new conversation
     vscode.postMessage(message);
-  }, [prompt, mode, model, aspectRatio, resolution, imagesForApi, referenceIssue, referenceSvgText, seedInput, conversationId, vscode, dropPendingEnhance, releaseThread]);
+  }, [prompt, mode, model, aspectRatio, resolution, imagesForApi, referenceIssue, referenceSvgText, seedInput, conversationId, threadSettings, generatedImages, conversationHistory, recoveryWarning, vscode, dropPendingEnhance]);
 
   const continueChat = useCallback(
     (chatPrompt: string) => {
@@ -705,13 +763,17 @@ export function useImageGeneration(
   // re-serializes image history. Nothing read from `initialState` takes part:
   // its warnings described an older snapshot. A first Generate's optimistic
   // settings stay out until the host names the thread: a reload while it runs
-  // must not restore a thread that doesn't exist.
+  // must not restore a thread that doesn't exist. While a Generate replaces a
+  // thread, the snapshot keeps the replaced one: the host still holds it, so
+  // a reload meanwhile brings it back instead of leaving it unreachable.
   const persistedHistory = useMemo(() => boundedImageHistory({
     model: '', prompt: '', aspectRatio: 'auto', resolution: 'auto',
-    threadSettings: conversationId ? threadSettings : null, recoveryWarning, conversationId,
-    generatedImages, conversationHistory,
+    ...(replacedThread ?? {
+      threadSettings: conversationId ? threadSettings : null, recoveryWarning, conversationId,
+      generatedImages, conversationHistory,
+    }),
   }, MAX_IMAGE_HISTORY_STORAGE_BYTES - IMAGE_HISTORY_DRAFT_RESERVE_BYTES),
-  [threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
+  [replacedThread, threadSettings, recoveryWarning, conversationId, generatedImages, conversationHistory]);
   const persistedState = useMemo<ImageGenerationPersistence>(() => mergeImageHistoryDraft(persistedHistory, {
     model, prompt, aspectRatio, resolution,
   }), [persistedHistory, model, prompt, aspectRatio, resolution]);

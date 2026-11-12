@@ -87,14 +87,6 @@ describe('thread-owned settings', () => {
     expect(active.result.current.threadSettings).toEqual(settings);
   });
 
-  it('releases the replaced thread on the host before starting a new one', () => {
-    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
-    act(() => result.current.generate());
-    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
-    expect(clear.payload).toEqual({ conversationId: 'img-existing' });
-    expect(clear.correlationId).toMatch(/^image-clear-/);
-    expect(messages().indexOf(clear)).toBeLessThan(messages().indexOf(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0]));
-  });
 
   it('normalizes the ratio and resolution when a model change removes them', () => {
     const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', aspectRatio: '21:9', resolution: '4K' }));
@@ -104,6 +96,84 @@ describe('thread-owned settings', () => {
     expect(result.current.resolution).toBe('auto');
     act(() => { result.current.setModel('openai/gpt-image-2'); result.current.setAspectRatio('auto'); });
     expect(result.current.aspectRatio).toBe('auto');
+  });
+});
+
+describe('Generate replacing a thread', () => {
+  const answer = (correlationId: string | undefined, conversationId = 'img-new') => createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE,
+    'extension.imageGeneration', { conversationId, images: [image], turnNumber: 1, settings }, correlationId);
+  const failure = (correlationId: string | undefined, text = 'Provider returned 502') =>
+    createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: text }, correlationId);
+
+  it('releases the replaced thread only once the new one succeeds', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+
+    act(() => result.current.handleGenerationResponse(answer(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    expect(clear.payload).toEqual({ conversationId: 'img-existing' });
+    expect(clear.correlationId).toMatch(/^image-clear-/);
+    expect(result.current.conversationId).toBe('img-new');
+    expect(result.current.persistedState.conversationId).toBe('img-new');
+  });
+
+  it('puts the replaced thread back, unreleased, when the new one fails', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    expect(result.current.conversationHistory).toEqual([]);
+    act(() => { result.current.handleError(failure(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)); });
+
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+    expect(result.current.error).toBe('Provider returned 502');
+    expect(result.current.conversationId).toBe('img-existing');
+    expect(result.current.threadSettings).toEqual(settings);
+    expect(result.current.conversationHistory).toEqual([turn]);
+    expect(result.current.generatedImages).toEqual([image]);
+    // ...and it can still be continued.
+    act(() => result.current.continueChat('Add a tree'));
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CONTINUE, payload: { conversationId: 'img-existing' } });
+  });
+
+  it('keeps the replaced thread in the snapshot while the new one runs, so a reload brings it back', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    const saved = result.current.persistedState;
+    expect(saved).toMatchObject({ conversationId: 'img-existing', threadSettings: settings, conversationHistory: [turn] });
+
+    const restored = renderHook(() => useImageGeneration(saved));
+    expect(restored.result.current.conversationId).toBe('img-existing');
+    expect(restored.result.current.conversationHistory).toEqual([turn]);
+  });
+
+  it('shows the release error after the response instead of letting the response hide it', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    act(() => result.current.handleGenerationResponse(answer(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    // The user refines the new thread before the release answers.
+    act(() => result.current.continueChat('Add a tree'));
+    const refine = posted();
+    act(() => { result.current.handleError(failure(clear.correlationId, 'Could not delete the old transcript')); });
+    expect(result.current.isLoading).toBe(true);
+
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId: 'img-new', images: [image], turnNumber: 2 }, refine.correlationId)));
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBe('Could not delete the old transcript');
+  });
+
+  it('shows a refused Clear after the Generate that followed it settles', () => {
+    const { result } = renderHook(() => useImageGeneration(existing));
+    act(() => result.current.clearConversation());
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    act(() => result.current.setPrompt('A new knight'));
+    act(() => result.current.generate());
+    const request = ofType(MessageType.IMAGE_GENERATION_REQUEST)[0];
+    act(() => { result.current.handleError(failure(clear.correlationId, 'Wait for image generation to finish')); });
+
+    act(() => { result.current.handleError(failure(request.correlationId, 'Provider returned 502')); });
+    expect(result.current.error).toBe('Provider returned 502 Wait for image generation to finish');
   });
 });
 
