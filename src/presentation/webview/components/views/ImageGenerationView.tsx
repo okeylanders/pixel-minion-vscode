@@ -100,6 +100,14 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   const capabilities = imageRouteCapabilities(model, mode);
   const referenceLimits = capabilities?.referenceImages;
   const requirementNote = referenceRequirementNote(capabilities);
+  // Why Generate can't run with these controls: shown as a warning, and
+  // always attached to the button as its description, so assistive tech
+  // says why it is disabled (an empty prompt has no visible warning).
+  const generateBlockedReason = !capabilities
+    ? `The selected model is unavailable in ${imageModeLabel(mode)}. Choose a supported model above.`
+    : referenceIssue;
+  const generateDescription = generateBlockedReason
+    ?? (!isLoading && !prompt.trim() ? 'Enter a prompt to generate.' : '');
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
     && imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0;
@@ -220,20 +228,18 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             </div>
           )}
           {requirementNote && <div className="generation-note">{requirementNote}</div>}
-          {referenceIssue && (
+          {generateBlockedReason && (
             <div className="generation-warning" role="status">
-              {referenceIssue}
-            </div>
-          )}
-          {!capabilities && (
-            <div className="generation-warning" role="status">
-              The selected model is unavailable in {imageModeLabel(mode)}. Choose a supported model above.
+              {generateBlockedReason}
             </div>
           )}
 
+          {/* Always rendered (out of the layout): Generate's description. */}
+          <span id="image-generate-description" className="visually-hidden">{generateDescription}</span>
           <Button
             onClick={generate}
-            disabled={isLoading || !capabilities || !!referenceIssue || !prompt.trim()}
+            disabled={isLoading || !!generateBlockedReason || !prompt.trim()}
+            aria-describedby="image-generate-description"
             variant="primary"
           >
             {isLoading ? 'Generating...' : '⚡ Generate'}
