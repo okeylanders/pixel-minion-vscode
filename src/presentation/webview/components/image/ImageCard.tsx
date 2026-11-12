@@ -4,7 +4,9 @@
  * Features:
  * - The stage takes the image's own shape: its natural dimensions once it
  *   loads (providers may clamp a requested ratio), the requested ratio
- *   before that, square when neither is known
+ *   before that, square when neither is known; image-card.css caps its
+ *   height, so a very tall image (1:8) is letterboxed instead of filling
+ *   thousands of pixels
  * - Image preview with object-fit contain
  * - Truncated prompt display with full text on hover
  * - Seed chip only when the route took a seed
