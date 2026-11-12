@@ -4,7 +4,8 @@
 - Reviewed source: `6ba8d463b8555eaedca533249db492b08244021e`
 - Reviewed base: `befd256731db9257ab50606d29d6a969d310ae11` (PR #17)
 - Date: 2026-11-12
-- Verdict: **changes requested: one medium finding.** No merge performed.
+- Initial verdict: **changes requested: one medium finding.**
+- Current verdict after independent re-review at `20fccb3b75e526de2b05e6a51c94a70844111728`: **scoped technical approval; R18-1 verified fixed.** Native and paid-provider validation remains open. No merge performed.
 - **Status:** R18-1 fixed in `790f3c4` (classification by base model id; regression cases through the route helpers, the Settings field and the host). Validation rows R18-M1/M2 remain owner-run. 63 suites / 1,268 tests.
 
 ## Status ledger
@@ -74,3 +75,16 @@ Native VS Code, fresh visual rendering/theme/keyboard/accessibility acceptance a
   - No paid call made.
 - **R18-M1 / R18-M2** ⏳ unchanged: owner-run.
 - **R18-D1** ↪ unchanged: the lint baseline is still 9 errors / 20 warnings.
+
+## Independent re-review (2026-11-12)
+
+Reviewed the delta from `5eede4e` through `20fccb3b75e526de2b05e6a51c94a70844111728`, including fix `790f3c4`. R18-1 is verified fixed: classification uses a lower-cased base model ID, Settings preserves accepted variant suffixes while canonicalizing curated model casing, and host refusal occurs before either client is called. Positive vector/text variants remain eligible and the full model ID is preserved for dispatch. No new blocking finding in this delta.
+
+Fresh independent checks at that head:
+- Full Jest: **63 suites / 1,268 tests passed**. This includes helper, Settings-field, and host refusal regression cases.
+- All three TypeScript configs: passed.
+- Production webpack: passed with the existing three size warnings.
+- Lint: **9 errors / 20 warnings**, matching the prior review baseline; not a clean lint pass.
+- GitHub commit-status and PR-triggered workflow queries returned no entries; no remote-CI-green claim.
+
+R18-M1/M2 and R18-D1 remain unchanged. No native VS Code, fresh visual/keyboard/accessibility, or paid-provider checks were performed in this re-review. Approval is scoped to reviewed code and automated verification, not completion of those acceptance checks.
