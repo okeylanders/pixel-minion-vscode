@@ -16,7 +16,7 @@
  * grows with the conversation, then the sticky refine bar.
  */
 import React from 'react';
-import { UseImageGenerationReturn } from '../../hooks/domain/useImageGeneration';
+import { UseImageGenerationReturn, referenceRequirementNote } from '../../hooks/domain/useImageGeneration';
 import { ModelSelector } from '../image/ModelSelector';
 import { AspectRatioSelector } from '../image/AspectRatioSelector';
 import { ResolutionSelector } from '../image/ResolutionSelector';
@@ -72,8 +72,10 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     setSeedInput,
     referenceImages,
     referenceSvgText,
+    referenceSvgIndex,
     referenceSvgWarning,
     referenceImageSizeWarning,
+    followUpSizeWarning,
     referenceIssue,
     addReferenceImage,
     removeReferenceImage,
@@ -83,6 +85,7 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
     threadSettings,
     recoveryWarning,
     persistenceWarning,
+    draftWarning,
     savingImageIds,
     savedImageIds,
     isLoading,
@@ -96,6 +99,15 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
   } = imageGeneration;
   const capabilities = imageRouteCapabilities(model, mode);
   const referenceLimits = capabilities?.referenceImages;
+  const requirementNote = referenceRequirementNote(capabilities);
+  // Why Generate can't run with these controls: shown as a warning, and
+  // always attached to the button as its description, so assistive tech
+  // says why it is disabled (an empty prompt has no visible warning).
+  const generateBlockedReason = !capabilities
+    ? `The selected model is unavailable in ${imageModeLabel(mode)}. Choose a supported model above.`
+    : referenceIssue;
+  const generateDescription = generateBlockedReason
+    ?? (!isLoading && !prompt.trim() ? 'Enter a prompt to generate.' : '');
   // A Single Shot follow-up sends the latest image, which a text-only model can't take.
   const threadIsTextOnly = threadSettings?.mode === 'edit'
     && imageRouteCapabilities(threadSettings.model, 'edit')?.referenceImages?.max === 0;
@@ -178,10 +190,12 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             disabled={isLoading}
             rows={3}
           />
+          {draftWarning && <div className="generation-warning" role="status">{draftWarning}</div>}
 
           <div className="image-generation-actions-row">
             <ImageUploader
               images={referenceImages}
+              svgIndex={referenceSvgIndex}
               onAddImage={addReferenceImage}
               onRemoveImage={removeReferenceImage}
               onClear={clearReferenceImages}
@@ -213,27 +227,19 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
               ⚠️ {referenceImageSizeWarning}
             </div>
           )}
-          {referenceLimits && referenceLimits.min > 0 && (
-            <div className="generation-note">
-              {capabilities?.referenceMimeTypes
-                ? `Requires ${referenceLimits.min}–${referenceLimits.max} PNG, JPEG, or WebP style references, each at least 256 px on its shortest edge.`
-                : `Requires ${referenceLimits.min}–${referenceLimits.max} reference images: this model edits the images you attach.`}
-            </div>
-          )}
-          {referenceIssue && (
+          {requirementNote && <div className="generation-note">{requirementNote}</div>}
+          {generateBlockedReason && (
             <div className="generation-warning" role="status">
-              {referenceIssue}
-            </div>
-          )}
-          {!capabilities && (
-            <div className="generation-warning" role="status">
-              The selected model is unavailable in {imageModeLabel(mode)}. Choose a supported model above.
+              {generateBlockedReason}
             </div>
           )}
 
+          {/* Always rendered (out of the layout): Generate's description. */}
+          <span id="image-generate-description" className="visually-hidden">{generateDescription}</span>
           <Button
             onClick={generate}
-            disabled={isLoading || !capabilities || !!referenceIssue || !prompt.trim()}
+            disabled={isLoading || !!generateBlockedReason || !prompt.trim()}
+            aria-describedby="image-generate-description"
             variant="primary"
           >
             {isLoading ? 'Generating...' : '⚡ Generate'}
@@ -321,6 +327,10 @@ export const ImageGenerationView: React.FC<ImageGenerationViewProps> = ({
             defaultMessage="Generating image..."
           />
         </div>
+        {/* Beside the refine bar: what a follow-up would send */}
+        {followUpSizeWarning && !threadIsTextOnly && (
+          <div className="generation-warning" role="status">⚠️ {followUpSizeWarning}</div>
+        )}
       </div>
 
       {/* Continue chat input - fixed at bottom (only show when we have a conversation) */}

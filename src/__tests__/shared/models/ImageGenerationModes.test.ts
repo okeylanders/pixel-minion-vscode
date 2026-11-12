@@ -113,7 +113,10 @@ describe('Single Shot capabilities', () => {
     expect(imageRouteCapabilities('recraft/recraft-v4-styles-pro', 'edit')).toMatchObject({
       referenceImages: { min: 1, max: 10 },
       referenceMimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+      referenceRole: 'style',
     });
+    expect(imageRouteCapabilities('sourceful/riverflow-v2.6-pro', 'edit')?.maxRequestBytes).toBe(4.5 * 1024 * 1024);
+    expect(imageRouteCapabilities('google/gemini-3-pro-image', 'conversation')?.maxRequestBytes).toBeUndefined();
     expect(imageRouteCapabilities('openai/gpt-image-1', 'edit')?.supportedAspectRatios).toEqual(['1:1', '2:3', '3:2', 'auto']);
   });
 

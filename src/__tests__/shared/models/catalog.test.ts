@@ -57,6 +57,20 @@ describe('shared model catalogs', () => {
     expect(bounds('recraft/recraft-v4-styles-pro')).toEqual({ min: 1, max: 10 });
   });
 
+  it('states the wording and warning fields where the Image tab needs them', () => {
+    // Every Riverflow row carries Sourceful's request limit, so a new one can't miss the warning.
+    for (const model of OPENROUTER_IMAGE_MODELS.filter(entry => entry.id.startsWith('sourceful/'))) {
+      expect({ id: model.id, maxRequestBytes: model.maxRequestBytes }).toEqual({ id: model.id, maxRequestBytes: 4.5 * 1024 * 1024 });
+    }
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => model.maxRequestBytes).every(model => model.id.startsWith('sourceful/'))).toBe(true);
+    // Style wording only where a row says so (not inferred from a format list).
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => model.referenceRole === 'style').map(model => model.id).sort())
+      .toEqual(['recraft/recraft-v4-styles', 'recraft/recraft-v4-styles-pro']);
+    expect(OPENROUTER_IMAGE_MODELS.find(model => model.id === 'krea/k3-edit')?.referenceRole).toBe('edit');
+    // No description claims a rule the tab doesn't check.
+    expect(OPENROUTER_IMAGE_MODELS.filter(model => /\b\d+\s?px\b/.test(model.description ?? '')).map(model => model.id)).toEqual([]);
+  });
+
   it.each(OPENROUTER_SVG_MODELS)('prices $id in the shape its kind needs', model => {
     if (model.kind === 'native-vector') {
       expect(model.imagePricing?.unit).toBe('image');

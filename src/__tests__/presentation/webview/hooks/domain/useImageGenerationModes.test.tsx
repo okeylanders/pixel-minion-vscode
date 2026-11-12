@@ -87,14 +87,6 @@ describe('thread-owned settings', () => {
     expect(active.result.current.threadSettings).toEqual(settings);
   });
 
-  it('releases the replaced thread on the host before starting a new one', () => {
-    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
-    act(() => result.current.generate());
-    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
-    expect(clear.payload).toEqual({ conversationId: 'img-existing' });
-    expect(clear.correlationId).toMatch(/^image-clear-/);
-    expect(messages().indexOf(clear)).toBeLessThan(messages().indexOf(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0]));
-  });
 
   it('normalizes the ratio and resolution when a model change removes them', () => {
     const { result } = renderHook(() => useImageGeneration({ model: 'google/gemini-3.1-flash-image', aspectRatio: '21:9', resolution: '4K' }));
@@ -104,6 +96,116 @@ describe('thread-owned settings', () => {
     expect(result.current.resolution).toBe('auto');
     act(() => { result.current.setModel('openai/gpt-image-2'); result.current.setAspectRatio('auto'); });
     expect(result.current.aspectRatio).toBe('auto');
+  });
+});
+
+describe('Generate replacing a thread', () => {
+  const answer = (correlationId: string | undefined, conversationId = 'img-new') => createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE,
+    'extension.imageGeneration', { conversationId, images: [image], turnNumber: 1, settings }, correlationId);
+  const failure = (correlationId: string | undefined, text = 'Provider returned 502') =>
+    createEnvelope(MessageType.ERROR, 'extension.imageGeneration', { message: text }, correlationId);
+
+  it('releases the replaced thread only once the new one succeeds', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+
+    act(() => result.current.handleGenerationResponse(answer(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    expect(clear.payload).toEqual({ conversationId: 'img-existing' });
+    expect(clear.correlationId).toMatch(/^image-clear-/);
+    expect(result.current.conversationId).toBe('img-new');
+    expect(result.current.persistedState.conversationId).toBe('img-new');
+  });
+
+  it('puts the replaced thread back, unreleased, when the new one fails', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    expect(result.current.conversationHistory).toEqual([]);
+    act(() => { result.current.handleError(failure(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)); });
+
+    expect(ofType(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+    expect(result.current.error).toBe('Provider returned 502');
+    expect(result.current.conversationId).toBe('img-existing');
+    expect(result.current.threadSettings).toEqual(settings);
+    expect(result.current.conversationHistory).toEqual([turn]);
+    expect(result.current.generatedImages).toEqual([image]);
+    // ...and it can still be continued.
+    act(() => result.current.continueChat('Add a tree'));
+    expect(posted()).toMatchObject({ type: MessageType.IMAGE_GENERATION_CONTINUE, payload: { conversationId: 'img-existing' } });
+  });
+
+  it('keeps the replaced thread in the snapshot while the new one runs, so a reload brings it back', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    const saved = result.current.persistedState;
+    expect(saved).toMatchObject({ conversationId: 'img-existing', threadSettings: settings, conversationHistory: [turn] });
+
+    const restored = renderHook(() => useImageGeneration(saved));
+    expect(restored.result.current.conversationId).toBe('img-existing');
+    expect(restored.result.current.conversationHistory).toEqual([turn]);
+  });
+
+  it('shows the release error after the response instead of letting the response hide it', () => {
+    const { result } = renderHook(() => useImageGeneration({ ...existing, prompt: 'A new knight' }));
+    act(() => result.current.generate());
+    act(() => result.current.handleGenerationResponse(answer(ofType(MessageType.IMAGE_GENERATION_REQUEST)[0].correlationId)));
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    // The user refines the new thread before the release answers.
+    act(() => result.current.continueChat('Add a tree'));
+    const refine = posted();
+    act(() => { result.current.handleError(failure(clear.correlationId, 'Could not delete the old transcript')); });
+    expect(result.current.isLoading).toBe(true);
+
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId: 'img-new', images: [image], turnNumber: 2 }, refine.correlationId)));
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBe('Could not delete the old transcript');
+  });
+
+  it('shows a refused Clear after the Generate that followed it settles', () => {
+    const { result } = renderHook(() => useImageGeneration(existing));
+    act(() => result.current.clearConversation());
+    const [clear] = ofType(MessageType.IMAGE_GENERATION_CLEAR);
+    act(() => result.current.setPrompt('A new knight'));
+    act(() => result.current.generate());
+    const request = ofType(MessageType.IMAGE_GENERATION_REQUEST)[0];
+    act(() => { result.current.handleError(failure(clear.correlationId, 'Wait for image generation to finish')); });
+
+    act(() => { result.current.handleError(failure(request.correlationId, 'Provider returned 502')); });
+    expect(result.current.error).toBe('Provider returned 502 Wait for image generation to finish');
+  });
+});
+
+describe('a reload during a first Generate', () => {
+  it('saves no thread until the host names one, so the reload restores none', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A knight' }));
+    act(() => result.current.generate());
+    // On screen the thread's settings are shown while it runs...
+    expect(result.current.threadSettings).toMatchObject({ mode: 'conversation', model });
+    // ...but what App writes meanwhile holds no thread.
+    const saved = result.current.persistedState;
+    expect(saved.conversationId).toBeNull();
+    expect(saved.threadSettings).toBeNull();
+
+    render(<View initial={saved} />);
+    expect(screen.getByText('Your images appear here')).toBeTruthy();
+    expect(screen.queryByText('Uses previous messages and images as context.')).toBeNull();
+  });
+
+  it('ignores thread settings saved without a conversation id (written by an earlier build)', () => {
+    const ghost = { model, prompt: 'A knight', conversationId: null, threadSettings: settings, conversationHistory: [] };
+    const { result } = renderHook(() => useImageGeneration(ghost));
+    expect(result.current.threadSettings).toBeNull();
+    expect(result.current.persistedState.threadSettings).toBeNull();
+  });
+
+  it('saves the thread once the host answers', () => {
+    const { result } = renderHook(() => useImageGeneration({ model, prompt: 'A knight' }));
+    act(() => result.current.generate());
+    act(() => result.current.handleGenerationResponse(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId: 'img-new', images: [image], turnNumber: 1, settings }, posted().correlationId)));
+    expect(result.current.persistedState).toMatchObject({ conversationId: 'img-new', threadSettings: settings });
   });
 });
 
@@ -147,15 +249,18 @@ describe('bounded webview history', () => {
     const omitted: Partial<ImageGenerationPersistence> = {
       ...existing, threadSettings: { ...settings, mode: 'edit' },
       conversationHistory: [{ ...turn, images: [], imagesOmitted: true }],
+      // An earlier snapshot's warning is never restored; the flagged turn is what counts.
       persistenceWarning: 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.',
     };
     const restored = renderHook(() => useImageGeneration(omitted));
+    expect(restored.result.current.persistenceWarning).toMatch(/previews from an earlier session were not kept/);
     act(() => restored.result.current.continueChat('Continue'));
     expect(restored.result.current.error).toContain('latest image was not retained');
     expect(mockPost).not.toHaveBeenCalled();
     render(<View initial={omitted} />);
     expect(screen.getByText(/Image previews were not retained/)).toBeTruthy();
-    expect(screen.getByText(/Some images will not survive reload/)).toBeTruthy();
+    expect(screen.getByText(/previews from an earlier session were not kept/)).toBeTruthy();
+    expect(screen.queryByText(/Some images will not survive reload/)).toBeNull();
   });
 
   it('lets a Conversation continue without previews: the host keeps the transcript', () => {
@@ -163,6 +268,43 @@ describe('bounded webview history', () => {
     const { result } = renderHook(() => useImageGeneration(omitted));
     act(() => result.current.continueChat('Continue'));
     expect(posted().payload).toMatchObject({ mode: 'conversation', turnCount: 1 });
+  });
+});
+
+describe('request-size warnings (from the catalog’s maxRequestBytes)', () => {
+  const riverflow = 'sourceful/riverflow-v2-pro';
+  const bigPng = `data:image/png;base64,${'A'.repeat(Math.ceil((5 * 1024 * 1024) / 0.75))}`;
+
+  it('counts only the images Generate sends, never the SVG preview', () => {
+    const { result } = renderHook(() => useImageGeneration({ model: riverflow, prompt: 'A poster' }));
+    // A big SVG goes as text: its preview is not part of the request's images.
+    act(() => result.current.addReferenceImage(`data:image/svg+xml;base64,${'A'.repeat(7 * 1024 * 1024)}`, '<svg/>'));
+    act(() => result.current.addReferenceImage('data:image/png;base64,QUJD'));
+    expect(result.current.referenceImageSizeWarning).toBeNull();
+    act(() => result.current.addReferenceImage(bigPng));
+    expect(result.current.referenceImageSizeWarning).toBe('Reference images total 5.0 MB, over Riverflow V2 Pro’s 4.5 MB request limit. Generation may fail.');
+    // A model whose route states no limit gets no warning for the same images.
+    act(() => result.current.setModel('google/gemini-3.1-flash-image'));
+    expect(result.current.referenceImageSizeWarning).toBeNull();
+  });
+
+  it('warns beside the refine bar when a Single Shot follow-up would re-send an oversized latest image', () => {
+    const big = { ...turn, images: [{ ...image, data: bigPng }] };
+    const thread: Partial<ImageGenerationPersistence> = {
+      model: riverflow, conversationId: 'img-river', conversationHistory: [big],
+      threadSettings: { mode: 'edit', model: riverflow, aspectRatio: '1:1', resolution: 'auto' },
+    };
+    const { result } = renderHook(() => useImageGeneration(thread));
+    expect(result.current.followUpSizeWarning).toMatch(/^The latest image is 5\.0 MB, over Riverflow V2 Pro’s 4\.5 MB request limit/);
+    // Draft controls don't move it: the thread's model owns the follow-up.
+    act(() => result.current.setModel('google/gemini-3.1-flash-image'));
+    expect(result.current.followUpSizeWarning).not.toBeNull();
+    render(<View initial={thread} />);
+    expect(screen.getByText(/A follow-up sends it again, so it may fail/)).toBeTruthy();
+
+    // A Conversation follow-up sends no images from the webview's history.
+    const conversation = renderHook(() => useImageGeneration({ ...existing, conversationHistory: [big] }));
+    expect(conversation.result.current.followUpSizeWarning).toBeNull();
   });
 });
 

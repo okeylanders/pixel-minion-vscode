@@ -10,6 +10,13 @@
  * Pixel deltas from Frame: no desktop budget override (Pixel is VS Code only,
  * so the 48 MiB extension default always applies), and no earlier-thread
  * archives yet (roadmap P4 adds them, with Frame's five-archive cap).
+ *
+ * Warnings describe the snapshot they come with and nothing else (a Pixel
+ * fix, to flag upstream): `boundedImageHistory` never carries a warning it is
+ * given (one read back from an earlier snapshot would otherwise stick
+ * forever), and the shortened-draft note is its own field, `draftWarning`,
+ * so it can't be appended to the history warning again on every keystroke.
+ * The hook never restores either; it recomputes them from live state.
  */
 import type { ConversationTurn } from '@messages';
 import type { ImageGenerationPersistence } from './useImageGeneration';
@@ -19,7 +26,12 @@ export const MAX_IMAGE_HISTORY_STORAGE_BYTES = 48 * 1024 * 1024;
 export const IMAGE_HISTORY_DRAFT_RESERVE_BYTES = 64 * 1024;
 type ImageHistoryDraft = Pick<ImageGenerationPersistence, 'model' | 'aspectRatio' | 'resolution' | 'prompt'>;
 
+/** This snapshot leaves out image data the live session still shows. */
 export const IMAGE_HISTORY_STORAGE_WARNING = 'Local history keeps a limited amount of image data. Some images will not survive reload. Save images you want to keep.';
+/** The restored thread has turns an earlier snapshot saved without their previews (`imagesOmitted`). */
+export const IMAGE_HISTORY_RESTORED_WARNING = 'Some image previews from an earlier session were not kept in local history. Use your saved image files.';
+/** This snapshot holds a shortened copy of the draft controls. */
+export const IMAGE_HISTORY_DRAFT_WARNING = 'The saved draft was shortened to fit local storage. The full draft remains available until reload.';
 
 /** Merge cheap controls without serializing the memoized image payload again. */
 export function mergeImageHistoryDraft(history: ImageGenerationPersistence, draft: ImageHistoryDraft): ImageGenerationPersistence {
@@ -28,17 +40,17 @@ export function mergeImageHistoryDraft(history: ImageGenerationPersistence, draf
   return {
     ...history, ...draft,
     model: draft.model.slice(0, 1024), prompt: draft.prompt.slice(0, 4096),
-    persistenceWarning: [
-      history.persistenceWarning,
-      'The saved draft was shortened to fit local storage. The full draft remains available until reload.',
-    ].filter(Boolean).join(' '),
+    draftWarning: IMAGE_HISTORY_DRAFT_WARNING,
   };
 }
 
 /** Bound the saved snapshot without removing images from the live session. */
 export function boundedImageHistory(state: ImageGenerationPersistence, budgetBytes = MAX_IMAGE_HISTORY_STORAGE_BYTES): ImageGenerationPersistence {
-  const snapshot = {
+  const snapshot: ImageGenerationPersistence = {
     ...state,
+    // Only this bounding decides what this snapshot warns about.
+    persistenceWarning: undefined,
+    draftWarning: undefined,
     // The latest images already occur in conversationHistory; do not store twice.
     generatedImages: state.conversationHistory.length ? [] : state.generatedImages,
     conversationHistory: [...state.conversationHistory],

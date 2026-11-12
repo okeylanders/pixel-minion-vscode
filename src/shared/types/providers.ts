@@ -79,6 +79,17 @@ export interface ImageModelDefinition {
   /** Narrower reference MIME allowlist for routes with format requirements. */
   referenceMimeTypes?: readonly ('image/png' | 'image/jpeg' | 'image/webp')[];
   /**
+   * What the model does with its references, where that is stated: `style`
+   * makes a new image in their style (Recraft Styles), `edit` edits them
+   * (Krea K3 Edit). Absent: not stated. Only the Image tab's wording uses it.
+   */
+  referenceRole?: 'style' | 'edit';
+  /**
+   * The provider's request-size limit, in bytes. The Image tab warns when the
+   * images a request carries exceed it; nothing refuses the request.
+   */
+  maxRequestBytes?: number;
+  /**
    * Unit-aware image-generation pricing (audited against the live
    * `/api/v1/images/models` endpoints). Absent ⇒ the provider publishes no
    * price (Model Browser renders no cost label).

@@ -4,56 +4,81 @@
  *
  * Pattern: Controlled component for image-to-image generation workflow
  *
- * `maxImages` and `accept` come from the selected model's route; a model that
- * takes no reference images gets a disabled button and says so.
+ * `maxImages` and `accept` come from the selected model's route and bound the
+ * raster references only. An SVG attachment is sent as text context (its
+ * markup is appended to the prompt), never as an image, so it takes no
+ * reference slot and the picker always offers it: on a text-only model, or
+ * once the raster slots are full, the button adds SVG context only.
  *
- * Pixel deltas: the family button classes (`btn btn-secondary`), and the
- * text-only note is a `generation-note`.
+ * Pixel deltas: the family button classes (`btn btn-secondary`), the
+ * text-only note is a `generation-note`, and the SVG attachment is kept out
+ * of the raster count (Frame counts it; flag upstream).
  */
 import React, { useRef, useCallback } from 'react';
 import '../../styles/components/image-uploader.css';
 
+const SVG_MIME = 'image/svg+xml';
+
 export interface ImageUploaderProps {
   images: string[];  // Array of base64 data URLs (for preview)
+  /** Index in `images` of the SVG attachment (sent as text, not as an image), or null. */
+  svgIndex?: number | null;
   onAddImage: (dataUrl: string, svgText?: string | null) => void;
   onRemoveImage: (index: number) => void;
   onClear: () => void;
   disabled?: boolean;
+  /** Raster references the route takes. */
   maxImages?: number;
-  /** MIME types the file picker offers; defaults to every raster format plus SVG. */
+  /** Raster MIME types the file picker offers; SVG is always offered as well. */
   accept?: string;
 }
 
 export function ImageUploader({
   images,
+  svgIndex = null,
   onAddImage,
   onRemoveImage,
   onClear,
   disabled = false,
   maxImages = 4,
-  accept = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml',
+  accept = 'image/png,image/jpeg,image/webp,image/gif',
 }: ImageUploaderProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasSvg = svgIndex !== null && svgIndex >= 0 && svgIndex < images.length;
+  const rasterCount = images.length - (hasSvg ? 1 : 0);
+  const rasterSlots = Math.max(0, maxImages - rasterCount);
+  const pickerAccept = rasterSlots > 0 ? `${accept},${SVG_MIME}` : SVG_MIME;
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    for (const file of Array.from(files).slice(0, Math.max(0, maxImages - images.length))) {
+    let slotsLeft = rasterSlots;
+    for (const file of Array.from(files)) {
+      const isSvg = file.type === SVG_MIME;
+      // Rasters beyond the route's limit are dropped; an SVG never takes a slot.
+      if (!isSvg) {
+        if (slotsLeft <= 0) continue;
+        slotsLeft--;
+      }
 
       // Always read data URL for preview
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === 'string') {
-          if (file.type === 'image/svg+xml') {
+          const dataUrl = reader.result;
+          if (isSvg) {
             const textReader = new FileReader();
             textReader.onload = () => {
-              const svgText = typeof textReader.result === 'string' ? textReader.result : null;
-              onAddImage(reader.result as string, svgText);
+              // Without its markup an SVG has nothing to send: skip it rather
+              // than let it go to the model as an image.
+              if (typeof textReader.result === 'string' && textReader.result.trim()) {
+                onAddImage(dataUrl, textReader.result);
+              }
             };
             textReader.readAsText(file);
           } else {
-            onAddImage(reader.result);
+            onAddImage(dataUrl);
           }
         }
       };
@@ -64,7 +89,7 @@ export function ImageUploader({
     if (inputRef.current) {
       inputRef.current.value = '';
     }
-  }, [images.length, maxImages, onAddImage]);
+  }, [rasterSlots, onAddImage]);
 
   const handleClick = () => {
     inputRef.current?.click();
@@ -76,12 +101,15 @@ export function ImageUploader({
         <button
           type="button"
           onClick={handleClick}
-          disabled={disabled || images.length >= maxImages}
+          disabled={disabled}
           className="btn btn-secondary add-image-button"
         >
-          + Add Reference Image{images.length > 0 ? ` (${images.length}/${maxImages})` : ''}
+          {rasterSlots > 0 ? '+ Add Reference Image' : '+ Add SVG Context'}
+          {maxImages > 0 && rasterCount > 0 ? ` (${rasterCount}/${maxImages})` : ''}
         </button>
-        {maxImages === 0 && <span className="generation-note">This model accepts text prompts only.</span>}
+        {maxImages === 0 && (
+          <span className="generation-note">This model accepts text prompts only. An SVG can still go in as text context.</span>
+        )}
         {images.length > 0 && (
           <button
             type="button"
@@ -97,7 +125,7 @@ export function ImageUploader({
       <input
         ref={inputRef}
         type="file"
-        accept={accept}
+        accept={pickerAccept}
         multiple
         onChange={handleFileChange}
         style={{ display: 'none' }}
@@ -108,7 +136,11 @@ export function ImageUploader({
         <div className="image-thumbnails">
           {images.map((dataUrl, index) => (
             <div key={index} className="thumbnail-container">
-              <img src={dataUrl} alt={`Reference ${index + 1}`} className="thumbnail" />
+              <img
+                src={dataUrl}
+                alt={hasSvg && index === svgIndex ? 'SVG text context' : `Reference ${index + 1}`}
+                className="thumbnail"
+              />
               <button
                 type="button"
                 onClick={() => onRemoveImage(index)}

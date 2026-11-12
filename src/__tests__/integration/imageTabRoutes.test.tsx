@@ -117,6 +117,9 @@ const promptBox = () => screen.getByPlaceholderText('Describe the image you want
 const generateButton = () => screen.getByRole('button', { name: /Generate/ }) as HTMLButtonElement;
 const addReferenceButton = () => screen.getByRole('button', { name: /Add Reference Image/ }) as HTMLButtonElement;
 const warnings = () => screen.queryAllByRole('status').map(element => element.textContent);
+/** What assistive tech reads as the button's description (its aria-describedby targets). */
+const description = (element: HTMLElement) => (element.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)
+  .map(id => document.getElementById(id)?.textContent ?? '').join(' ').trim();
 
 async function renderImageTab(model: string) {
   settingsValues.imageModel = model;
@@ -143,6 +146,14 @@ async function attachPng(container: HTMLElement, count = 1) {
   await waitFor(() => expect(container.querySelectorAll('.thumbnail').length).toBe(before + count));
 }
 
+const SVG_MARKUP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4"/></svg>';
+async function attachSvg(container: HTMLElement) {
+  const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+  const before = container.querySelectorAll('.thumbnail').length;
+  fireEvent.change(input, { target: { files: [new File([SVG_MARKUP], 'logo.svg', { type: 'image/svg+xml' })] } });
+  await waitFor(() => expect(container.querySelectorAll('.thumbnail').length).toBe(before + 1));
+}
+
 async function generate(text: string) {
   fireEvent.change(promptBox(), { target: { value: text } });
   const before = providerCalls().length;
@@ -161,8 +172,11 @@ async function sendRaw(type: MessageType, payload: object) {
 describe('capability gating (PR #14 F-01)', () => {
   it('prompt-only first turn: a text-only model generates with no references; a reference-only model waits for one', async () => {
     const { container } = await renderImageTab('recraft/recraft-v4.1-flash');
-    expect(addReferenceButton().disabled).toBe(true);
-    expect(screen.getByText('This model accepts text prompts only.')).toBeTruthy();
+    // No raster reference slot: the button offers SVG text context only.
+    expect(screen.queryByRole('button', { name: /Add Reference Image/ })).toBeNull();
+    expect((screen.getByRole('button', { name: /Add SVG Context/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect((container.querySelector('input[type="file"]') as HTMLInputElement).accept).toBe('image/svg+xml');
+    expect(screen.getByText(/This model accepts text prompts only/)).toBeTruthy();
     await generate('A poster');
     expect(lastUrl()).toBe('https://openrouter.ai/api/v1/images');
     expect(lastBody()).toEqual({ model: 'recraft/recraft-v4.1-flash', prompt: 'A poster', aspect_ratio: '1:1' });
@@ -176,6 +190,51 @@ describe('capability gating (PR #14 F-01)', () => {
     await generate('Make it night');
     expect(lastBody().input_references).toHaveLength(1);
     expect(lastBody().model).toBe('krea/k3-edit');
+  });
+
+  it('SVG context takes no reference slot: it goes in the prompt, on a text-only model and beside a full raster slot', async () => {
+    const { container } = await renderImageTab('recraft/recraft-v4.1-flash');
+    await attachSvg(container);
+    expect(screen.getByRole('img', { name: 'SVG text context' })).toBeTruthy();
+    fireEvent.change(promptBox(), { target: { value: 'A poster' } });
+    expect(generateButton().disabled).toBe(false);
+    fireEvent.click(generateButton());
+    await waitFor(() => expect(providerCalls()).toHaveLength(1));
+    expect(lastBody()).toEqual({ model: 'recraft/recraft-v4.1-flash', prompt: `A poster\n\nReference SVG:\n${SVG_MARKUP}`, aspect_ratio: '1:1' });
+    await screen.findAllByRole('img', { name: 'A poster' });
+
+    // One raster slot (Recraft V4.1): the SVG leaves it free for a PNG.
+    await pickModel('Recraft V4.1');
+    expect(addReferenceButton().textContent).toBe('+ Add Reference Image');
+    await attachPng(container);
+    expect(screen.getByRole('button', { name: /Add SVG Context \(1\/1\)/ })).toBeTruthy();
+    expect(generateButton().disabled).toBe(false);
+    fireEvent.click(generateButton());
+    await waitFor(() => expect(providerCalls()).toHaveLength(2));
+    expect(lastBody()).toMatchObject({
+      model: 'recraft/recraft-v4.1', prompt: `A poster\n\nReference SVG:\n${SVG_MARKUP}`,
+      input_references: [{ type: 'image_url', image_url: { url: `data:image/png;base64,${PNG_1PX}` } }],
+    });
+  });
+
+  it('tells assistive tech why Generate is disabled', async () => {
+    const { container } = await renderImageTab('recraft/recraft-v4.1');
+    // Nothing typed yet: no warning on screen, but the button says what's missing.
+    expect(generateButton().disabled).toBe(true);
+    expect(description(generateButton())).toBe('Enter a prompt to generate.');
+    fireEvent.change(promptBox(), { target: { value: 'Make it night' } });
+    expect(generateButton().disabled).toBe(false);
+    expect(description(generateButton())).toBe('');
+
+    // A blocking reference issue is both the visible warning and the description.
+    await pickModel('Krea K3 Edit');
+    expect(generateButton().disabled).toBe(true);
+    expect(warnings()).toContain('This model needs at least 1 reference image. Add one to generate.');
+    expect(description(generateButton())).toBe('This model needs at least 1 reference image. Add one to generate.');
+
+    await attachPng(container);
+    expect(generateButton().disabled).toBe(false);
+    expect(description(generateButton())).toBe('');
   });
 
   it('attached references: the host refuses references to a text-only model even when the UI is bypassed', async () => {

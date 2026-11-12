@@ -9,6 +9,8 @@ import {
   mergeImageHistoryDraft,
   MAX_IMAGE_HISTORY_STORAGE_BYTES,
   IMAGE_HISTORY_DRAFT_RESERVE_BYTES,
+  IMAGE_HISTORY_DRAFT_WARNING,
+  IMAGE_HISTORY_STORAGE_WARNING,
 } from '../../../../../presentation/webview/hooks/domain/imageHistoryPersistence';
 import type { ImageGenerationPersistence } from '../../../../../presentation/webview/hooks/domain/useImageGeneration';
 import type { ConversationTurn, GeneratedImage, ImageThreadSettings } from '@messages';
@@ -78,5 +80,24 @@ it('reserves bounded draft space even for JSON-escaped input without dropping re
   const saved = mergeImageHistoryDraft(history, { model: '\u0000'.repeat(100000), aspectRatio: '1:1', resolution: 'auto', prompt: '\u0000'.repeat(100000) });
   expect(bytes(saved)).toBeLessThanOrEqual(smallBudget);
   expect(saved.conversationHistory).toBe(history.conversationHistory);
-  expect(saved.persistenceWarning).toBeTruthy();
+  expect(saved.draftWarning).toBe(IMAGE_HISTORY_DRAFT_WARNING);
+  // The draft note has its own field: the history warning stays what the bounding said.
+  expect(saved.persistenceWarning).toBeUndefined();
+});
+
+it('warns only about what this snapshot leaves out, never carrying a warning it is given', () => {
+  // A warning read back from an earlier snapshot (here, with the old
+  // concatenated draft note) must not survive into the next one.
+  const restored = { ...state(), persistenceWarning: `${IMAGE_HISTORY_STORAGE_WARNING} ${IMAGE_HISTORY_DRAFT_WARNING}`, draftWarning: IMAGE_HISTORY_DRAFT_WARNING };
+  restored.conversationHistory = [turn(1)];
+  const saved = boundedImageHistory(restored);
+  expect(saved.persistenceWarning).toBeUndefined();
+  expect(saved.draftWarning).toBeUndefined();
+  expect(JSON.stringify(saved)).not.toContain('warning');
+
+  const merged = mergeImageHistoryDraft(saved, { model: settings.model, aspectRatio: '1:1', resolution: 'auto', prompt: 'x'.repeat(40000) });
+  expect(merged.draftWarning).toBe(IMAGE_HISTORY_DRAFT_WARNING);
+  // Merging again (the next keystroke) gives the same note, not a longer one.
+  expect(mergeImageHistoryDraft(merged, { model: settings.model, aspectRatio: '1:1', resolution: 'auto', prompt: 'y'.repeat(40001) }).draftWarning)
+    .toBe(IMAGE_HISTORY_DRAFT_WARNING);
 });
