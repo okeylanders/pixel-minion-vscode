@@ -495,6 +495,8 @@ An independent reviewer read `b8dc618..4af8acd` before the PR was opened. No blo
 
 Same in Frame (report upstream): m1–m4.
 
+Astra's review of PR #18 ([report](../pr-reviews/pr-18-image-modes-review.md)) found one more: **R18-1** (P2/medium), a known raster model with a `:variant` slipped past the SVG raster refusal. ✅ Fixed in `790f3c4` by classifying the model an id names.
+
 ### Manual checks still owed (owner-run)
 
 The installed-VSIX pass at 360 px in Dark, Light and High Contrast now includes the pill, Earlier threads and the Settings custom-id fields. P3's paid checks still apply; P4 makes no provider calls.

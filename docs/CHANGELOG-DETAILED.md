@@ -496,6 +496,10 @@ An independent reviewer read `b8dc618..4af8acd` before the PR was opened. No blo
 - **n6** (`4b77278`): `ArchivedImageThread` loses its `persistenceWarning` and `recoveryWarning`. An archive never continues, so its recovery note had nothing to say; a thread that a failed Generate restores keeps its note.
 - `efa6bcb`: the hook's Frame-sync header lists the P4 review fixes.
 
+#### PR #18 review follow-up (`790f3c4`)
+
+- **R18-1** (Astra, P2/medium): `svgModelRefusal` compared the whole id, so a known raster model with a `:variant` the Settings field accepts (`black-forest-labs/flux.2-pro:nitro`), or other casing, passed as an unknown text model and reached the text client. `svgRoutes.ts` now classifies the lower-cased base before any `:variant` for refusal, catalog kind and the `-vector` rule, and still dispatches the full id; `customModelIdFor` maps the model part of a curated id with a variant to the curated casing. Regression cases cover the route helpers, the Settings field and the host; restoring the whole-id comparison fails three. Report: [pr-18-image-modes-review.md](pr-reviews/pr-18-image-modes-review.md). Tests 1,266 → 1,268.
+
 Same in Frame (report upstream): m1, m2, m3 and m4 apply to Frame's radio pill and hook as ported.
 
 #### Not done here (deferred)

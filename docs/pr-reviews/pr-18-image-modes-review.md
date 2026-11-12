@@ -5,12 +5,13 @@
 - Reviewed base: `befd256731db9257ab50606d29d6a969d310ae11` (PR #17)
 - Date: 2026-11-12
 - Verdict: **changes requested: one medium finding.** No merge performed.
+- **Status:** R18-1 fixed in `790f3c4` (classification by base model id; regression cases through the route helpers, the Settings field and the host). Validation rows R18-M1/M2 remain owner-run. 63 suites / 1,268 tests.
 
 ## Status ledger
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| R18-1 | P2 / Medium | Known raster model variants bypass SVG preflight refusal | ⏳ Open |
+| R18-1 | P2 / Medium | Known raster model variants bypass SVG preflight refusal | ✅ Fixed in `790f3c4` |
 | R18-M1 | Validation | Installed-VSIX 360 px Dark/Light/High Contrast, keyboard and accessibility checks | ⏳ Open; not performed in this review |
 | R18-M2 | Validation | Remaining paid provider checks inherited from #17 | ⏳ Open; no paid provider calls performed |
 | R18-D1 | Baseline debt | Lint remains at 9 errors / 20 warnings | ↪ Deferred (existing configuration/debt, not introduced here) |
@@ -58,3 +59,18 @@ At the reviewed source:
 - GitHub commit-status and PR-triggered workflow queries returned no entries for the reviewed source; no remote-CI-green claim.
 
 Native VS Code, fresh visual rendering/theme/keyboard/accessibility acceptance and live-provider checks were not performed. Existing PR screenshot/live-check claims are not represented as independently repeated.
+
+## Resolution Status
+
+- **R18-1 ✅ Fixed in `790f3c4`.** `src/shared/svg/svgRoutes.ts` classifies the model an id names, its base before any `:variant`, lower-cased:
+  - `svgModelRefusal` and `isNativeVectorSvgModel` both use this key. Catalog kinds and the Image catalog's raster set are keyed the same way.
+  - The full id is still what gets dispatched.
+  - `customModelIdFor` (`CustomModelIdField.tsx`) now maps the model part of a curated id with a variant to the curated casing, keeping the variant (`Recraft/Recraft-V4.1-Vector:floor` → `recraft/recraft-v4.1-vector:floor`).
+  - Regression cases:
+    - `svgRoutes.test.ts`: every Image-catalog id with `:nitro` / `:floor` and upper-cased is refused; every SVG-catalog id with a variant or other casing keeps its route; vector and text variants pass.
+    - `SettingsViewCustomModel.test.tsx`: the Settings SVG field refuses `black-forest-labs/flux.2-pro:nitro`, other casings and Recraft variants, and stores vector and text variants.
+    - `SVGOrchestrator.test.ts`: the host refuses the same ids before either client is called and dispatches `recraft/recraft-v4.1-vector:floor` under its full id on the vector route.
+  - Mutation check: restoring the whole-id comparison fails three of these tests.
+  - No paid call made.
+- **R18-M1 / R18-M2** ⏳ unchanged: owner-run.
+- **R18-D1** ↪ unchanged: the lint baseline is still 9 errors / 20 warnings.
