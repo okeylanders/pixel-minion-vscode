@@ -12,9 +12,12 @@
  * - Seed chip only when the route took a seed
  * - Save button integration
  *
+ * - "Start … from this image": a new thread with this image as its reference
+ *
  * After frame-minion@40e7949 components/image/ImageCard.tsx (natural size,
- * seed visibility). Pixel deltas: natural dimensions win over the requested
- * ratio, and Frame's video/orchestrator action groups are not ported.
+ * seed visibility, start-from-image). Pixel deltas: natural dimensions win
+ * over the requested ratio, and Frame's video/orchestrator action groups are
+ * not ported.
  */
 import React from 'react';
 import { GeneratedImage } from '../../../../shared/types/messages/imageGeneration';
@@ -24,6 +27,9 @@ import '../../styles/components/image-card.css';
 export interface ImageCardProps {
   image: GeneratedImage;
   onSave: (image: GeneratedImage) => void;
+  /** Absent: the action isn't offered (busy, or the next thread's model takes no reference). */
+  onStartFromImage?: (image: GeneratedImage) => void;
+  startFromImageLabel?: string;
   saving?: boolean;
   saved?: boolean;
 }
@@ -31,6 +37,8 @@ export interface ImageCardProps {
 export const ImageCard: React.FC<ImageCardProps> = ({
   image,
   onSave,
+  onStartFromImage,
+  startFromImageLabel,
   saving = false,
   saved = false,
 }) => {
@@ -86,6 +94,11 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         </div>
         <SaveButton onClick={handleSave} saving={saving} saved={saved} />
       </div>
+      {onStartFromImage && (
+        <button type="button" className="image-card-action" onClick={() => onStartFromImage(image)}>
+          {startFromImageLabel ?? 'Start from this image'}
+        </button>
+      )}
     </div>
   );
 };

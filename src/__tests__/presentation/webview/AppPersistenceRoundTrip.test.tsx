@@ -16,6 +16,7 @@ import { MessageEnvelope, MessageType, GeneratedImage, createEnvelope } from '@m
 import { App } from '../../../presentation/webview/App';
 import {
   boundedImageHistory,
+  IMAGE_HISTORY_ARCHIVE_WARNING,
   IMAGE_HISTORY_DRAFT_WARNING,
   IMAGE_HISTORY_RESTORED_WARNING,
   IMAGE_HISTORY_STORAGE_WARNING,
@@ -42,6 +43,8 @@ const sent = (type: MessageType): MessageEnvelope[] =>
 const deliver = (message: MessageEnvelope) =>
   act(() => { window.dispatchEvent(new MessageEvent('message', { data: message })); });
 const promptBox = () => screen.getByPlaceholderText('Describe the image you want to generate...');
+// A fresh install opens in Conversation (the default model has a chat route).
+const generateButton = () => screen.getByRole('button', { name: /⚡ (Generate|Start Conversation)/ });
 // 1.5M base64 characters: about 3 MiB as counted, so one fits the lowered budget and two don't.
 const bigImage = (turn: number): GeneratedImage => ({
   id: `image-${turn}`, data: `data:image/png;base64,${'A'.repeat(1_500_000)}`,
@@ -64,7 +67,7 @@ beforeEach(() => {
 it('warns while the snapshot drops images, explains restored turns after a reload, and clears with the thread', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [bigImage(1)]);
   // One large image fits: nothing to warn about.
   expect(screen.queryByText(IMAGE_HISTORY_STORAGE_WARNING)).toBeNull();
@@ -86,7 +89,7 @@ it('warns while the snapshot drops images, explains restored turns after a reloa
   expect(screen.getByText(IMAGE_HISTORY_RESTORED_WARNING)).toBeTruthy();
   expect(savedImage().persistenceWarning).toBeUndefined();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Clear conversation' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear thread' }));
   expect(screen.queryByText(IMAGE_HISTORY_RESTORED_WARNING)).toBeNull();
   expect(savedImage().conversationHistory).toEqual([]);
   second.unmount();
@@ -100,7 +103,7 @@ it('warns while the snapshot drops images, explains restored turns after a reloa
 it('shows no warning when nothing was dropped, before or after a reload', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [smallImage]);
   expect(screen.queryAllByRole('status').map(element => element.textContent).join('')).not.toMatch(/local history|local storage/);
   first.unmount();
@@ -114,7 +117,7 @@ it('shows no warning when nothing was dropped, before or after a reload', () => 
 it('keeps the shortened-draft note to one sentence, in its own field, without re-bounding the history per keystroke', () => {
   const first = render(<App />);
   fireEvent.change(promptBox(), { target: { value: 'A knight' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+  fireEvent.click(generateButton());
   answer(sent(MessageType.IMAGE_GENERATION_REQUEST)[0], 1, [smallImage]);
 
   const long = 'x'.repeat(40_000);
@@ -142,4 +145,65 @@ it('keeps the shortened-draft note to one sentence, in its own field, without re
   expect((promptBox() as HTMLTextAreaElement).value).toHaveLength(4096);
   expect(screen.queryByText(IMAGE_HISTORY_DRAFT_WARNING)).toBeNull();
   expect(screen.queryByText(/local history/)).toBeNull();
+});
+
+describe('Earlier threads in the saved snapshot', () => {
+  /** Start a new thread from the prompt box; the host answers with `conversationId`. */
+  function startThread(prompt: string, conversationId: string) {
+    fireEvent.change(promptBox(), { target: { value: prompt } });
+    fireEvent.click(generateButton());
+    const request = sent(MessageType.IMAGE_GENERATION_REQUEST).pop()!;
+    deliver(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration',
+      { conversationId, images: [{ ...smallImage, id: `${conversationId}-image`, prompt }], turnNumber: 1 }, request.correlationId));
+  }
+  const deleteButtons = () => screen.queryAllByRole('button', { name: 'Delete thread' });
+
+  it('notes dropped threads only while the snapshot drops them, never from restored state', () => {
+    const first = render(<App />);
+    for (let index = 1; index <= 7; index++) startThread(`Thread ${index}`, `img-${index}`);
+    // Six Earlier threads live; the snapshot keeps five, and says so.
+    expect(deleteButtons()).toHaveLength(6);
+    expect(savedImage().archivedThreads?.map(thread => thread.id)).toEqual(['img-2', 'img-3', 'img-4', 'img-5', 'img-6']);
+    expect(savedImage().persistenceWarning).toBe(IMAGE_HISTORY_ARCHIVE_WARNING);
+    expect(screen.getByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeTruthy();
+    first.unmount();
+
+    // Reload: the five come back, nothing more is being left out, so no note.
+    const second = render(<App />);
+    expect(deleteButtons()).toHaveLength(5);
+    expect(screen.queryByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeNull();
+    expect(savedImage().persistenceWarning).toBeUndefined();
+    // A sixth again: the note is recomputed, not remembered.
+    startThread('Thread 8', 'img-8');
+    expect(screen.getByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeTruthy();
+    // Delete them all and clear: the note goes, and stays gone after a reload.
+    while (deleteButtons().length) fireEvent.click(deleteButtons()[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear thread' }));
+    expect(screen.queryByText(IMAGE_HISTORY_ARCHIVE_WARNING)).toBeNull();
+    expect(savedImage()).toMatchObject({ archivedThreads: [], conversationHistory: [] });
+    expect(savedImage().persistenceWarning).toBeUndefined();
+    second.unmount();
+
+    render(<App />);
+    expect(deleteButtons()).toHaveLength(0);
+    expect(screen.queryByText(/will not survive reload/)).toBeNull();
+  });
+
+  it('brings back the thread a Generate was replacing when the webview reloads mid-request, unreleased', () => {
+    const first = render(<App />);
+    startThread('A knight', 'img-1');
+    fireEvent.change(promptBox(), { target: { value: 'A castle' } });
+    fireEvent.click(generateButton());
+    // While it runs, the old thread shows under Earlier threads...
+    expect(screen.getByText('Earlier threads')).toBeTruthy();
+    // ...but the snapshot still has it as the current thread, and nothing was released.
+    expect(savedImage()).toMatchObject({ conversationId: 'img-1', archivedThreads: [] });
+    expect(sent(MessageType.IMAGE_GENERATION_CLEAR)).toHaveLength(0);
+    first.unmount();
+
+    render(<App />);
+    expect(screen.queryByText('Earlier threads')).toBeNull();
+    expect(screen.getAllByRole('img', { name: 'A knight' })).toHaveLength(1);
+    expect(screen.getByPlaceholderText('Continue the conversation...')).toBeTruthy();
+  });
 });

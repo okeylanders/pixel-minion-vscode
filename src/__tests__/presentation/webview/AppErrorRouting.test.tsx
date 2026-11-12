@@ -110,7 +110,7 @@ describe('a save the host failed to handle (router fallback ERROR)', () => {
     render(<App />);
     const prompt = screen.getByPlaceholderText('Describe the image you want to generate...');
     fireEvent.change(prompt, { target: { value: 'A knight' } });
-    fireEvent.click(screen.getByRole('button', { name: /Generate/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Start Conversation/ }));
     const [first] = sent(MessageType.IMAGE_GENERATION_REQUEST);
     deliver(createEnvelope(MessageType.IMAGE_GENERATION_RESPONSE, 'extension.imageGeneration', {
       conversationId: 'image-conv',

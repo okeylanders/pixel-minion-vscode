@@ -11,8 +11,13 @@ import { SecretInput } from '../common';
 import { ModelSelector } from '../image/ModelSelector';
 import { SVGModelSelector } from '../svg/SVGModelSelector';
 import { OFF_LIST_MODEL_HELP } from '../shared/modelBrowserOptions';
+import { CustomModelIdField } from '../shared/CustomModelIdField';
 import { UseSettingsReturn } from '@hooks';
 import { OPENROUTER_IMAGE_MODELS, OPENROUTER_SVG_MODELS } from '@shared/models';
+import { svgModelRefusal } from '../../../../shared/svg/svgRoutes';
+
+const IMAGE_MODEL_IDS = OPENROUTER_IMAGE_MODELS.map(model => model.id);
+const SVG_MODEL_IDS = OPENROUTER_SVG_MODELS.map(model => model.id);
 
 export interface SettingsViewProps {
   settings: UseSettingsReturn;
@@ -81,6 +86,12 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
             onModelChange={model => updateSetting('imageModel', model)}
             unavailableLabel={OFF_LIST_MODEL_HELP}
           />
+          <CustomModelIdField
+            label="Custom image model id"
+            catalogIds={IMAGE_MODEL_IDS}
+            help="Any OpenRouter image model. A custom id runs as Single Shot with automatic dimensions; Conversation needs a verified route."
+            onUse={model => updateSetting('imageModel', model)}
+          />
           <SVGModelSelector
             label="SVG model"
             subtitle="Choose native vector generation or an editable SVG-code model."
@@ -88,6 +99,13 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
             selectedModel={svgModel}
             onModelChange={model => updateSetting('svgModel', model)}
             unavailableLabel={OFF_LIST_MODEL_HELP}
+          />
+          <CustomModelIdField
+            label="Custom SVG model id"
+            catalogIds={SVG_MODEL_IDS}
+            refusal={svgModelRefusal}
+            help="Any OpenRouter model. An id ending in -vector (a vector model, such as Recraft’s) makes native vector SVG; any other writes SVG code, so it must be a text model."
+            onUse={model => updateSetting('svgModel', model)}
           />
         </div>
       </section>

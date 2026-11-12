@@ -8,7 +8,10 @@
  *
  * Pixel deltas from Frame: `label`, `subtitle` and `footerLabel` are props
  * (Frame hard-codes "Model" and frame-specific copy), and Pixel's field
- * styles live in model-browser.css rather than model-selector.css.
+ * styles live in model-browser.css rather than model-selector.css. When the
+ * list is filtered (the Image tab lists only models the selected mode
+ * supports), a catalog model outside it keeps its own name rather than
+ * reading "Custom: <id>" (`catalog`); the helper text says why it is listed.
  */
 import React from 'react';
 import { ImageModelDefinition } from '../../../../shared/types/providers';
@@ -23,6 +26,8 @@ export interface ModelSelectorProps {
   unavailableLabel?: string;
   label?: string;
   subtitle?: string;
+  /** Every curated model, to name a selection the filtered `models` omit. */
+  catalog?: ImageModelDefinition[];
 }
 
 export const IMAGE_MODEL_SUBTITLE =
@@ -36,11 +41,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled = false,
   label = 'Model',
   subtitle = IMAGE_MODEL_SUBTITLE,
+  catalog,
 }) => {
   const hasSelected = models.some((m) => m.id === selectedModel);
+  const curated = catalog?.find((m) => m.id === selectedModel);
   const options = hasSelected
     ? models
-    : [...models, { id: selectedModel, displayName: `Custom: ${selectedModel}` }];
+    : [...models, curated ?? { id: selectedModel, displayName: `Custom: ${selectedModel}` }];
   const browserOptions = options.map(modelDefinitionToBrowserOption);
 
   return (

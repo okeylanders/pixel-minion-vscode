@@ -93,3 +93,22 @@
   grid-row: 1;
   grid-column: 2;
 }
+
+/* "Start … from this image" (after Frame's image-card-frame-action). */
+.image-card-action {
+  margin: 0 12px 10px;
+  padding: 5px 10px;
+  color: var(--px-btn-text);
+  background: var(--px-btn);
+  border: 1px solid var(--px-border-strong);
+  border-radius: var(--px-radius-sm);
+  cursor: pointer;
+  font-family: var(--px-sans);
+  font-size: 11.5px;
+  text-align: center;
+  transition: background 100ms;
+}
+
+.image-card-action:hover {
+  background: var(--px-btn-hover);
+}

@@ -69,15 +69,17 @@
   font-size: 14px;
 }
 
-/* Empty state for the output card. */
+/* Empty state for the output card. Anchored near the top of the card, not
+   centred in it: the card grows to fill a tall sidebar, and a centred note
+   ended up far below the controls, where it read as an empty panel. */
 .generation-empty {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
-  padding: 24px 12px;
+  padding: 32px 12px 24px;
   text-align: center;
 }
 

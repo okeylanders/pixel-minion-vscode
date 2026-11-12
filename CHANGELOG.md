@@ -44,6 +44,10 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
   - Conversations are saved per workspace, and a crash while saving keeps the previous copy.
   - A conversation that grows past 64 MB keeps working while VS Code stays open, and says up front that it can't be picked up again after a restart.
   - Closing and reopening the Pixel Minion view while an image is generating no longer disturbs the conversation.
+- **Choose Conversation or Single Shot** - A toggle at the top of the Image tab picks how your next thread works. Conversation keeps every earlier message and image as context (models with a conversational route only); Single Shot sends just your prompt and the images you attach, and a follow-up works from the latest image. The model list shows only the models that support the chosen mode, and a short note says which OpenRouter endpoint it uses. A new install starts in the mode that suits your default model. The toggle changes only when you click it or press Enter or Space, so moving through it with the keyboard never starts a new thread.
+- **Earlier threads** - Starting a new thread, or switching modes, keeps the previous one under "Earlier threads", where you can look back, save its images, start again from one of them, or delete it. The five most recent earlier threads are kept when VS Code reloads, and a note says when older ones won't be. If a new Generate fails, the thread you were on comes back instead of moving to Earlier threads.
+- **Start a new thread from any image** - Each generated image has a button that starts a new conversation or Single Shot with that image attached, shown when the selected model can take that image.
+- **Custom model ids in Settings** - Type any OpenRouter model id (`vendor/model`) as the default Image or SVG model, for models that aren't in the list yet. A custom image model runs as Single Shot with automatic dimensions. An id that differs from a listed model only in capitalisation selects the listed model, and an image (raster) model is refused as the SVG default because it can't produce SVG.
 - **New SVG code models**
   - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.1 and ⭐ GPT-6.1 Sol
   - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
@@ -54,12 +58,14 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **SVG models are grouped by how they make SVG** - "Native SVG" (Recraft) or "SVG code". Code models show their per-token price, with an approximate cost per SVG and a note when the model reasons by default.
 - **Older SVG models keep working** - Claude Opus 5, Claude Fable 5, GPT-5.6 Sol, GPT-5.6 Sol Pro, GPT-5.4 and Gemini 3.1 Pro left the list for their newer versions. If one of them is selected, it stays selected and is labelled "Custom".
 - **GPT-5 Image Mini** is labelled "retiring Dec 1, 2026", the date OpenRouter has announced.
-- **Refinements of threads started before this update** continue by sending the latest image with your new prompt (earlier prompts aren't resent), because there is no saved conversation to replay. If such a thread used an aspect ratio its model doesn't offer, it continues at one the model does.
+- **Threads started before this update open as Single Shot**: a refinement sends the latest image with your new prompt (earlier prompts aren't resent), because there is no saved conversation to replay. If such a thread used an aspect ratio its model doesn't offer, it continues at one the model does.
 - **Generated images keep their real shape** - The result card follows the image's actual dimensions instead of a square, so a model that picks its own size is shown as it came back.
 - **Image history saved between sessions has a size limit** - Very large image histories keep your prompts and settings but may leave out older previews; a note says so while it applies, and a refinement that needs a missing image tells you how to continue. Save the images you want to keep.
 - **Very tall or wide images fit the panel** - A 1:8 or 8:1 result is shown letterboxed in a card of normal height instead of a card thousands of pixels tall.
 - **Saved models that are no longer available switch automatically** to a working model, with a note in the Pixel Minion output log: Grok Imagine (Image Quality) → Grok Imagine Image 2.0, Claude Opus 4 and Claude Opus 5 Fast → Claude Opus 5.5, and the Riverflow V2 preview tiers → Riverflow V2.5.
 - The model picker in each tab is the same height and style as the fields beside it.
+- In a wider sidebar the Image tab's controls sit in two columns (Model and Aspect Ratio, then Resolution and Seed), as in Frame Minion.
+- The "Your images appear here" note now sits just below the controls instead of far down a tall sidebar, and says what to press for the selected mode.
 
 ### Fixed
 

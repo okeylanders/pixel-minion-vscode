@@ -1,6 +1,6 @@
 # Pixel Minion ← Frame Minion: image-generator parity and port plan
 
-**Status:** Investigation complete, 2026-11-07 (no code changed, no paid generations). P3 implemented 2026-11-12: see [§8](#8-p3-as-built-2026-11-12).
+**Status:** Investigation complete, 2026-11-07 (no code changed, no paid generations). P3 implemented 2026-11-12 (PR #17): see [§8](#8-p3-as-built-2026-11-12). P4 implemented 2026-11-12, stacked on P3: see [§9](#9-p4-as-built-2026-11-12).
 **Decision:** [Declared] Pixel's image generator should do what Frame's now does, with nothing that uses fal.ai, and Pixel's model picker should look and behave the same as Frame's.
 **Inspected:**
 - Frame `40e7949` (detached worktree of `feat/video-models-sprint-06`), which contains `aa1bab1 23be8e8 eea465c 51ef963 5492f94 a61d131 658396d b138cb7 ce4ae49`.
@@ -351,7 +351,7 @@ The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, P
 | 16 | MIME detection, natural dimensions | ✅ `cfb0d34` |
 | 21 | Text-only models | ✅ `cfb0d34` |
 | 25 | Catalog breadth | ✅ 35 → 54 rows |
-| 1, 10, 11, 20, 22 | Mode toggle, archives, start-from-image, custom ids in Settings, mode copy | ⏳ P4 |
+| 1, 10, 11, 20, 22 | Mode toggle, archives, start-from-image, custom ids in Settings, mode copy | ✅ P4 (§9) |
 
 ### Ported vs adapted
 
@@ -423,3 +423,80 @@ The key's workspace is BYOK-restricted, so the live run reached only OpenAI (aud
 ### Inherited limitations (documented, not fixed)
 
 F-7 (each Conversation turn rewrites its whole transcript; no expiry; tombstones stay), F-10 (reloading mid-generation strands the Conversation; the next follow-up fails with "visible history differ"), F-11 (the latest image is a user reference even when signed assistant images are replayed, so it is billed twice), R-4 (deleting an unknown Single Shot id after a restart writes a small tombstone). Also observed in the live run: GPT-5 Image Mini ignored a chat `aspect_ratio` once; BYOK turns report `cost: 0`.
+
+## 9. P4 as built (2026-11-12)
+
+**Status:** ✅ Implemented on `claude/pixel-minion-image-modes-dhbqpd` (`c9c61fb`, `aced642`, `6816817`; first built as `81d095e`, `9a7cbb2`, `c072a8f` on P3's `b8dc618`), rebased onto P3's review fixes, with pre-PR independent-review fixes `967a4a4`…`efa6bcb` ([table below](#pre-pr-independent-review-r6-p4)). Awaiting Astra's review. Webview only, apart from the SVG raster refusal (n2): the host contract is P3's.
+
+### Status by item (parity matrix rows touched)
+
+| Row | Item | Status |
+| --- | --- | --- |
+| 1 | Conversation \| Single Shot control (two `aria-pressed` buttons after review m3; Frame: radios); `setMode` archives the current thread | ✅ `c9c61fb` (refused while a request or enhance is in flight) |
+| 10 | Earlier threads + Delete thread | ✅ `c9c61fb`; persisted snapshot keeps five (`MAX_PERSISTED_IMAGE_ARCHIVES`) |
+| 11 | Start a new thread from an image | ✅ `c9c61fb`, on current and earlier threads; offered only where the draft model's route takes that image (`96ca422`) and hidden while busy |
+| 20 | Custom model ids | ✅ policy in P3; the picker's helper per mode in `c9c61fb`; Settings free-text entry in `aced642` (ledger C14) |
+| 22 | Mode and endpoint copy, "Start Conversation", `submitLabel` | ✅ `c9c61fb` |
+| 9 | Untagged history → Single Shot | ✅ P3; the toggle starts from the restored thread's mode |
+| — | Picker filtered by mode | ✅ `c9c61fb` (10 Conversation / 54 Single Shot) |
+| — | Frame's two-column control grid | ✅ `c9c61fb`: from 480 px, a lone last control spans both columns |
+| — | Empty state visible in a tall sidebar | ✅ `6816817` (was centred in a card that fills the sidebar) |
+
+### Ported vs adapted
+
+- **Verbatim (modulo Pixel's request ids and tokens):** `setMode`, `archiveCurrentThread`, `startFromImage`, the Earlier-threads markup, the mode pill's look (as buttons: see Adapted), the endpoint copy, `submitLabel`, the archive cap and archive-first image omission in `imageHistoryPersistence`, Frame's hook tests.
+- **Adapted:**
+  - Archiving releases the host thread (`IMAGE_GENERATION_CLEAR`). Frame keeps it until Delete; in Pixel an earlier thread never continues. A mode switch and start-from-image release at once; Generate archives provisionally and releases only on success (P3's W3 rule), restoring the thread on failure. Delete still posts the clear, which writes nothing on the host.
+  - The mode control is two `aria-pressed` buttons rather than radios, so arrow keys can't archive a thread (review m3); until the user commits, the mode follows the configured model (review m1).
+  - Restored state is validated (`restoredImageState.ts`, review n4).
+  - `ModelSelector` takes the full `catalog` so a catalog model outside the mode's list keeps its name, with a helper that says why. Frame labels it "Custom: <id>" with "Choose a model with a verified … route".
+  - The pill and grid use `--px-*` tokens and Pixel's card padding; high contrast draws pressed as a solid inset `contrastActiveBorder` ring and focus as a separate dashed ring.
+  - The empty state (Pixel-only) follows the mode.
+  - The Settings custom-id fields are Pixel-only (ledger C14: Pixel's Settings had free-text ids before PR #12).
+- **Not ported:** the image card's video and orchestrator action groups.
+
+### Acceptance (§5 row P4, Frame's manual smoke list minus MVO and desktop)
+
+| Check | Evidence |
+| --- | --- |
+| Switching modes keeps the old thread below and starts an empty one | hook tests; harness `image-earlier-threads` |
+| Mode switch disabled while generating | hook test; both buttons `disabled` |
+| Conversation lists only verified-route models; Single Shot lists all | hook test (exact counts) |
+| A custom id works in Single Shot and is refused in Conversation, staying visible | hook tests; P3 host tests |
+| Start from an image attaches it and archives the thread | hook and view tests |
+| Delete thread removes it and releases it on the host | hook test |
+| Reload keeps the mode and five earlier threads | hook and persistence tests |
+
+### Visual check
+
+Harness `scratchpad/roundP4/visual/harness` (new Pixel and Frame states for Single Shot, a Single Shot thread and Earlier threads), Dark Modern / Light Modern / Dark HC at 320 and 480 px, plus 480 × 1400 and 480 × 640 for the empty state. Fixed from the shots: the HC pill outline, the custom-id field's label style, the empty state's position. Re-shot after the review fixes (54 shots plus mode-control focus and SVG-only uploader states); the first focus ring lost to the app-wide button rule in dark themes and was redrawn as an `::after` ring.
+
+Frame differences seen and left: Frame shows Seed for Nano Banana 2 in Single Shot (the Image API reports no seed; Pixel follows it), Frame keeps its controls stacked at 480 px, and Frame prints a stray `0` under the uploader when a model's minimum reference count is 0 (upstream candidate).
+
+### Pre-PR independent review (R6-P4)
+
+An independent reviewer read `b8dc618..4af8acd` before the PR was opened. No blockers; the thread state machine held. Fixed after rebasing onto P3's review fixes; details in the [detailed changelog](../CHANGELOG-DETAILED.md#pre-pr-review-follow-up-p4).
+
+| Id | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| M1 | Major | Earlier-threads storage note carried forward from restored state; permanent after a seventh thread | ✅ Fixed in `967a4a4` (with P3 `8c5d592`) |
+| m1 | Minor | Fresh install took its mode from the placeholder model, not the configured default | ✅ Fixed in `b31b744` |
+| m2 | Minor | High-contrast keyboard focus on the pill invisible (WCAG 2.4.7) | ✅ Fixed in `35381b0` |
+| m3 | Minor | Arrow keys in the radio pill archived and released the thread; focus lost after start-from-image and Delete | ✅ Fixed in `35381b0`, `8b4db36` |
+| m4 | Minor | A test that couldn't fail; two guards uncovered | ✅ Fixed in `f7ff226` |
+| n1 | Nit | Custom-id validation too loose; mixed-case catalog copies became permissive custom ids | ✅ Fixed in `6d2a254` |
+| n2 | Nit | Any `recraft/` SVG id took the vector route; a raster id was billed then failed | ✅ Fixed in `424bf8a` (`-vector` rule + raster refusal) |
+| n3 | Nit | Delete's repeated release wrote a tombstone | ✅ Fixed in P3 `23f53ad`; confirmed in `f5e1989` |
+| n4 | Nit | Restored state not validated (a malformed archive list crashed the tab permanently) | ✅ Fixed in `c30805a` |
+| n5 | Nit | Start-from-image offered where the draft can't use the image | ✅ Fixed in `96ca422` |
+| n6 | Nit | Dead warning fields on archived threads | ✅ Fixed in `4b77278` |
+| — | Residual | Faint card-border line through the unpressed pill half in Dark HC | ↪ Deferred (pre-existing, cosmetic) |
+| — | Residual | Mixed-case custom ids outside the catalog stored as typed | ↪ Deferred (OpenRouter's case rules unknown) |
+
+Same in Frame (report upstream): m1–m4.
+
+Astra's review of PR #18 ([report](../pr-reviews/pr-18-image-modes-review.md)) found one more: **R18-1** (P2/medium), a known raster model with a `:variant` slipped past the SVG raster refusal. ✅ Fixed in `790f3c4` by classifying the model an id names.
+
+### Manual checks still owed (owner-run)
+
+The installed-VSIX pass at 360 px in Dark, Light and High Contrast now includes the pill, Earlier threads and the Settings custom-id fields. P3's paid checks still apply; P4 makes no provider calls.

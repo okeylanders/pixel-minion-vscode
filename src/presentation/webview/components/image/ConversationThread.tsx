@@ -12,6 +12,10 @@ import '../../styles/components/conversation-thread.css';
 export interface ConversationThreadProps {
   turns: ConversationTurn[];
   onSaveImage: (image: GeneratedImage) => void;
+  onStartFromImage?: (image: GeneratedImage) => void;
+  /** Whether `onStartFromImage` applies to this image (e.g. its format); all when omitted. */
+  canStartFromImage?: (image: GeneratedImage) => boolean;
+  startFromImageLabel?: string;
   savingImageIds?: ReadonlySet<string>;
   savedImageIds?: ReadonlySet<string>;
 }
@@ -36,6 +40,9 @@ const NO_IDS: ReadonlySet<string> = new Set();
 export const ConversationThread: React.FC<ConversationThreadProps> = ({
   turns,
   onSaveImage,
+  onStartFromImage,
+  canStartFromImage,
+  startFromImageLabel,
   savingImageIds = NO_IDS,
   savedImageIds = NO_IDS,
 }) => {
@@ -63,6 +70,8 @@ export const ConversationThread: React.FC<ConversationThreadProps> = ({
                 key={image.id}
                 image={image}
                 onSave={onSaveImage}
+                onStartFromImage={canStartFromImage && !canStartFromImage(image) ? undefined : onStartFromImage}
+                startFromImageLabel={startFromImageLabel}
                 saving={savingImageIds.has(image.id)}
                 saved={savedImageIds.has(image.id)}
               />

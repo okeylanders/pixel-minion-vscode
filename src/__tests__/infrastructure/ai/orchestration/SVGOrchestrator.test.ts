@@ -221,6 +221,30 @@ describe('SVGOrchestrator', () => {
       expect(vectorClient.createCompletion).not.toHaveBeenCalled();
     });
 
+    it('refuses a raster image model before calling either client (review P4-n2)', async () => {
+      const textClient = buildClient(RAW_SVG);
+      const vectorClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+      orchestrator.setVectorImageClient(vectorClient);
+
+      for (const model of ['recraft/recraft-v4.1', 'google/gemini-3-pro-image', 'recraft/recraft-v9',
+        // A :variant or other casing names the same raster model (PR #18 R18-1).
+        'black-forest-labs/flux.2-pro:nitro', 'Recraft/Recraft-V4.1:floor', 'GOOGLE/GEMINI-3-PRO-IMAGE']) {
+        await expect(orchestrator.generateSVG('a red star', { model, aspectRatio: '1:1' }))
+          .rejects.toThrow(`${model} makes raster images, not SVG.`);
+      }
+      expect(textClient.createCompletion).not.toHaveBeenCalled();
+      expect(vectorClient.createCompletion).not.toHaveBeenCalled();
+      // A vector-named id off the catalog still takes the vector route.
+      await orchestrator.generateSVG('a red star', { model: 'recraft/recraft-v9-vector', aspectRatio: '1:1' });
+      expect(vectorClient.createCompletion).toHaveBeenCalledTimes(1);
+      // So does a curated vector model with a variant, dispatched under its full id.
+      await orchestrator.generateSVG('a red star', { model: 'recraft/recraft-v4.1-vector:floor', aspectRatio: '1:1' });
+      expect(vectorClient.createCompletion).toHaveBeenCalledTimes(2);
+      expect(vectorClient.createCompletion.mock.calls[1][1]).toEqual(expect.objectContaining({ model: 'recraft/recraft-v4.1-vector:floor' }));
+      expect(textClient.createCompletion).not.toHaveBeenCalled();
+    });
+
     it('gives code models room to reason and still finish the SVG', async () => {
       const textClient = buildClient(RAW_SVG);
       orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);

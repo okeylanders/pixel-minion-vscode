@@ -436,6 +436,82 @@ Same defects in Frame (report upstream): W1, W2, W3, W6, N3 and H7; F-1 (H3) is 
 ---
 
 
+### P4: Conversation | Single Shot toggle and threads (`claude/pixel-minion-image-modes-dhbqpd`, stacked on P3)
+
+Roadmap phase P4. Commits `c9c61fb` (toggle, Earlier threads, start-from-image, filtered picker, two-column controls), `aced642` (Settings custom ids, ledger C14), `6816817` (empty-state placement), rebased onto P3's review fixes (`bb4bd5a` updates P3's tests for the toggle), then the pre-PR review fixes `967a4a4`…`efa6bcb` ([below](#pre-pr-review-follow-up-p4); sections here describe the result). Plan: [parity plan §9](plans/frame-image-parity-plan.md#9-p4-as-built-2026-11-12). Webview only, apart from the SVG raster refusal (review n2); the host contract is P3's.
+
+#### User-facing
+
+- The mode pill (Frame's `.image-mode-selector` look, on `--px-*` tokens) sits on the input card's top border: two native buttons with `aria-pressed` in a labelled group (Frame uses radios), switching only on click, Enter or Space, disabled while a generation or enhance runs. Ledger D22.
+- The mode applies to the next thread. The output card names the thread on screen by its own mode (`threadSettings.mode`); the endpoint note under the controls describes the selected one (Frame's `imageModeEndpointDescription`, plus "Longer conversations may cost more" and "Switching modes starts a new thread and keeps earlier threads below").
+- The picker lists only models with a route in the selected mode (10 in Conversation, all 54 in Single Shot). A selection outside the list stays visible: a catalog model keeps its own name (new `catalog` prop on `ModelSelector`) and the helper says it has no verified route in that mode; a custom id says it runs in Single Shot only.
+- Primary action: "⚡ Start Conversation" / "⚡ Generate"; the follow-up box submits with "Send" / "Generate" (`ContinueChatInput.submitLabel`). The trash button is "Clear thread".
+- Earlier threads (newest first): mode, first 40 characters of the first prompt, turn count; opening one shows its turns with Save and start-from-image, and Delete thread. They never continue.
+- "Start a conversation / Single Shot from this image" on every image card (current and earlier threads): archives the current thread and attaches the image to the draft. Shown only when the draft model has a route in the selected mode that takes a reference, and only for an image in a format that route accepts; hidden while busy. Focus moves to the prompt.
+- Settings: a "Custom image model id" and "Custom SVG model id" field under the two pickers (`CustomModelIdField`), applied on Use or Enter: `vendor/model[:variant]`, each part starting with a letter or digit, `. _ -` allowed, ≤ 200 characters; a case-insensitive match for a catalog id stores the catalog id. The SVG field refuses raster image models. Ledger C14.
+- Controls: two columns from 480 px (Model + Aspect Ratio, Resolution + Seed; `minmax(0, 1fr) minmax(142px, 180px)`); a control alone on the last row spans both (`:last-child:nth-child(odd)`), so a model without Seed shows Resolution full width. Stacked below 480 px.
+- Empty state: anchored near the top of the output card (`.generation-empty`, shared with the SVG tab) instead of centred, and the hint follows the mode (and a text-only model).
+
+#### Webview
+
+- `useImageGeneration`: `mode` state (initial: saved mode, else the restored thread's, else Single Shot for untagged history, else `defaultImageMode(model)`; until the user commits — the control, an Image-tab pick, Generate or a restored thread — it follows the configured model from `SETTINGS_DATA` and isn't saved), `setMode` (refused while a request or enhance is pending; normalizes ratio and resolution for the new mode; archives nothing when no thread is on screen), `archivedThreads`, `startFromImage`, `removeArchivedThread`; `archiveCurrentThread` runs on mode switch, Generate and start-from-image. A settings-sync model change uses the current mode through a ref. Restored state is validated by `restoredImageState.ts`.
+- Pixel delta from Frame: archiving releases the archived thread on the host (`IMAGE_GENERATION_CLEAR`; an earlier thread never continues, so its transcript would be orphaned). A mode switch and start-from-image release at once. Generate archives provisionally, keeping P3's release-after-success rule: the replaced thread is listed under Earlier threads while the request runs (Delete refused), released and kept there on success, and restored as the current, continuable thread on failure; meanwhile the snapshot saves it as the current thread with no archive copy, so a reload mid-request restores it unreleased. Delete thread posts the clear again, as Frame does; after P3's store fix it writes nothing on the host.
+- `imageHistoryPersistence`: `MAX_PERSISTED_IMAGE_ARCHIVES = 5` (Frame's); archive images are omitted before the current thread's; the note says which were left out (older threads, images, or both) and exists only while something was; `mode` rides the draft and the pathological fallback (which drops archives).
+- `ImageCard` / `ConversationThread`: `onStartFromImage` + `startFromImageLabel`. `ModelSelector`: optional `catalog`.
+- CSS: `image-generation-view.css` (pill, card padding under it, the 480 px grid, Earlier threads), `image-card.css` (`.image-card-action`), `design-tokens.css` (high contrast: the pressed half is a solid inset `contrastActiveBorder` ring; keyboard focus is a separate dashed rounded `::after` ring inside the pill), `global.css` (custom-id row), `generation-view.css` (empty state).
+
+#### Test infrastructure / coverage
+
+1,139 → 1,156 tests (55 → 56 suites) as first built on P3's first build; 1,266 (63 suites) after the rebase onto P3's review fixes (1,204 / 60) and P4's own review follow-up.
+
+- `useImageGenerationModes.test.tsx` (14 → 22): Frame's cases (archive on switch and reload, archive on Generate + Delete, mode switch refused while generating, Single Shot copy, start-from-image incl. text-only, custom ids in both modes, migration of untagged history, filtered list counts, curated-model-unavailable helper, five-archive persistence) with Pixel's request ids and release-on-archive.
+- `imageHistoryPersistence.test.ts` (5 → 7): five newest archives kept with live history intact; archive images dropped first.
+- `SettingsViewCustomModel.test.tsx` (new, 6): Use/Enter only, validation and its message, disabled while empty, helper text, saved custom id shown.
+- `imageTabRoutes.test.tsx`: helpers pick the mode explicitly; new empty-state copy case.
+
+#### Visual check
+
+Harness copied to `scratchpad/roundP4/visual/harness` with new states (`image-single-shot`, `image-single-shot-thread`, `image-earlier-threads`) for Pixel and Frame, plus `dark-hc` in the default theme list. Frame was built from a `git archive` of the sprint-06 worktree (the worktree itself has no `dist/`). Shot in Dark Modern, Light Modern and Dark High Contrast at 320 and 480 px, and 480 × 1400 / 480 × 640 for the empty state; no horizontal overflow or console errors. Fixes from looking: the high-contrast outline on the pill was rectangular (now rounded), the custom-id field used Settings' larger label style (now the picker's), and the empty state sat mid-card in a tall sidebar. Re-shot after the review fixes (54 shots, the same themes and widths, plus focus states for the mode control and the SVG-only uploader): one more fix from looking — the first focus rule lost to the app-wide button focus rule in dark themes and showed only a sliver, so focus is now a rounded `::after` ring.
+
+Frame differences seen, left as they are: Frame shows Seed for Nano Banana 2 in Single Shot (Pixel follows the Image API's `supportsSeed: false`, pinned in P3); Frame's controls stay stacked at 480 px; Frame renders a stray `0` under the uploader for models whose minimum reference count is 0 (`min && …`), an upstream candidate.
+
+#### Pre-PR review follow-up (P4)
+
+An independent reviewer read `b8dc618..4af8acd` before the PR was opened. No blockers. The thread state machine held: every archiving path is guarded, late responses are dropped by correlation id, no release targets an id in use, and Conversation with a Single-Shot-only model is refused in both the UI and the host. Each row is in [parity plan §9](plans/frame-image-parity-plan.md#pre-pr-independent-review-r6-p4) with its status.
+
+- **M1** (`967a4a4`, major): the Earlier-threads note was copied forward from restored state (P3's W1 root), so after a seventh thread it never left. With P3's fix in place, the note now has three precise forms (older threads, images, both) and exists only while something was left out. Round trip through `App`: seven threads → note; reload → five restored, no note; a sixth → note; delete all, Clear, reload → nothing.
+- **m1** (`b31b744`): a fresh install took its mode from `useSettings`' placeholder model, so a configured Recraft or custom default opened in Conversation with Generate disabled. The mode now follows `defaultImageMode(configured model)` until the user commits, and it is saved only once committed. The integration harness asserts the configured model's default mode; it used to assert the bug.
+- **m2 + m3** (`35381b0`): native radios selected on arrow keys, so moving through the pill archived the thread and released its transcript, with no undo. The pill is now two `aria-pressed` buttons, each its own Tab stop (no roving tabindex to get wrong), that switch on click, Enter or Space only; switching with no thread on screen archives nothing. In high contrast, the checked rule (specificity 0,4,3) had hidden the focus rule, and HC themes give focus and active borders one colour. Pressed is now a solid inset ring and focus a dashed rounded `::after` ring. A stylesheet test fails on the old CSS. jsdom can't fire Enter/Space activation, so that test pins native buttons and no radios.
+- **m3 focus** (`8b4db36`): after start-from-image, focus goes to the prompt; after Delete, to the next thread summary, else the (now focusable) Earlier-threads heading, else the prompt. Both used to drop focus to `<body>`.
+- **m4** (`f7ff226`): the start-from-image test reused the SVG preview's data URL, so its "unchanged" assertion couldn't fail. It now uses distinct URLs and asserts settings, archives and no clear. Removing any of five guards (start-from-image in flight, `setMode` with enhance pending, and three more, including Delete during a running Generate) fails a test, checked by hand.
+- **n1** (`6d2a254`): custom-id validation (see User-facing). Non-catalog ids keep their case; OpenRouter's case rules are unknown.
+- **n2** (`424bf8a`): any `recraft/` id took the native-vector SVG route, so a Recraft raster id was billed and then failed with "unexpected payload". An unlisted id now takes the vector route only if it ends in `-vector`. The chat-route fixture shows OpenRouter accepts Recraft raster ids on chat too, so routing alone can't prevent the spend. Known raster ids (every Image-catalog id, and unlisted `recraft/` ids without `-vector`) are refused before either client is called, in `SVGOrchestrator` and in the Settings SVG field. The help copy is fixed.
+- **n3** (`f5e1989`): confirmed through the real host and store that Delete's repeated release writes nothing and shows no error (P3 `23f53ad`).
+- **n4** (`c30805a`): new `restoredImageState.ts` validates saved state field by field.
+  - A malformed earlier thread is dropped.
+  - A malformed current thread is dropped whole and released once.
+  - An unknown mode falls back to the default rule, and unknown thread settings open as Single Shot.
+  - Before, a non-array `archivedThreads` crashed the tab on every load. Bypassing the validator fails five tests.
+- **n5** (`96ca422`): start-from-image is gated on the route and format (see User-facing).
+- **n6** (`4b77278`): `ArchivedImageThread` loses its `persistenceWarning` and `recoveryWarning`. An archive never continues, so its recovery note had nothing to say; a thread that a failed Generate restores keeps its note.
+- `efa6bcb`: the hook's Frame-sync header lists the P4 review fixes.
+
+#### PR #18 review follow-up (`790f3c4`)
+
+- **R18-1** (Astra, P2/medium): `svgModelRefusal` compared the whole id, so a known raster model with a `:variant` the Settings field accepts (`black-forest-labs/flux.2-pro:nitro`), or other casing, passed as an unknown text model and reached the text client. `svgRoutes.ts` now classifies the lower-cased base before any `:variant` for refusal, catalog kind and the `-vector` rule, and still dispatches the full id; `customModelIdFor` maps the model part of a curated id with a variant to the curated casing. Regression cases cover the route helpers, the Settings field and the host; restoring the whole-id comparison fails three. Report: [pr-18-image-modes-review.md](pr-reviews/pr-18-image-modes-review.md). Tests 1,266 → 1,268.
+
+Same in Frame (report upstream): m1, m2, m3 and m4 apply to Frame's radio pill and hook as ported.
+
+#### Not done here (deferred)
+
+- Earlier threads stay read-only (Frame's design): a Conversation can't be resumed from the archive.
+- In-session archives are unbounded (as in Frame); only the saved snapshot keeps five, and the warning says so.
+- The paid and installed-VSIX checks owed by P3 still apply; P4 adds no provider calls.
+- A faint card-border line shows through the unpressed half of the pill in Dark High Contrast (pre-existing).
+- Mixed-case custom ids that match no catalog id are stored as typed.
+
+---
+
 ### Packaging (pre-merge cleanup)
 
 - `.vscodeignore` now excludes `docs/**`, `screenshots/**`, `AGENTS.md`, `tsconfig.webview.json`, `tsconfig.test.json`, `tailwind.config.js` and `postcss.config.js`. The VSIX shrinks from 21.2 MB / 89 files to 10.4 MB / 22 files. `vsce` already rewrites the README's relative image links to `github.com/…/raw/HEAD/…`, so the Marketplace page keeps its screenshots, and review-witness test files no longer ship.

@@ -714,3 +714,23 @@ body {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Custom model id (Settings): label, field + Use on one row, helper. */
+.custom-model-id {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-model-id-row {
+  display: flex;
+  gap: 8px;
+}
+
+.custom-model-id-row .settings-input {
+  flex: 1;
+}
+
+.custom-model-id-error {
+  color: var(--vscode-errorForeground, var(--px-err));
+}
