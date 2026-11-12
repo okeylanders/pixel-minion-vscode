@@ -330,7 +330,7 @@ Effort total [Inferred]: P1 M, P2 S–M, P3 L, P4 M, P5a M, P5b M. Roughly 18–
 
 ## 8. P3 as built (2026-11-12)
 
-**Status:** ✅ Implemented on `claude/pixel-minion-images-transport-dhbqpd` (`19136ad`, `cfb0d34`, `a501ad5`), from `main` at `035906f`. Awaiting review.
+**Status:** ✅ Implemented on `claude/pixel-minion-images-transport-dhbqpd` (`19136ad`, `cfb0d34`, `a501ad5`), from `main` at `035906f`; pre-PR independent-review fixes merged in `18e36b3` ([table below](#pre-pr-independent-review-r6-p3)). Awaiting Astra's review.
 
 The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, PR B had already moved the catalogs to `src/shared/models`, ported Frame's unit-aware `ImageModelDefinition` with every capability field, and fixed the picker; P2 had added correlation ids, rollback and the in-flight guard. So P3 is mostly the engine and the controls. The P4 items (toggle, archives, start-from-image, Settings custom ids) are untouched, except the two P3 can't ship without: untagged history migrates to Single Shot, and a custom id runs as Single Shot.
 
@@ -359,10 +359,11 @@ The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, P
 - **Adapted:**
   - Conversational set from the 2026-11-07 probe (re-run 2026-11-12), not Frame's 2026-09-10 list: adds Nano Banana 2.1; drops Muse.
   - Conversation carries the model's audited reference bounds (Frame: unbounded).
-  - The store writes through `GlobalStorage` (`size` / `read` / `write`, mkdir-p) over `context.globalStorageUri`, not Frame's `FileSystem` / `Workspace` ports.
+  - The store writes through `GlobalStorage` (`size` / `read` / `write` / `rename`, mkdir-p) over `context.storageUri` (or a global `empty-window/` folder), not Frame's `FileSystem` / `Workspace` ports; writes are temp-then-rename (review H2, H7).
   - Raster sniffing reuses `shared/media/imageFormats` (also the save handler's).
   - The orchestrator keeps P2's fuller rollback (turn number and last images too).
-  - Generate releases the thread it replaces (`IMAGE_GENERATION_CLEAR`): P3 has no archive, so the thread can't be reached again, and its transcript would otherwise be orphaned.
+  - Generate releases the thread it replaces (`IMAGE_GENERATION_CLEAR`) once the new generation succeeds, and restores it if the new one fails (review W3): P3 has no archive, so the thread can't be reached again, and its transcript would otherwise be orphaned.
+  - One `ImageOrchestrator` per extension, shared by every view (review H1); `mode` is required on every request (review H3, Frame keeps the F-1 carve-out); follow-ups send a turn count, plus the latest images for Single Shot, instead of the display history (review H6).
   - Mode is derived from the model until P4's toggle (`defaultImageMode`, Frame's rule, named).
   - The image card prefers natural dimensions over the requested ratio (Frame: requested first).
   - The persistence bound has no desktop budget and no archives.
@@ -376,11 +377,41 @@ The P3 row of §5 was planned against Pixel `57bab83`. By the time P3 started, P
 | Single Shot sends an `/images` body; ratio/resolution omitted when unverified | `OpenRouterImageClient.test.ts`; live I1/I2 |
 | Conversation sends the full history plus `image_config` | `OpenRouterImageClient.test.ts`, `ImageConversationModes.test.ts`; live J1/J2 |
 | No endpoint retry | client tests for both transports |
-| Transcript under `globalStorage/image-conversations/<hash>/img-*.json` within 64 MiB | `ImageConversationModes.test.ts` |
+| Transcript under the workspace's `image-conversations/img-*.json` within 64 MiB (first build: `globalStorage/image-conversations/<hash>/`) | `ImageConversationModes.test.ts`, `ImageConversationStore.test.ts` |
 | Conversation continues after an extension-host restart; a mismatch errors explicitly | `ImageConversationModes.test.ts`, `imageTabRoutes.test.tsx`; live J2 |
 | Unsupported ratio, resolution or reference count rejected before any provider call | client, orchestrator and end-to-end tests |
 | WebP output saves as `.webp` | P2's save tests, unchanged; the transport keeps the sniffed type |
 | (Muse uses chat in both modes) | Not applicable: Muse has no route |
+
+### Pre-PR independent review (R6-P3)
+
+Three reviewers read `035906f..b8dc618` before the PR was opened (host side, webview side, and the P4 reviewer for the shared persistence code). No blockers. Fixed on `p3fix/host` and `p3fix/web`, merged in `18e36b3`; details in the [detailed changelog](../CHANGELOG-DETAILED.md#pre-pr-review-follow-up-p3).
+
+| Id | Severity | Finding | Status |
+| --- | --- | --- | --- |
+| W1 | Major | Persistence warning carried into every later snapshot (never cleared); draft note appended per keystroke; up to 48 MiB re-serialized per keystroke | ✅ Fixed in `8c5d592` |
+| W2 | Minor | Reload during a first Generate restored a ghost thread | ✅ Fixed in `42b34ef` |
+| W3 + H8 | Minor | Generate released the replaced thread before the new one succeeded; a release error was wiped by the next response | ✅ Fixed in `75a7259` |
+| W4 / H6 | Minor | Follow-ups posted every turn's images; Single Shot host threads kept every turn | ✅ Fixed in `f5a8cae` |
+| W5 | Minor | 1:8 / 8:1 outputs made giant cards | ✅ Fixed in `7fbf472` |
+| W6 | Minor | SVG attachment counted against the raster reference cap | ✅ Fixed in `304539e` |
+| N1 | Nit | Dead no-mode normalization branches bypassed route capabilities | ✅ Fixed in `be9bc43` |
+| N2 | Nit | Requirement note inferred from MIME presence, "1–1", unenforced 256 px claim | ✅ Fixed in `a3f1ff0` (claim dropped) |
+| N3 | Nit | Sourceful size warning keyed on an id prefix; counted the SVG; missed follow-up re-sends | ✅ Fixed in `a3f1ff0` (`maxRequestBytes`) |
+| N4 | Nit | Generate's blocked reason not announced | ✅ Fixed in `58898e0` |
+| H1 | Minor | In-flight lock and tombstone didn't hold across a re-resolved view (cleared thread resurrected) | ✅ Fixed in `0d233e7`, `23f53ad`, `15890d1` |
+| H2 | Minor | Non-atomic transcript writes; an over-cap turn left a stale record | ✅ Fixed in `8d8cce5` |
+| H3 | Minor | A request without `mode` skipped ratio/resolution gates and the unknown-id guard | ✅ Fixed in `6c0615c` |
+| H4 | Minor | Provider's error reason dropped | ✅ Fixed in `189518e` |
+| H5 | Minor | One unusable `/images` entry discarded the whole paid result | ✅ Fixed in `9622d4d` |
+| H7 | Nit | Store scope changed with multi-root folder edits | ✅ Fixed in `33449f6` (`context.storageUri`) |
+| — | Nit | `clear()` wrote a tombstone for ids with no record | ✅ Fixed in `23f53ad` |
+| — | Risk | Chat `aspect_ratio: 'auto'` acceptance unverified | ✅ Omitted for Auto in `0c49595` |
+| — | Tests | Mutation survivors: settings immutability in `generateImage`; store id-vs-file check | ✅ `72788f8`, `23f53ad` |
+| — | Residual | In-memory threads outlive a view until the host restarts if their webview state is lost | ↪ Deferred (bounded: Single Shot holds only its latest images) |
+| — | Residual | A thread whose text alone exceeds 48 MiB is dropped from the snapshot with no note | ↪ Deferred (pathological; text-only) |
+
+Same defects exist in Frame (report upstream): W1, W2, W3, W6, N3, H7.
 
 ### Manual checks still owed (owner-run)
 
