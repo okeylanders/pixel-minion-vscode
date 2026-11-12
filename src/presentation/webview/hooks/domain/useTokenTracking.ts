@@ -1,11 +1,12 @@
 /**
- * useTokenTracking - Token usage tracking hook
+ * useTokenTracking - usage of the most recent AI request
  *
- * Pattern: Tripartite Interface (State, Actions, Persistence)
- * Tracks accumulated token usage and costs across AI operations.
+ * Pattern: Tripartite Interface (State, Handlers, Persistence)
+ * Feeds the balance card's "Last request" row. Persisted, so after a reload
+ * the row can show a request from an earlier session; the UI dates it.
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   MessageType,
   TokenUsage,
@@ -15,7 +16,6 @@ import {
 
 // 1. State Interface
 export interface TokenTrackingState {
-  usage: TokenUsage;
   lastRequest?: TokenUsage;
   requestedAt?: number;
 }
@@ -27,7 +27,6 @@ export interface TokenTrackingHandlers {
 
 // 3. Persistence Interface
 export interface TokenTrackingPersistence {
-  tokenTracking: TokenUsage;
   lastRequest?: TokenUsage;
   requestedAt?: number;
 }
@@ -37,45 +36,30 @@ export type UseTokenTrackingReturn = TokenTrackingState &
     persistedState: TokenTrackingPersistence;
   };
 
-const DEFAULT_USAGE: TokenUsage = {
-  promptTokens: 0,
-  completionTokens: 0,
-  totalTokens: 0,
-  costUsd: 0,
-};
-
 export function useTokenTracking(
   initialState?: Partial<TokenTrackingPersistence>
 ): UseTokenTrackingReturn {
-  // State - initialize from persisted state
-  const [usage, setUsage] = useState<TokenUsage>({
-    ...DEFAULT_USAGE,
-    ...(initialState?.tokenTracking ?? {}),
-  });
   const [lastRequest, setLastRequest] = useState<TokenUsage | undefined>(initialState?.lastRequest);
   const [requestedAt, setRequestedAt] = useState<number | undefined>(initialState?.requestedAt);
 
   // Message handlers (exposed for App-level routing)
   const handleTokenUsageUpdate = useCallback((message: MessageEnvelope) => {
     if (message.type === MessageType.TOKEN_USAGE_UPDATE) {
-      const { totals, lastRequest: request, requestedAt: at } =
-        message.payload as TokenUsageUpdatePayload;
-      setUsage(totals);
-      if (request) setLastRequest(request);
-      if (at) setRequestedAt(at);
+      const payload = message.payload as TokenUsageUpdatePayload;
+      setLastRequest(payload.lastRequest);
+      setRequestedAt(payload.requestedAt);
     }
   }, []);
 
   // Persistence
-  const persistedState: TokenTrackingPersistence = {
-    tokenTracking: usage,
+  // Memoized: App writes webview state whenever this identity changes.
+  const persistedState = useMemo<TokenTrackingPersistence>(() => ({
     lastRequest,
     requestedAt,
-  };
+  }), [lastRequest, requestedAt]);
 
   return {
     // State
-    usage,
     lastRequest,
     requestedAt,
     // Message Handlers (for App-level routing)

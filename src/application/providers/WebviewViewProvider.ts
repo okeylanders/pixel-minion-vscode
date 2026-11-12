@@ -14,6 +14,8 @@ import { MessageHandler } from '../handlers/MessageHandler';
 import { SecretStorageService } from '@secrets';
 import { LoggingService } from '@logging';
 import { MessageType, createEnvelope } from '@messages';
+import { buildWebviewHtml } from './webviewHtml';
+import { AccountBalanceService } from '../../infrastructure/account';
 
 export class WebviewViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'pixelMinion.mainView';
@@ -24,7 +26,8 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly secretStorage: SecretStorageService,
-    private readonly logger: LoggingService
+    private readonly logger: LoggingService,
+    private readonly accountBalanceService: AccountBalanceService
   ) {}
 
   public resolveWebviewView(
@@ -48,7 +51,8 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     this.messageHandler = new MessageHandler(
       (message) => webviewView.webview.postMessage(message),
       this.secretStorage,
-      this.logger
+      this.logger,
+      this.accountBalanceService
     );
 
     // Handle messages from webview
@@ -67,6 +71,7 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
     // Handle disposal
     webviewView.onDidDispose(() => {
       this.logger.info('Webview disposed');
+      this.messageHandler?.dispose();
       this._view = undefined;
       this.messageHandler = undefined;
     });
@@ -116,32 +121,19 @@ export class WebviewViewProvider implements vscode.WebviewViewProvider {
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.js')
     );
 
-    // Get the loading animation URI
-    const loadingAnimationUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.extensionUri, 'assets', 'loading-animation-pixel-minion.gif')
-    );
+    const assetUri = (fileName: string): string =>
+      webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'assets', fileName)).toString();
 
-    // Use a nonce for security
-    const nonce = this.getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data: blob:;">
-  <title>Pixel Minion</title>
-  <script nonce="${nonce}">
-    window.__PIXEL_MINION__ = {
-      loadingAnimationUri: "${loadingAnimationUri}"
-    };
-  </script>
-</head>
-<body>
-  <div id="root"></div>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
+    return buildWebviewHtml({
+      cspSource: webview.cspSource,
+      nonce: this.getNonce(),
+      scriptUri: scriptUri.toString(),
+      globals: {
+        loadingAnimationUri: assetUri('loading-animation-pixel-minion.gif'),
+        loadingStillUri: assetUri('pixel-minion-icon.png'),
+        headerLogoUri: assetUri('pixel-minion-logo-animated-color.svg'),
+      },
+    });
   }
 
   /**

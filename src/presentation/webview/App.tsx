@@ -12,8 +12,8 @@
  *
  * Reference: docs/example-repo/src/presentation/webview/App.tsx
  */
-import React, { useState, useEffect } from 'react';
-import { MessageType, TabId } from '@messages';
+import React, { useState, useEffect, useRef } from 'react';
+import { MessageType, TabId, normalizeTabId } from '@messages';
 import {
   AppHeader,
   TabBar,
@@ -24,6 +24,9 @@ import {
   ImageGenerationView,
   SVGGenerationView,
   OpenRouterAlert,
+  TabImageIcon,
+  TabSvgIcon,
+  BrandMark,
 } from './components';
 import {
   useSettings,
@@ -34,53 +37,14 @@ import {
   useTokenTracking,
   useOpenRouterBalance,
 } from './hooks';
-
-const ImageTabIcon = (
-  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.7" />
-    <circle cx="8.5" cy="9" r="1.5" stroke="currentColor" strokeWidth="1.7" />
-    <path d="m5 18 5-5 3 3 2-2 4 4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-  </svg>
-);
-
-const SvgTabIcon = (
-  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" aria-hidden="true">
-    <path d="M7 4 3 8l4 4M17 4l4 4-4 4M14.5 3l-5 18" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+import { useOverlayDismiss } from './hooks/useOverlayDismiss';
+import { useReducedMotion } from './hooks/useReducedMotion';
+import { isGenerationTabRequestId } from './utils/requestId';
 
 const TABS: Tab[] = [
-  { id: 'image', label: 'Image', icon: ImageTabIcon },
-  { id: 'svg', label: 'SVG', icon: SvgTabIcon },
+  { id: 'image', label: 'Image', icon: <TabImageIcon /> },
+  { id: 'svg', label: 'SVG', icon: <TabSvgIcon /> },
 ];
-
-/**
- * Settings icon (reuses Pixel Minion skull) - inline SVG for theme adaptation
- */
-const SettingsIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 1024 1024"
-    className={className}
-    fill="currentColor"
-    aria-hidden="true"
-  >
-    <g id="monitor-frame">
-      <path
-        fillRule="evenodd"
-        d="M112 112C67.8 112 32 147.8 32 192V704C32 748.2 67.8 784 112 784H912C956.2 784 992 748.2 992 704V192C992 147.8 956.2 112 912 112H112ZM112 192H912V704H112V192Z"
-      />
-      <rect x="432" y="784" width="160" height="80" />
-      <path d="M312 864H712C729.6 864 744 878.4 744 896V912H280V896C280 878.4 294.4 864 312 864Z" />
-    </g>
-    <g id="skull">
-      <path
-        fillRule="evenodd"
-        d="M512 260C406 260 320 346 320 452C320 520 350 570 390 600L390 630C390 660 410 680 440 680H584C614 680 634 660 634 630L634 600C674 570 704 520 704 452C704 346 618 260 512 260ZM432 400C405 400 384 421 384 448C384 475 405 496 432 496C459 496 480 475 480 448C480 421 459 400 432 400ZM592 400C565 400 544 421 544 448C544 475 565 496 592 496C619 496 640 475 640 448C640 421 619 400 592 400ZM512 520L482 570H542L512 520Z"
-      />
-    </g>
-  </svg>
-);
 
 export function App(): JSX.Element {
   const { saveState, loadState } = usePersistence();
@@ -88,10 +52,14 @@ export function App(): JSX.Element {
   // Load persisted state
   const persistedState = loadState();
 
-  // Active tab state
+  // Active tab state. A saved id no tab renders (e.g. the old 'settings'
+  // tab, now an overlay) falls back to Image instead of an empty panel.
   const [activeTab, setActiveTab] = useState<TabId>(
-    (persistedState.activeTab as TabId) || 'image'
+    () => normalizeTabId(persistedState.activeTab)
   );
+
+  // Reduced motion (OS or VS Code setting): stamped on the root for CSS.
+  const reducedMotion = useReducedMotion();
 
   // Settings overlay state (triggered from title bar gear icon)
   const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
@@ -99,7 +67,7 @@ export function App(): JSX.Element {
   // Initialize domain hooks with persisted state
   const settings = useSettings(persistedState.settings);
   const tokenTracking = useTokenTracking(persistedState.tokenTracking);
-  const balances = useOpenRouterBalance(settings.apiKeyConfigured);
+  const balances = useOpenRouterBalance(settings.apiKeyStatusKnown);
   const imageGeneration = useImageGeneration(persistedState.imageGeneration, {
     selectedModel: settings.imageModel,
     onModelChange: (model) => settings.updateSetting('imageModel', model),
@@ -120,7 +88,8 @@ export function App(): JSX.Element {
     [MessageType.SVG_GENERATION_RESPONSE]: svgGeneration.handleGenerationResponse,
     [MessageType.SVG_SAVE_RESULT]: svgGeneration.handleSaveResult,
 
-    // Prompt Enhancement messages - route based on type
+    // Prompt Enhancement messages - route based on type (each hook also
+    // checks the correlation id, so a stale answer can't replace a prompt)
     [MessageType.ENHANCE_PROMPT_RESPONSE]: (msg) => {
       const payload = msg.payload as { type?: string };
       if (payload.type === 'image') {
@@ -137,25 +106,28 @@ export function App(): JSX.Element {
     // Token tracking messages
     [MessageType.TOKEN_USAGE_UPDATE]: tokenTracking.handleTokenUsageUpdate,
     [MessageType.OPENROUTER_BALANCE_DATA]: balances.handleBalanceData,
+    [MessageType.OPENROUTER_BALANCE_RESET]: balances.handleBalanceReset,
 
     // Settings overlay
     [MessageType.OPEN_SETTINGS_OVERLAY]: () => setShowSettingsOverlay(true),
 
-    // Error routing - check source to route to correct handler
+    // Error routing. Generation, enhance, save and clear errors carry the id
+    // of the request that failed, and each hook settles only its own
+    // requests, so both see every error: an Image-tab enhance failure can't
+    // stop the SVG spinner, a failed save leaves a running generation alone,
+    // and a stale error settles nothing.
     [MessageType.ERROR]: (msg) => {
-      const source = msg.source ?? '';
-      if (source.includes('image') || source.includes('Image')) {
-        imageGeneration.handleError(msg);
-      } else if (source.includes('svg') || source.includes('SVG')) {
-        svgGeneration.handleError(msg);
-      } else if (source.includes('enhance')) {
-        // Route enhance errors based on active tab or to both
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
-      } else {
-        // Default: send to both (they'll handle based on their loading state)
-        imageGeneration.handleError(msg);
-        svgGeneration.handleError(msg);
+      const ownedByImage = imageGeneration.handleError(msg);
+      const ownedBySvg = svgGeneration.handleError(msg);
+      // An error for a tab request neither hook claims answers a request
+      // that is no longer outstanding (late, duplicate or superseded).
+      if (ownedByImage || ownedBySvg || isGenerationTabRequestId(msg.correlationId)) return;
+      // Anything else (a settings write, or a host path that lost the
+      // request's id) belongs to no tab request: show it in the visible tab
+      // without touching any spinner, rather than nowhere.
+      const text = (msg.payload as { message?: string } | undefined)?.message;
+      if (text) {
+        (activeTab === 'svg' ? svgGeneration : imageGeneration).showError(text);
       }
     },
   });
@@ -190,8 +162,17 @@ export function App(): JSX.Element {
     setShowSettingsOverlay(true);
   };
 
+  // Escape (top overlay only), focus capture/return, inert frame, focus trap,
+  // paint order. Opening focuses the heading, not the quiet Close button.
+  const settingsOverlayRef = useRef<HTMLDivElement>(null);
+  const settingsHeadingRef = useOverlayDismiss<HTMLHeadingElement>({
+    open: showSettingsOverlay,
+    onClose: handleCloseSettings,
+    containerRef: settingsOverlayRef,
+  });
+
   return (
-    <div className="app-container">
+    <div className="app-container" data-reduced-motion={reducedMotion ? '' : undefined}>
       <AppHeader
         balances={balances}
         lastRequest={tokenTracking.lastRequest}
@@ -202,6 +183,7 @@ export function App(): JSX.Element {
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        ariaLabel="Pixel Minion modes"
       />
 
       <ViewContainer>
@@ -219,15 +201,23 @@ export function App(): JSX.Element {
         </TabPanel>
       </ViewContainer>
 
-      {/* Settings Panel - Prose Minion style overlay */}
+      {/* Settings overlay — a modal dialog over the whole webview */}
       {showSettingsOverlay && (
-        <div className="settings-overlay">
+        <div
+          ref={settingsOverlayRef}
+          className="settings-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-overlay-title"
+        >
           <div className="settings-overlay-content">
             {/* Header with centered icon and title */}
             <header className="settings-header">
               <div className="settings-header-content">
-                <SettingsIcon className="settings-header-icon" />
-                <h2>Settings</h2>
+                <BrandMark className="settings-header-logo" />
+                <h2 id="settings-overlay-title" ref={settingsHeadingRef} tabIndex={-1}>
+                  Settings
+                </h2>
               </div>
               <button
                 type="button"

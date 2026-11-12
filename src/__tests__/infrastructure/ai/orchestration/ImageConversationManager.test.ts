@@ -87,4 +87,51 @@ describe('ImageConversationManager', () => {
     expect(assistant?.content).toEqual([{ type: 'text', text: 'Here is your image' }]);
     expect(saved?.lastImages).toEqual(['data:image/png;base64,AAA']);
   });
+  it('stores its own copy of the assistant message, isolated from the provider result', () => {
+    const manager = new ImageConversationManager(logger as unknown as LoggingService);
+    const conversation = manager.create('openai/gpt-5-image', '1:1');
+    const assistantMessage = {
+      role: 'assistant' as const,
+      content: [{ type: 'text' as const, text: 'Here is your image' }],
+      images: [{ image_url: { url: 'data:image/png;base64,AAA' }, thought_signature: 'sig' }],
+    };
+
+    manager.addUserMessage(conversation.id, 'A cartoon tree');
+    manager.addAssistantResponse(conversation.id, {
+      images: [{ data: 'data:image/png;base64,AAA', mimeType: 'image/png' }],
+      seed: 1,
+      assistantMessage,
+    });
+    // Later changes to the provider result must not rewrite the transcript.
+    assistantMessage.content[0].text = 'mutated';
+    assistantMessage.images[0].image_url.url = 'data:image/png;base64,ZZZ';
+
+    const stored = manager.get(conversation.id)?.messages[1];
+    expect(stored?.content).toEqual([{ type: 'text', text: 'Here is your image' }]);
+    expect(stored?.images?.[0].image_url.url).toBe('data:image/png;base64,AAA');
+  });
+
+  it('strips unsigned Gemini image parts without touching the provider result', () => {
+    const manager = new ImageConversationManager(logger as unknown as LoggingService);
+    const conversation = manager.create('google/gemini-3.1-flash-image-preview', '1:1');
+    const assistantMessage = {
+      role: 'assistant' as const,
+      content: [
+        { type: 'text' as const, text: 'Here is your image' },
+        { type: 'image_url' as const, image_url: { url: 'data:image/png;base64,AAA' } },
+      ],
+      images: [{ image_url: { url: 'data:image/png;base64,AAA' } }],
+    };
+
+    manager.addUserMessage(conversation.id, 'A cartoon tree');
+    manager.addAssistantResponse(conversation.id, {
+      images: [{ data: 'data:image/png;base64,AAA', mimeType: 'image/png' }],
+      seed: 1,
+      assistantMessage,
+    });
+
+    expect(manager.get(conversation.id)?.messages[1].images).toBeUndefined();
+    expect(assistantMessage.images).toHaveLength(1);
+    expect(assistantMessage.content).toHaveLength(2);
+  });
 });

@@ -6,10 +6,10 @@
  */
 
 @import './variables.css';
+@import './design-tokens.css';
 @import './components/button.css';
 @import './components/input.css';
 @import './components/tabs.css';
-@import './components/markdown.css';
 
 /* Reset and base */
 *,
@@ -40,285 +40,172 @@ body {
   flex-direction: column;
 }
 
-/* App container */
+/* App container — also the scope of the px design tokens (design-tokens.css). */
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  color: var(--px-text);
+  background: var(--px-bg);
 }
 
-/* App Header — Frame Minion house-style marquee, adapted for Pixel Minion. */
+/* One focus ring for every interactive control (fields keep their own
+   border + ring focus style in input.css). */
+.app-container :is(button, [role="tab"], summary, a):focus-visible {
+  outline: 2px solid var(--px-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Reduced motion — the OS setting or VS Code's workbench.reduceMotion, which
+   App stamps as data-reduced-motion (a media query can't see VS Code's).
+   No lifts, tickers or rotating chevrons; spinners slow down rather than
+   stop so "busy" stays visible. The logo and loading GIF swap to stills in
+   BrandMark / LoadingIndicator. */
+.app-container[data-reduced-motion] .model-browser-card,
+.app-container[data-reduced-motion] .model-browser-card:hover {
+  transform: none;
+  transition-property: background, border-color, box-shadow;
+}
+
+.app-container[data-reduced-motion] .svg-code-toggle svg,
+.app-container[data-reduced-motion] .progress-bar {
+  transition: none;
+}
+
+.app-container[data-reduced-motion] :is(.spinner, .save-button-spinner) {
+  animation-duration: 2.4s;
+}
+
+.app-container[data-reduced-motion] .guide-ticker {
+  animation: none;
+  white-space: normal;
+}
+
+/* App Header — the family "branded marquee": brand tile, title + tagline,
+   collapsed balance on the right, and ONE brand hairline as the bottom rule.
+   The shell is a size container so the lockup can compact itself at narrow
+   sidebar widths (the media query can't see the sidebar, only the window). */
 .app-header-shell {
   flex-shrink: 0;
-  background: var(--pm-panel);
-  border-bottom: 1px solid var(--pm-border-soft);
+  container: px-header / inline-size;
+  background: var(--px-panel);
 }
 
 .app-header {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 74px;
-  padding: 11px 14px 13px;
-  background: color-mix(in oklab, var(--pm-text) 3%, var(--pm-panel));
+  gap: 13px;
+  padding: 20px var(--px-gutter) 22px;
+  /* Slightly raised panel tint so the band reads as a header (Frame recipe). */
+  background: color-mix(in oklab, var(--px-text) 3%, var(--px-panel));
 }
 
+/* The brand hairline: oxblood → ember, fading out by 70%. Left-anchored and
+   edge to edge, like Frame's flame bar and Prose's coral one. */
 .app-header::after {
   position: absolute;
-  right: 14px;
+  right: 0;
   bottom: 0;
-  left: 14px;
-  height: 1px;
+  left: 0;
+  height: 2px;
   content: "";
-  background: linear-gradient(90deg, transparent, var(--pm-accent), transparent);
-  opacity: 0.75;
+  background: linear-gradient(
+    90deg,
+    var(--px-b) 0%,
+    var(--px-a) 18%,
+    color-mix(in oklab, var(--px-a) 30%, transparent) 46%,
+    transparent 70%
+  );
+  opacity: 0.9;
+}
+
+/* Brand tile (BrandMark): the colour logo on a fixed dark CRT tile. */
+.brand-tile {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  overflow: hidden;
+  background: var(--px-tile);
+  border: 1px solid color-mix(in oklab, var(--px-a) 30%, var(--px-tile));
+  border-radius: 10px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--px-shadow) 65%, transparent);
+}
+
+.brand-tile-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .app-header-mark {
-  display: grid;
-  width: 45px;
-  height: 45px;
-  flex-shrink: 0;
-  place-items: center;
-  color: var(--pm-accent);
-  background: var(--pm-inset);
-  border: 1px solid var(--pm-border);
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  padding: 5px;
 }
 
 .app-header-titles {
+  display: flex;
   min-width: 0;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.app-title {
-  margin: 0;
-  color: var(--pm-text);
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
+.app-title,
 .app-subtitle {
   margin: 0;
-  color: var(--pm-text-muted);
-  font-size: 10.5px;
-}
-
-.app-header-icon {
-  width: 35px;
-  height: 35px;
-}
-
-.pm-balance-summary {
-  display: grid;
-  min-width: 125px;
-  grid-template-columns: auto 1fr auto;
-  gap: 2px 7px;
-  align-items: center;
-  padding: 6px 8px;
-  color: var(--pm-text-muted);
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--pm-radius);
-  cursor: pointer;
-  font: inherit;
-  font-size: 10px;
-}
-
-.pm-balance-summary:hover,
-.pm-balance-summary.expanded {
-  background: var(--pm-card);
-  border-color: var(--pm-border-soft);
-}
-
-.pm-balance-summary strong {
-  grid-column: 1 / 3;
-  padding-left: 14px;
-  color: var(--pm-text);
-  font-family: var(--pm-mono);
-  font-size: 12px;
-  line-height: 1;
-}
-
-.pm-balance-summary-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pm-balance-summary-chevron {
-  display: inline-flex;
-  grid-column: 3;
-  grid-row: 1 / 3;
-  color: var(--pm-text-dim);
-}
-
-.pm-provider-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: oklch(0.72 0.16 220);
-  box-shadow: 0 0 0 2px color-mix(in oklab, oklch(0.72 0.16 220) 25%, transparent);
-}
-
-.pm-balances-strip {
-  padding: 12px 14px 14px;
-}
-
-.pm-balances-strip-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.pm-balances-strip-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  color: var(--pm-text-dim);
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font: inherit;
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.pm-balances-strip-title:hover {
-  color: var(--pm-text-muted);
-}
-
-.pm-balances-refresh {
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  color: var(--pm-text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--pm-radius-sm);
-  cursor: pointer;
-}
-.pm-balances-refresh:hover:not(:disabled) {
-  color: var(--pm-text);
-  background: var(--pm-field-hover);
-}
-.pm-balances-refresh:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-.pm-balances-refresh.spinning svg {
-  animation: pm-spin 0.9s linear infinite;
-}
-@keyframes pm-spin {
-  to { transform: rotate(360deg); }
-}
-
-.pm-balance-card {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-  padding: 11px 12px;
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-left: 2px solid var(--pm-accent);
-  border-radius: var(--pm-radius);
-}
-
-.pm-balance-provider {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--pm-text);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.pm-balance-amount {
-  margin-top: 2px;
-  color: var(--pm-text);
-  font-family: var(--pm-mono);
-  font-size: 18px;
+.app-title {
+  color: var(--px-text);
+  font-size: 20px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
 }
 
-.pm-balance-label {
-  color: var(--pm-text-dim);
-  font-size: 10.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.app-subtitle {
+  color: var(--px-text-muted);
+  font-size: 12.5px;
 }
 
-.pm-balance-sub {
-  margin-top: 4px;
-  color: var(--pm-text-muted);
-  font-family: var(--pm-mono);
-  font-size: 10.5px;
-}
+/* Narrow sidebars: drop the tagline and the pill's provider name so the
+   title stays whole on one line. The amount then moves up onto the dot's
+   row, so the pill is one line (dot · amount · chevron), not a lone dot
+   above the figure. */
+@container px-header (max-width: 340px) {
+  .app-header {
+    gap: 10px;
+    padding-inline: 14px;
+  }
 
-.pm-balance-bar {
-  height: 3px;
-  margin-top: 4px;
-  overflow: hidden;
-  background: var(--pm-field);
-  border-radius: 999px;
-}
+  .app-subtitle {
+    display: none;
+  }
 
-.pm-balance-bar span {
-  display: block;
-  height: 100%;
-  background: oklch(0.72 0.16 220);
-  border-radius: inherit;
-  transition: width 200ms ease;
-}
+  .app-header .px-balance-summary {
+    min-width: 0;
+  }
 
-.pm-balance-status {
-  margin: 4px 0;
-  color: var(--pm-text-dim);
-  font-size: 11px;
-}
+  .app-header .px-balance-summary-name {
+    display: none;
+  }
 
-.pm-balance-meta {
-  display: grid;
-  gap: 3px;
-  margin-top: 7px;
-  padding-top: 7px;
-  color: var(--pm-text-muted);
-  border-top: 1px solid var(--pm-border-soft);
-  font-size: 9.5px;
-}
+  .app-header .px-balance-summary-amount {
+    grid-column: 2;
+    grid-row: 1;
+    padding-left: 0;
+  }
 
-.pm-balance-meta span {
-  display: flex;
-  min-width: 0;
-  gap: 7px;
-}
-
-.pm-balance-meta b {
-  min-width: 66px;
-  color: var(--pm-text-dim);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.app-content {
-  flex: 1;
-  overflow: auto;
-  padding: var(--spacing-md);
+  .app-header .px-balance-summary-chevron {
+    grid-row: 1;
+  }
 }
 
 /* Utility classes */
@@ -331,7 +218,7 @@ body {
 }
 
 .text-success {
-  color: var(--vscode-notificationsInfoIcon-foreground);
+  color: var(--px-ok);
 }
 
 .flex {
@@ -381,252 +268,251 @@ body {
 /* Divider */
 .divider {
   height: 1px;
-  background-color: var(--pm-border-soft);
+  background-color: var(--px-border-soft);
   margin: var(--spacing-md) 0;
 }
 
-/* Card */
-.card {
-  padding: var(--spacing-md);
-  background-color: var(--vscode-editor-background);
-  border: 1px solid var(--vscode-editorWidget-border);
-  border-radius: var(--border-radius);
-}
-
-/* Well - card-like container for grouping form elements (Prose Minion design) */
+/* Well — the family card that groups a view's controls or output. Spacing
+   between wells comes from the parent's gap. */
 .well {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-radius);
-  padding: var(--spacing-md);
+  padding: 16px;
+  background: var(--px-card);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-card);
 }
 
-.well + .well {
-  margin-top: var(--spacing-sm);
-}
-
-/* Settings Overlay - Prose Minion style */
+/* Settings overlay — Frame's settings view: a full-surface dialog with the
+   brand tile + title centred, a quiet secondary Close, and r8 section cards
+   with a 17px title over a soft rule. Fixed (not absolute) so it covers the
+   webview however the content below has scrolled. Paint order against other
+   overlays comes from useOverlayDismiss (base + stack depth); 100 is that
+   base (OVERLAY_Z_BASE), used only until the hook stamps it. */
 .settings-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--pm-bg);
+  position: fixed;
   z-index: 100;
+  inset: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--spacing-sm);
+  /* No top padding here: a sticky child sticks below its scroller's padding,
+     which would let the cards show through above the header. */
+  padding: 0 var(--px-gutter) 64px;
+  color: var(--px-text);
+  background: var(--px-bg);
+  font-family: var(--px-sans);
+  font-size: 13px;
+  overscroll-behavior: contain;
 }
 
 .settings-overlay-content {
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
+  padding-top: 28px;
 }
 
-/* Settings header with centered icon and title */
+/* Sticky inside the scrolling overlay so Close never leaves the screen on a
+   short sidebar; the opaque background and soft rule keep the cards from
+   showing through as they scroll under it. */
 .settings-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  margin-bottom: var(--spacing-sm);
-}
-
-.settings-header-content {
-  grid-column: 2;
+  position: sticky;
+  z-index: 1;
+  top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs);
+  margin-bottom: 18px;
+  padding: 12px 0 18px;
+  background: var(--px-bg);
+  border-bottom: 1px solid var(--px-border-soft);
 }
 
-.settings-header-icon {
-  width: 48px;
-  height: 48px;
-  color: var(--vscode-foreground);
+.settings-header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-header-logo {
+  width: 64px;
+  height: 56px;
+  padding: 5px;
 }
 
 .settings-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  color: var(--px-text);
+  font-size: 26px;
   font-weight: 600;
 }
 
-.settings-header .settings-close-button {
-  grid-column: 3;
-  justify-self: end;
+/* The heading takes focus when the dialog opens (tabIndex -1, not in the Tab
+   order); it is not a control, so it shows no ring. */
+.settings-header h2:focus {
+  outline: none;
 }
 
+/* Dismissing is the quiet action: secondary, not the heaviest thing on screen. */
 .settings-close-button {
-  background: var(--vscode-button-background);
-  border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--pm-radius);
-  color: var(--vscode-button-foreground);
-  font-size: 0.875rem;
+  position: absolute;
+  top: 12px;
+  right: 0;
+  min-height: 30px;
+  padding: 0 14px;
+  color: var(--px-btn-text);
+  background: var(--px-btn);
+  border: 1px solid var(--px-border-strong);
+  border-radius: var(--px-radius-field);
   cursor: pointer;
-  padding: 6px 12px;
-  transition: background-color 0.15s;
+  font: inherit;
+  font-size: 12.5px;
+  transition: background 100ms;
 }
 
 .settings-close-button:hover {
-  background-color: var(--vscode-button-hoverBackground);
+  background: var(--px-btn-hover);
+}
+
+/* Short sidebars: a slimmer sticky header leaves room for the settings. */
+@media (max-height: 560px) {
+  .settings-header {
+    padding: 8px 0 10px;
+  }
+
+  .settings-header-content {
+    gap: 4px;
+  }
+
+  .settings-header-logo {
+    width: 40px;
+    height: 35px;
+    padding: 3px;
+  }
+
+  .settings-header h2 {
+    font-size: 20px;
+  }
+
+  .settings-close-button {
+    top: 8px;
+  }
 }
 
 /* Settings sections (cards) */
 .settings-section {
-  margin-top: var(--spacing-sm);
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--pm-radius);
-  padding: var(--spacing-md);
+  padding: 18px 20px;
+  background: var(--px-panel);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-card);
+}
+
+.settings-section + .settings-section {
+  margin-top: 16px;
 }
 
 .settings-section-heading {
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--pm-border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--px-border-soft);
 }
 
+/* Mono eyebrow: CSS uppercase over sentence-case copy; muted, not accent
+   (the accent eyebrow budget belongs to the model browser). */
 .settings-section-kicker {
-  color: var(--pm-accent);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.11em;
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .settings-section-title {
-  margin: 1px 0 0;
-  padding: 0;
-  color: var(--pm-text);
-  font-size: 14px;
+  margin: 0;
+  color: var(--px-text);
+  font-size: 17px;
   font-weight: 600;
-  border: 0;
+  line-height: 1.3;
 }
 
-.settings-model-grid { display: grid; gap: 12px; }
+.settings-model-grid {
+  display: grid;
+  gap: 14px;
+}
 
 /* Settings field labels and descriptions */
 .settings-label {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-md);
+  gap: 6px;
 }
 
 .settings-label-title {
   display: block;
+  color: var(--px-text);
+  font-size: 13px;
   font-weight: 600;
 }
 
 .settings-description {
   display: block;
-  color: var(--vscode-descriptionForeground);
-  font-size: 0.9em;
-  line-height: 1.4;
+  color: var(--px-text-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 .settings-description.mb-sm {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 12px;
 }
 
 .settings-description.mt-sm {
-  margin-top: var(--spacing-sm);
+  margin-top: 12px;
 }
 
 .settings-description a {
-  color: var(--vscode-textLink-foreground);
+  color: var(--vscode-textLink-foreground, var(--px-info));
+  text-decoration: none;
+}
+
+.settings-description a:hover {
   text-decoration: underline;
 }
 
-/* Small width input for numbers */
+/* Settings inputs: the family field, mono like Frame's settings fields. */
+.settings-input {
+  width: 100%;
+  min-width: 0;
+  height: var(--px-control-h);
+  padding: 0 12px;
+  color: var(--px-text-input);
+  background: var(--px-field);
+  border: 1px solid var(--px-border);
+  border-radius: var(--px-radius-field);
+  font-family: var(--px-mono);
+  font-size: 13px;
+  transition: border-color 100ms, box-shadow 100ms;
+}
+
 .settings-input.small {
   width: 120px;
 }
 
-/* Settings inputs */
-.settings-input {
-  width: 100%;
-  padding: 6px 8px;
-  background: var(--pm-inset);
-  color: var(--pm-text-input);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
-  font-family: var(--pm-sans);
-  font-size: var(--vscode-font-size);
-}
-
 .settings-input:focus {
   outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
-}
-
-.settings-select {
-  width: 100%;
-  padding: 8px;
-  background: var(--pm-field);
-  color: var(--pm-text);
-  border: 1px solid var(--pm-border);
-  border-radius: var(--pm-radius);
-  font-family: var(--pm-sans);
-  font-size: var(--vscode-font-size);
-  cursor: pointer;
-}
-
-.settings-select:hover {
-  background: var(--pm-field-hover);
-  border-color: var(--pm-border-strong);
-}
-
-.settings-select:focus {
-  outline: none;
-  border-color: var(--pm-accent);
-  box-shadow: 0 0 0 2px var(--pm-accent-ring);
-}
-
-/* Settings button group */
-.settings-button-group {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-sm);
-}
-
-.settings-button {
-  padding: 6px 12px;
-  background: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: 1px solid var(--vscode-button-border, transparent);
-  border-radius: var(--pm-radius);
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.2s ease;
-}
-
-.settings-button:hover {
-  background: var(--vscode-button-hoverBackground);
-}
-
-.settings-button.secondary {
-  background: var(--vscode-button-secondaryBackground);
-  color: var(--vscode-button-secondaryForeground);
-}
-
-.settings-button.secondary:hover {
-  background: var(--vscode-button-secondaryHoverBackground);
-}
-
-@media (max-width: 520px) {
-  .app-header { flex-wrap: wrap; }
-  .pm-balance-summary { min-width: 118px; }
+  border-color: var(--px-focus-ring);
+  box-shadow: 0 0 0 1px var(--px-focus-ring);
 }
 
 /* OpenRouter Alert - Warning banner when API key not configured */
 .openrouter-alert {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-left: 2px solid var(--pm-warn);
-  border-radius: var(--pm-radius);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-left: 2px solid var(--px-warn);
+  border-radius: var(--px-radius-card);
   padding: var(--spacing-md);
-  margin: var(--spacing-md);
+  margin: 0 var(--px-gutter) 16px;
 }
 
 .openrouter-alert-header {
@@ -682,23 +568,6 @@ body {
   color: var(--vscode-textLink-activeForeground);
 }
 
-/* Legacy settings-overlay-header (for backwards compatibility) */
-.settings-overlay-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--vscode-editorWidget-border);
-  background-color: var(--vscode-editor-background);
-  flex-shrink: 0;
-}
-
-.settings-overlay-header h2 {
-  margin: 0;
-  font-weight: 600;
-  font-size: var(--vscode-font-size);
-}
-
 /* Loading Indicator */
 .loading-indicator {
   display: flex;
@@ -732,15 +601,12 @@ body {
 .loading-animation {
   width: 80%;
   max-width: 400px;
-  border-radius: var(--radius-md);
+  border-radius: var(--px-radius-card);
 }
 
-/* Legacy loading-header (kept for backwards compatibility) */
-.loading-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
+/* The reduced-motion still is the square app icon: keep it small. */
+.loading-animation.loading-still {
+  width: 96px;
 }
 
 .loading-cancel-button {
@@ -749,7 +615,7 @@ body {
   color: var(--vscode-descriptionForeground);
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: var(--border-radius);
+  border-radius: var(--px-radius-sm);
   font-size: 12px;
 }
 

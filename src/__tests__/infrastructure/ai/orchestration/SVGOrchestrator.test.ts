@@ -1,4 +1,5 @@
 import { SVGOrchestrator } from '@ai';
+import { SVG_MAX_OUTPUT_TOKENS } from '../../../../infrastructure/ai/orchestration/SVGOrchestrator';
 import { LoggingService } from '@logging';
 import { OpenRouterDynamicTextClient } from '../../../../infrastructure/ai/clients/OpenRouterDynamicTextClient';
 import { TextClient, TextCompletionResult } from '../../../../infrastructure/ai/clients/TextClient';
@@ -220,6 +221,20 @@ describe('SVGOrchestrator', () => {
       expect(vectorClient.createCompletion).not.toHaveBeenCalled();
     });
 
+    it('gives code models room to reason and still finish the SVG', async () => {
+      const textClient = buildClient(RAW_SVG);
+      orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
+
+      await orchestrator.generateSVG('a red star', {
+        model: 'anthropic/claude-opus-5.5',
+        aspectRatio: '1:1',
+      });
+
+      const [, options] = textClient.createCompletion.mock.calls[0];
+      expect(options).toEqual({ model: 'anthropic/claude-opus-5.5', maxTokens: SVG_MAX_OUTPUT_TOKENS });
+      expect(SVG_MAX_OUTPUT_TOKENS).toBe(32_000);
+    });
+
     it('throws a clear error when a recraft model is selected without a vector client', async () => {
       const textClient = buildClient(RAW_SVG);
       orchestrator.setClient(textClient as unknown as OpenRouterDynamicTextClient);
@@ -246,6 +261,173 @@ describe('SVGOrchestrator', () => {
         })
       ).rejects.toThrow(/No text client configured/);
       expect(vectorClient.createCompletion).not.toHaveBeenCalled();
+    });
+  });
+  describe('request ownership', () => {
+    const RAW_SVG = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
+    /** A text client that records a snapshot of each request's messages. */
+    const recordingClient = () => {
+      const sent: string[] = [];
+      const client: jest.Mocked<TextClient> = {
+        getModel: jest.fn().mockReturnValue('mock'),
+        isConfigured: jest.fn().mockResolvedValue(true),
+        createCompletion: jest.fn().mockImplementation(async (messages) => {
+          sent.push(JSON.stringify(messages));
+          return { content: RAW_SVG, finishReason: 'stop' };
+        }),
+      };
+      orchestrator.setClient(client as unknown as OpenRouterDynamicTextClient);
+      return { client, sent };
+    };
+    const options = { model: 'openai/gpt-5.3-codex', aspectRatio: '1:1' as const };
+
+    it('rolls back a failed refinement so the retry does not replay its prompt', async () => {
+      const { client, sent } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      client.createCompletion.mockRejectedValueOnce(new Error('network unavailable'));
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Failed prompt')).rejects.toThrow('network unavailable');
+      const retry = await orchestrator.continueSVG(first.conversationId, 'Actual retry');
+
+      expect(sent[sent.length - 1]).not.toContain('Failed prompt');
+      expect(JSON.parse(sent[sent.length - 1])).toHaveLength(4); // system, user, assistant, retry
+      expect(retry.turnNumber).toBe(2);
+    });
+
+    it('rolls back a turn whose reply contains no SVG', async () => {
+      const { client, sent } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      client.createCompletion.mockResolvedValueOnce({ content: 'Sorry, I cannot draw that.', finishReason: 'stop' });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Unanswerable')).rejects.toThrow('No valid SVG');
+      await orchestrator.continueSVG(first.conversationId, 'Make it blue');
+
+      expect(sent[sent.length - 1]).not.toContain('Unanswerable');
+      expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(5);
+    });
+
+    it('restores the turn number when a turn fails after its reply was recorded', async () => {
+      const { client } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      // Fails after addAssistantResponse advanced the turn counter.
+      mockLogger.info.mockImplementationOnce(() => { throw new Error('log sink closed'); });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Make it blue')).rejects.toThrow('log sink closed');
+
+      const conversation = orchestrator.getConversation(first.conversationId)!;
+      expect(conversation.turnNumber).toBe(1);
+      expect(conversation.messages).toHaveLength(3); // system, user, assistant
+      client.createCompletion.mockClear();
+      const retry = await orchestrator.continueSVG(first.conversationId, 'Make it blue');
+      expect(retry.turnNumber).toBe(2);
+    });
+
+    it('removes the in-memory conversation when its first turn fails', async () => {
+      const { client } = recordingClient();
+      client.createCompletion.mockRejectedValueOnce(new Error('offline'));
+
+      await expect(orchestrator.generateSVG('A red star', options)).rejects.toThrow('offline');
+
+      const created = mockLogger.debug.mock.calls
+        .map(([message]) => String(message))
+        .find((message) => message.startsWith('Created SVG conversation:'))!;
+      expect(orchestrator.getConversation(created.split(' ')[3])).toBeUndefined();
+    });
+
+    it('allows only one provider request at a time per conversation', async () => {
+      const { client } = recordingClient();
+      const first = await orchestrator.generateSVG('A red star', options);
+      let release!: () => void;
+      const blocked = new Promise<void>((resolve) => { release = resolve; });
+      client.createCompletion.mockImplementationOnce(async () => {
+        await blocked;
+        return { content: RAW_SVG, finishReason: 'stop' };
+      });
+
+      const next = orchestrator.continueSVG(first.conversationId, 'First refinement');
+      const duplicate = orchestrator.continueSVG(first.conversationId, 'Duplicate refinement');
+
+      await expect(duplicate).rejects.toThrow('already generating');
+      expect(() => orchestrator.clearConversation(first.conversationId)).toThrow('Wait for SVG generation');
+      release();
+      expect((await next).turnNumber).toBe(2);
+      expect(client.createCompletion).toHaveBeenCalledTimes(2);
+      expect(orchestrator.getConversation(first.conversationId)?.messages).toHaveLength(5);
+    });
+
+    it('sends an attached SVG exactly once, on the turn it was attached to', async () => {
+      const { sent } = recordingClient();
+      const first = await orchestrator.generateSVG('Redraw this', { ...options, referenceSvgText: RAW_SVG });
+      await orchestrator.continueSVG(first.conversationId, 'Thicker strokes');
+
+      expect(sent[1].split('Reference SVG:').length - 1).toBe(1);
+    });
+  });
+  describe('route ownership and replay', () => {
+    const RAW_SVG = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
+    const raster = 'data:image/png;base64,iVBORw0KGgo=';
+    const svgClient = () => {
+      const sent: unknown[] = [];
+      const client: jest.Mocked<TextClient> = {
+        getModel: jest.fn().mockReturnValue('mock'),
+        isConfigured: jest.fn().mockResolvedValue(true),
+        createCompletion: jest.fn().mockImplementation(async (messages) => {
+          sent.push(JSON.parse(JSON.stringify(messages)));
+          return { content: RAW_SVG, finishReason: 'stop' };
+        }),
+      };
+      return { client, sent };
+    };
+
+    it('refuses to refine a native-vector conversation before any provider call', async () => {
+      const text = svgClient();
+      const vector = svgClient();
+      orchestrator.setClient(text.client as unknown as OpenRouterDynamicTextClient);
+      orchestrator.setVectorImageClient(vector.client);
+      const first = await orchestrator.generateSVG('A red star', { model: 'recraft/recraft-v4.1-pro-vector', aspectRatio: '1:1' });
+
+      await expect(orchestrator.continueSVG(first.conversationId, 'Make it blue')).rejects.toThrow("Refine isn't available");
+      // Nor after a restart, when the conversation would be re-hydrated.
+      await expect(orchestrator.continueSVG('svg-restored', 'Make it blue',
+        [{ prompt: 'A red star', svgCode: RAW_SVG }], 'recraft/recraft-v4-vector', '1:1')).rejects.toThrow("Refine isn't available");
+
+      expect(vector.client.createCompletion).toHaveBeenCalledTimes(1);
+      expect(text.client.createCompletion).not.toHaveBeenCalled();
+      expect(orchestrator.getConversation('svg-restored')).toBeUndefined();
+    });
+
+    it('returns a native-vector document the policy rejects, and says why in the log', async () => {
+      const hostile = '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect/></svg>';
+      const vector = svgClient();
+      vector.client.createCompletion.mockResolvedValueOnce({ content: hostile, finishReason: 'stop' });
+      orchestrator.setVectorImageClient(vector.client);
+
+      const result = await orchestrator.generateSVG('A red star', { model: 'recraft/recraft-v4-vector', aspectRatio: '1:1' });
+
+      expect(result.svgCode).toBe(hostile);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'SVG from recraft/recraft-v4-vector will not be previewed or saved: it has an event handler attribute (onload)'
+      );
+    });
+
+    it('replays the original raster reference after re-hydration', async () => {
+      const live = svgClient();
+      orchestrator.setClient(live.client as unknown as OpenRouterDynamicTextClient);
+      const first = await orchestrator.generateSVG('Trace this', { model: 'openai/gpt-5.3-codex', aspectRatio: '1:1', referenceImage: raster });
+      await orchestrator.continueSVG(first.conversationId, 'Thicker lines');
+
+      const restored = new SVGOrchestrator(mockLogger);
+      const replay = svgClient();
+      restored.setClient(replay.client as unknown as OpenRouterDynamicTextClient);
+      await restored.continueSVG('svg-restored', 'Thicker lines',
+        [{ prompt: 'Trace this', svgCode: RAW_SVG, turnNumber: 1, referenceImage: raster }], 'openai/gpt-5.3-codex', '1:1');
+
+      // The restored request is the request the live conversation sent.
+      expect(replay.sent[0]).toEqual(live.sent[1]);
+      expect((replay.sent[0] as Array<{ content: unknown }>)[1].content).toEqual([
+        { type: 'text', text: 'Trace this' },
+        { type: 'image_url', image_url: { url: raster } },
+      ]);
     });
   });
 });

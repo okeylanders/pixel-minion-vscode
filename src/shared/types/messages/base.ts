@@ -39,6 +39,7 @@ export enum MessageType {
   // OpenRouter account
   REQUEST_OPENROUTER_BALANCE = 'REQUEST_OPENROUTER_BALANCE',
   OPENROUTER_BALANCE_DATA = 'OPENROUTER_BALANCE_DATA',
+  OPENROUTER_BALANCE_RESET = 'OPENROUTER_BALANCE_RESET',
 
   // Image Generation
   IMAGE_GENERATION_REQUEST = 'IMAGE_GENERATION_REQUEST',
@@ -69,6 +70,7 @@ export type MessageSource =
   | 'extension.svgGeneration'
   | 'extension.enhance'
   | 'extension.account'
+  | 'extension.router'
   | 'webview.helloWorld'
   | 'webview.settings'
   | 'webview.ai'

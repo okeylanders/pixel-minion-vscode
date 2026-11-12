@@ -37,6 +37,21 @@ export interface ConversationHistoryTurn {
   referenceSvgText?: string;
 }
 
+/**
+ * The settings a conversation was started with. A continuation always uses
+ * these, never the draft controls: changing the picker only affects the next
+ * Generate.
+ */
+export interface ImageThreadSettings {
+  model: string;
+  aspectRatio: AspectRatio;
+}
+
+/**
+ * A follow-up turn. It carries only the new prompt: reference images and an
+ * attached SVG belong to the turn they were sent with (and travel in
+ * `history`), so a draft attachment is never added to a refinement.
+ */
 export interface ImageGenerationContinuePayload {
   prompt: string;
   conversationId: string;
@@ -46,11 +61,11 @@ export interface ImageGenerationContinuePayload {
    */
   history?: ConversationHistoryTurn[];
   /**
-   * Model and aspect ratio needed for re-hydration
+   * The thread's model and aspect ratio (ImageThreadSettings), needed for
+   * re-hydration.
    */
   model?: string;
   aspectRatio?: AspectRatio;
-  referenceSvgText?: string;
 }
 
 export interface GeneratedImage {
@@ -93,5 +108,7 @@ export interface ImageSaveResultPayload {
   success: boolean;
   imageId: string;
   filePath?: string;
+  /** The user dismissed the save dialog: not an error, and not saved. */
+  cancelled?: boolean;
   error?: string;
 }

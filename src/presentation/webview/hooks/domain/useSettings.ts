@@ -4,7 +4,7 @@
  * Pattern: Tripartite Interface (State, Actions, Persistence)
  * Message handlers are exposed for App-level registration (prose-minion pattern).
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useVSCodeApi } from '../useVSCodeApi';
 import {
   MessageType,
@@ -22,6 +22,8 @@ export interface SettingsState {
   imageModel: string;
   svgModel: string;
   apiKeyConfigured: boolean;
+  /** False until the first API_KEY_STATUS arrives (apiKeyConfigured is a placeholder until then). */
+  apiKeyStatusKnown: boolean;
   isLoading: boolean;
 }
 
@@ -74,6 +76,7 @@ export function useSettings(
     initialState?.svgModel ?? 'recraft/recraft-v4.1-pro-vector'
   );
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [apiKeyStatusKnown, setApiKeyStatusKnown] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Message handlers (exposed for App-level routing)
@@ -89,6 +92,7 @@ export function useSettings(
   const handleApiKeyStatus = useCallback((message: MessageEnvelope) => {
     const payload = message.payload as ApiKeyStatusPayload;
     setApiKeyConfigured(payload.isConfigured);
+    setApiKeyStatusKnown(true);
   }, []);
 
   // Actions
@@ -151,12 +155,13 @@ export function useSettings(
   }, []);
 
   // Persistence
-  const persistedState: SettingsPersistence = {
+  // Memoized: App writes webview state whenever this identity changes.
+  const persistedState = useMemo<SettingsPersistence>(() => ({
     maxConversationTurns,
     openRouterModel,
     imageModel,
     svgModel,
-  };
+  }), [maxConversationTurns, openRouterModel, imageModel, svgModel]);
 
   return {
     // State
@@ -165,6 +170,7 @@ export function useSettings(
     imageModel,
     svgModel,
     apiKeyConfigured,
+    apiKeyStatusKnown,
     isLoading,
     // Actions
     updateSetting,

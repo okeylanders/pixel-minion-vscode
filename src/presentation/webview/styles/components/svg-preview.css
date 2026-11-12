@@ -1,19 +1,23 @@
+/**
+ * SVGPreview container — a preview well (--px-inset, the surface reserved
+ * for code and previews). The SVG itself is an isolated <img> (SVGPreview.tsx).
+ */
+
 .svg-preview {
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  min-height: 300px;
   display: flex;
+  min-height: 300px;
   align-items: center;
   justify-content: center;
   overflow: auto;
+  padding: var(--spacing-md);
+  background: var(--px-inset);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius-card);
 }
 
 .svg-preview-empty {
-  background: var(--pm-inset);
-  color: var(--vscode-descriptionForeground);
-  font-size: 14px;
+  color: var(--px-text-muted);
+  font-size: 13px;
 }
 
 .svg-preview[data-aspect="1:1"] .svg-preview-content {
@@ -37,15 +41,24 @@
 }
 
 .svg-preview-content {
+  display: flex;
   width: 100%;
   max-width: 100%;
-  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.svg-preview-content svg {
-  max-width: 100%;
-  max-height: 100%;
-  height: auto;
+/* The SVG is an <img> (an isolated document), scaled to fit its box. */
+.svg-preview-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Rejected by the document policy, or the browser couldn't render it. */
+.svg-preview-unavailable {
+  color: var(--px-text-muted);
+  font-size: 12px;
+  text-align: center;
 }

@@ -53,6 +53,8 @@ export const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
             onClick={() => onAttachmentChange({ preview: null, svgText: null })}
             disabled={disabled}
             className="remove-image"
+            aria-label="Remove reference image"
+            title="Remove reference image"
           >
             ×
           </button>
@@ -62,7 +64,7 @@ export const SingleImageUploader: React.FC<SingleImageUploaderProps> = ({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled}
-          className="add-reference-button"
+          className="btn btn-secondary add-reference-button"
         >
           + Add Reference Image (optional)
         </button>

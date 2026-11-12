@@ -1,0 +1,200 @@
+/**
+ * Generation views (Image + SVG tabs) — shared layout, after Frame Minion's
+ * sprint-06 Image tab.
+ *
+ * The view is a plain column inside `.tab-content`, which is the ONE scroller:
+ * no nested scroll area can crush the output to a sliver, and the output card
+ * grows with the conversation instead. The refine bar is sticky to the bottom
+ * of that scroller. Cards share the header's and tab bar's left edge
+ * (--px-gutter) and a 16px rhythm.
+ */
+
+.generation-view {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 var(--px-gutter);
+  color: var(--px-text);
+  font-family: var(--px-sans);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.generation-view > :last-child {
+  margin-bottom: var(--px-gutter);
+}
+
+.generation-view > .well {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Output card: fills the remaining height when empty, grows with content. */
+.generation-output-well {
+  min-height: 240px;
+  flex: 1 0 auto;
+  gap: 14px !important;
+}
+
+.generation-output {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Nothing rendered yet (no turns, not loading): don't let it add a gap. */
+.generation-output:empty {
+  display: none;
+}
+
+/* Controls stack full width (Frame's sidebar layout): no 2+1 orphan, and the
+   model picker gets the whole row for its name. */
+.generation-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.generation-prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* The primary action: Frame's larger accent-tinted Generate. */
+.generation-prompt-section > .btn-primary {
+  min-height: 42px;
+  font-size: 14px;
+}
+
+/* Empty state for the output card. */
+.generation-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 12px;
+  text-align: center;
+}
+
+.generation-empty-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  margin-bottom: 6px;
+  color: var(--px-text-muted);
+  background: var(--px-field);
+  border: 1px solid var(--px-border-soft);
+  border-radius: 999px;
+}
+
+.generation-empty-title {
+  margin: 0;
+  color: var(--px-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.generation-empty-hint {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--px-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Status notes */
+.generation-error,
+.generation-warning {
+  padding: 8px 12px;
+  border-radius: var(--px-radius-field);
+  font-size: 12.5px;
+}
+
+.generation-error {
+  color: var(--vscode-inputValidation-errorForeground, var(--px-text));
+  background: var(--vscode-inputValidation-errorBackground, transparent);
+  border: 1px solid var(--vscode-inputValidation-errorBorder, var(--px-err));
+}
+
+.generation-warning {
+  color: var(--vscode-inputValidation-warningForeground, var(--px-text));
+  background: var(--vscode-inputValidation-warningBackground, transparent);
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--px-warn));
+}
+
+.generation-note {
+  color: var(--px-text-muted);
+  font-size: 12px;
+}
+
+/* Result header: title + date on the left, actions on the right. */
+.conversation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.conversation-header-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conversation-header-title {
+  overflow: hidden;
+  color: var(--px-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-header-date {
+  color: var(--px-text-muted);
+  font-size: 11.5px;
+}
+
+/* Destructive action stays neutral at rest; red only on intent. */
+.conversation-header-clear {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--px-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--px-radius-sm);
+  cursor: pointer;
+  transition: background-color 100ms, color 100ms;
+}
+
+.conversation-header-clear:hover:not(:disabled) {
+  color: var(--px-err);
+  background: var(--px-field-hover);
+}
+
+.conversation-header-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Per-turn usage line: mono, right-aligned (Frame's tokens line). */
+.generation-usage {
+  align-self: flex-end;
+  padding-right: 4px;
+  color: var(--px-text-muted);
+  font-family: var(--px-mono);
+  font-size: 11px;
+}

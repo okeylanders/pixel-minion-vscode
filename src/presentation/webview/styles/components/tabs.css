@@ -1,8 +1,9 @@
 /**
  * Tab Styles
  *
- * Prose Minion button-style tabs for view switching.
- * Design: Raised buttons with borders, hover lift, active highlight.
+ * The family mode bar: icon-over-label cards in one equal-width row. The
+ * active tab carries the brand accent as border, ring, 10% tint and icon
+ * colour (Frame recipe); glyphs are 20px LineGlyphs (tabIcons.tsx).
  */
 
 .tab-bar {
@@ -10,7 +11,7 @@
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   gap: 6px;
-  padding: 12px 14px 14px;
+  padding: 12px var(--px-gutter) 14px;
   background: transparent;
 }
 
@@ -23,54 +24,36 @@
   justify-content: center;
   gap: 8px;
   padding: 11px 4px 9px;
-  color: var(--pm-text-muted);
-  background: var(--pm-card);
-  border: 1px solid var(--pm-border-soft);
-  border-radius: 6px;
+  color: var(--px-text-muted);
+  background: var(--px-card);
+  border: 1px solid var(--px-border-soft);
+  border-radius: var(--px-radius);
   cursor: pointer;
-  font-family: var(--pm-sans);
+  font-family: var(--px-sans);
   text-align: center;
   transition: background 100ms, border-color 100ms, box-shadow 100ms, color 100ms;
 }
 
 .tab-button:hover:not(:disabled) {
-  color: var(--pm-text);
-  background: var(--pm-field);
-  border-color: var(--pm-border-strong);
-}
-
-.tab-button:focus-visible {
-  outline: 2px solid var(--pm-accent);
-  outline-offset: 2px;
+  color: var(--px-text);
+  background: var(--px-field);
+  border-color: var(--px-border-strong);
 }
 
 .tab-button.active {
-  color: var(--pm-text);
-  background: color-mix(in oklab, var(--pm-accent) 10%, var(--pm-card));
-  border-color: var(--pm-accent);
-  font-weight: 600;
+  color: var(--px-text);
+  background: color-mix(in oklab, var(--px-accent) 10%, var(--px-card));
+  border-color: var(--px-accent);
   box-shadow:
-    0 0 0 1px var(--pm-accent-ring),
-    0 6px 16px rgba(0, 0, 0, 0.22);
+    0 0 0 1px var(--px-accent-ring),
+    0 6px 16px color-mix(in srgb, var(--px-shadow) 60%, transparent);
 }
 
 .tab-button.active .tab-icon {
-  color: var(--pm-accent);
-}
-
-.tab-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.tab-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   color: currentColor;
-  /* Icon SVGs are sized 1em, so font-size is the single control point. */
-  font-size: 24px;
   line-height: 1;
 }
 
@@ -84,43 +67,20 @@
   white-space: nowrap;
 }
 
-/* Legacy .tab class (kept for backwards compatibility) */
-.tab {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
-  color: var(--vscode-tab-inactiveForeground);
-  background-color: var(--vscode-tab-inactiveBackground, transparent);
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.tab:hover {
-  color: var(--vscode-tab-activeForeground);
-  background-color: var(--vscode-list-hoverBackground);
-}
-
-.tab:focus {
-  outline: none;
-}
-
-.tab.active {
-  color: var(--vscode-tab-activeForeground);
-  background-color: var(--vscode-tab-activeBackground, transparent);
-  border-bottom-color: var(--vscode-focusBorder);
-}
-
-/* Tab content container */
+/* Tab content: the ONE scroller for the active view (alert included), so no
+   nested scroll area can crush a view's output. Views lay out as columns. */
 .tab-content {
+  display: flex;
+  min-height: 0;
   flex: 1;
-  overflow: auto;
-  padding: var(--spacing-md);
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .tab-panel {
-  height: 100%;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
 }
 
 .tab-panel[hidden] {
