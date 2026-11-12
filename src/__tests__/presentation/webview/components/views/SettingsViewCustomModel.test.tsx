@@ -113,7 +113,8 @@ describe('SettingsView custom model ids', () => {
   it('explains what a custom id does on each tab', () => {
     render(<SettingsView settings={settings()} />);
     expect(screen.getByLabelText('Custom image model id').getAttribute('aria-describedby')).toBeTruthy();
-    expect(screen.getByText(/runs as Single Shot with automatic dimensions/)).toBeTruthy();
+    expect(screen.getByText(/Unlisted models use Single Shot with automatic dimensions/)).toBeTruthy();
+    expect(screen.getByText(/Variants of listed models keep their limits/)).toBeTruthy();
     expect(screen.getByText(/An id ending in -vector .* makes native vector SVG; any other writes SVG code, so it must be a text model/)).toBeTruthy();
     expect(screen.queryByText(/starting with recraft\//)).toBeNull();
   });

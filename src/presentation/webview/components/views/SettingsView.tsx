@@ -89,7 +89,7 @@ export function SettingsView({ settings }: SettingsViewProps): JSX.Element {
           <CustomModelIdField
             label="Custom image model id"
             catalogIds={IMAGE_MODEL_IDS}
-            help="Any OpenRouter image model. A custom id runs as Single Shot with automatic dimensions; Conversation needs a verified route."
+            help="Unlisted models use Single Shot with automatic dimensions. Variants of listed models keep their limits; Conversation needs a verified route."
             onUse={model => updateSetting('imageModel', model)}
           />
           <SVGModelSelector

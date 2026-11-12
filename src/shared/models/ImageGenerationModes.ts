@@ -19,6 +19,8 @@
  *     (from its Image API record), so a Conversation request with more
  *     references than the model takes is refused before it is sent. Frame
  *     leaves Conversation references unbounded.
+ *   - Single Shot variants inherit their known base model's constraints;
+ *     Conversation still requires an exact verified route id.
  *   - `defaultImageMode` names Frame's rule for a new thread (Conversation
  *     when a verified route exists, otherwise Single Shot), which Frame
  *     inlines in its hook.
@@ -56,9 +58,13 @@ const GPT_CHAT_MODELS = new Set([
 ]);
 
 export function imageRouteCapabilities(modelId: string, mode: ImageGenerationMode): ImageRouteCapabilities | undefined {
-  const model = OPENROUTER_IMAGE_MODELS.find(entry => entry.id === modelId);
-  // A custom id can try Single Shot with automatic dimensions; Conversation
-  // stays strict until its route is verified.
+  // Provider/price variants still name the same model: its Single Shot
+  // constraints apply even when Settings preserves a :variant suffix.
+  // This lookup never changes the full id dispatched by the client.
+  const modelKey = modelId.split(':')[0].toLowerCase();
+  const model = OPENROUTER_IMAGE_MODELS.find(entry => entry.id.toLowerCase() === modelKey);
+  // An unlisted model can try Single Shot with automatic dimensions;
+  // Conversation stays strict until the exact selected id's route is verified.
   if (!model) return mode === 'edit' && modelId.trim() ? {
     transport: 'images', supportedAspectRatios: ['auto'], supportedResolutions: [], supportsSeed: true,
   } : undefined;
@@ -76,6 +82,7 @@ export function imageRouteCapabilities(modelId: string, mode: ImageGenerationMod
     };
   }
   if (mode !== 'conversation') return undefined;
+  // Base-model capabilities do not establish a variant's chat route.
   if (!GEMINI_CHAT_MODELS.has(modelId) && !GPT_CHAT_MODELS.has(modelId)) return undefined;
   return {
     transport: 'chat-completions', modalities: ['image', 'text'],

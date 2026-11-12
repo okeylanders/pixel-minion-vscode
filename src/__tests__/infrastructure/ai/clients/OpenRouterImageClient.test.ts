@@ -84,14 +84,27 @@ describe('Single Shot: the dedicated Image API', () => {
     expect(result.usage).toEqual({ promptTokens: 1, completionTokens: 2, totalTokens: 3, costUsd: 0.001 });
   });
 
-  it('sends the seed where the route takes one', async () => {
+  it.each(['black-forest-labs/flux-3-image-klein', 'black-forest-labs/flux-3-image-klein:floor'])(
+    'sends the seed where the route takes one: %s', async model => {
+      const result = await client().generateImages({
+        model, mode: 'edit', aspectRatio: '1:1', resolution: '768', seed: 42,
+        messages: prompt('A lighthouse'),
+      });
+      expect(body()).toEqual({ model, prompt: 'A lighthouse', seed: 42, aspect_ratio: '1:1', resolution: '768' });
+      expect(result.seed).toBe(42);
+      expect(result.seedSupported).toBe(true);
+    },
+  );
+
+  it('keeps a curated variant’s dimensions and seed restriction while dispatching its full id', async () => {
+    const model = 'Google/Gemini-3.1-Flash-Image:nitro';
     const result = await client().generateImages({
-      model: 'black-forest-labs/flux-3-image-klein', mode: 'edit', aspectRatio: '1:1', resolution: '768', seed: 42,
+      model, mode: 'edit', aspectRatio: '16:9', resolution: '4K', seed: 42,
       messages: prompt('A lighthouse'),
     });
-    expect(body()).toEqual({ model: 'black-forest-labs/flux-3-image-klein', prompt: 'A lighthouse', seed: 42, aspect_ratio: '1:1', resolution: '768' });
-    expect(result.seed).toBe(42);
-    expect(result.seedSupported).toBe(true);
+    expect(url()).toBe('https://openrouter.ai/api/v1/images');
+    expect(body()).toEqual({ model, prompt: 'A lighthouse', aspect_ratio: '16:9', resolution: '4K' });
+    expect(result.seedSupported).toBe(false);
   });
 
   it('sends ten FLUX.3 references and its 1.5K tier without a seed', async () => {
@@ -119,6 +132,8 @@ describe('Single Shot: the dedicated Image API', () => {
     ['bytedance-seed/seedream-5-0-flash', 15],
     ['recraft/recraft-v4.1-flash', 1],
     ['recraft/recraft-v4.1', 2],
+    ['RECRAFT/RECRAFT-V4.1-FLASH:nitro', 1],
+    ['black-forest-labs/flux-3-image:floor', 11],
   ])('rejects excess references before calling %s', async (model, count) => {
     const references = Array.from({ length: count }, () => ({ type: 'image_url' as const, image_url: { url: 'data:image/png;base64,REF' } }));
     await expect(client().generateImages({
@@ -128,7 +143,7 @@ describe('Single Shot: the dedicated Image API', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it.each(['krea/k3-edit', 'recraft/recraft-v4-styles', 'recraft/recraft-v4-styles-pro'])(
+  it.each(['krea/k3-edit', 'recraft/recraft-v4-styles', 'recraft/recraft-v4-styles-pro', 'KREA/K3-EDIT:floor'])(
     'requires a reference before %s is called', async model => {
       await expect(client().generateImages({
         model, mode: 'edit', aspectRatio: '1:1', messages: prompt('A botanical poster'),
@@ -137,23 +152,25 @@ describe('Single Shot: the dedicated Image API', () => {
     },
   );
 
-  it('requires a PNG, JPEG or WebP style reference for Recraft Styles', async () => {
-    await expect(client().generateImages({
-      model: 'recraft/recraft-v4-styles', mode: 'edit', aspectRatio: '1:1',
-      messages: [{ role: 'user', content: [
-        { type: 'text', text: 'A botanical poster' },
-        { type: 'image_url', image_url: { url: 'data:image/gif;base64,REF' } },
-      ] }],
-    })).rejects.toThrow('requires PNG, JPEG, or WebP');
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
+  it.each(['recraft/recraft-v4-styles', 'recraft/recraft-v4-styles:nitro'])(
+    'requires a PNG, JPEG or WebP style reference for %s', async model => {
+      await expect(client().generateImages({
+        model, mode: 'edit', aspectRatio: '1:1',
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: 'A botanical poster' },
+          { type: 'image_url', image_url: { url: 'data:image/gif;base64,REF' } },
+        ] }],
+      })).rejects.toThrow('requires PNG, JPEG, or WebP');
+      expect(mockFetch).not.toHaveBeenCalled();
+    },
+  );
 
-  it('rejects a ratio or resolution the route does not list before calling the provider', async () => {
+  it.each(['', ':nitro'])('rejects unsupported dimensions before calling the provider, including variant %s', async variant => {
     await expect(client().generateImages({
-      model: 'openai/gpt-image-1', mode: 'edit', aspectRatio: '16:9', messages: prompt('A tree'),
+      model: `openai/gpt-image-1${variant}`, mode: 'edit', aspectRatio: '16:9', messages: prompt('A tree'),
     })).rejects.toThrow('Aspect ratio is not supported');
     await expect(client().generateImages({
-      model: 'bytedance-seed/seedream-5-0-lite', mode: 'edit', aspectRatio: '1:1', resolution: '1K', messages: prompt('A tree'),
+      model: `bytedance-seed/seedream-5-0-lite${variant}`, mode: 'edit', aspectRatio: '1:1', resolution: '1K', messages: prompt('A tree'),
     })).rejects.toThrow('Resolution is not supported');
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -300,7 +317,7 @@ describe('Conversation: chat/completions', () => {
   });
 
   it('refuses Conversation for a model without a verified chat route, before any request', async () => {
-    for (const model of ['openai/gpt-image-2.5-flare', 'krea/k3-edit', 'recraft/recraft-v4.1', 'vendor/custom', 'meta/muse-image']) {
+    for (const model of ['openai/gpt-image-2.5-flare', 'krea/k3-edit', 'recraft/recraft-v4.1', 'vendor/custom', 'meta/muse-image', 'google/gemini-3.1-flash-image:nitro', 'GOOGLE/GEMINI-3.1-FLASH-IMAGE']) {
       await expect(client().generateImages({ mode: 'conversation', model, aspectRatio: '1:1', messages: prompt('A tree') }))
         .rejects.toThrow('no verified Conversation route');
     }

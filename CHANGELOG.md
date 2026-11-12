@@ -8,6 +8,8 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-12
+
 ### Added
 
 - **A new look that matches Frame Minion and Prose Minion**
@@ -47,7 +49,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 - **Choose Conversation or Single Shot** - A toggle at the top of the Image tab picks how your next thread works. Conversation keeps every earlier message and image as context (models with a conversational route only); Single Shot sends just your prompt and the images you attach, and a follow-up works from the latest image. The model list shows only the models that support the chosen mode, and a short note says which OpenRouter endpoint it uses. A new install starts in the mode that suits your default model. The toggle changes only when you click it or press Enter or Space, so moving through it with the keyboard never starts a new thread.
 - **Earlier threads** - Starting a new thread, or switching modes, keeps the previous one in history. Back/forward arrows in the top-right corner of the results pane show one thread at a time, with a position counter. You can save its images, start again from one of them, or delete it. Browsing an earlier thread hides the current refinement box while preserving its unsent text. The five most recent earlier threads are kept when VS Code reloads, and a note says when older ones won't be. If a new Generate fails, the thread you were on comes back instead of moving to Earlier threads.
 - **Start a new thread from any image** - Each generated image has a button that starts a new conversation or Single Shot with that image attached, shown when the selected model can take that image.
-- **Custom model ids in Settings** - Type any OpenRouter model id (`vendor/model`) as the default Image or SVG model, for models that aren't in the list yet. A custom image model runs as Single Shot with automatic dimensions. An id that differs from a listed model only in capitalisation selects the listed model, and an image (raster) model is refused as the SVG default because it can't produce SVG.
+- **Custom model ids in Settings** - Type any OpenRouter model id (`vendor/model`) as the default Image or SVG model, for models that aren't in the list yet. An unlisted image model runs as Single Shot with automatic dimensions; a variant of a listed model keeps that model’s constraints. An id that differs from a listed model only in capitalisation selects the listed model, and an image (raster) model is refused as the SVG default because it can't produce SVG.
 - **New SVG code models**
   - ⭐ Claude Opus 5.5, ⭐ Claude Fable 5.2 and ⭐ GPT-6.1 Sol
   - Claude Sonnet 5.5, Claude Haiku 5.5 (budget), GPT-6 Astra, GPT-6.1 Terra, Gemini 4 Argon, Gemini 3.8 Flash (budget) and Grok 4.7
@@ -69,6 +71,7 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 
 ### Fixed
 
+- **Custom model variants keep their limits.** Adding a routing suffix such as `:nitro` to a known image model no longer bypasses its reference-image, format, seed or dimension restrictions. The full ID is still sent to OpenRouter; variants without a verified Conversation route remain Single Shot only.
 - Krea, MAI-Image and Recraft V4.1 models no longer fail with "No endpoints found that support the requested output modalities".
 - **Requests a model can't take are stopped before they are sent** - Attaching reference images to a text-only model, generating with a reference-only model before attaching one, or keeping more images than a new model accepts after switching now blocks Generate with a note saying what to change, instead of failing at OpenRouter.
 - A model's reply that isn't a PNG, JPEG, WebP or GIF image is refused instead of being shown under a guessed format.
