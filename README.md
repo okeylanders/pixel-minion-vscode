@@ -37,17 +37,11 @@
 
 ---
 
-## 🎉 What's New in v1.4.0
+## 🎉 What's New in v1.5.0
 
-> **🎨 Refreshed design** - A new look shared with Frame Minion and Prose Minion, with a searchable model browser, OpenRouter balance, keyboard navigation and high-contrast support.
+> **SVG** — GPT-6.2 Astra, GPT-6.2 Sol, and Gemini 4 Neon can turn prompts and image references into editable SVG.
 >
-> **🖼️ More ways to generate** - Choose Conversation for full-context refinements or Single Shot for a prompt and reference images. The dedicated Image API unlocks GPT Image, FLUX.3, Qwen, Krea and more, with controls matched to each model.
->
-> **↔️ Browse your threads** - Back/forward arrows in the results pane show earlier threads without losing your current refine draft. New conversations can resume after VS Code restarts, and a failed generation keeps your previous result.
->
-> **⭐ Updated SVG models** - Claude Opus 5.5, Claude Fable 5.2 and GPT-6.1 Sol join the code-model recommendations. Recraft V4.1 Pro Vector remains the default for native SVG.
->
-> **🛡️ Safer SVGs and reliable saves** - Previews are isolated from the panel, unsafe SVGs are refused, and the saved checkmark appears only after the file is written.
+> **Image Single Shot** — MAI-Image 2.7 Flash works with up to five reference images. Seedream 5.5 works with up to ten and adds seed control and selectable output sizes.
 >
 > **📋 Full Changelog** - See [CHANGELOG.md](CHANGELOG.md) for complete release notes.
 
@@ -165,7 +159,8 @@ Generate images from text prompts or refine existing images with AI.
 | **FLUX.3 / FLUX.3 Klein** | Black Forest Labs image models |
 | **Qwen Image 3 / 3 Pro / 2.1 Turbo** | Qwen image generation |
 | **Krea K3 Edit / Recraft Styles** | Models that require reference images |
-| **Seedream / MAI-Image / Riverflow / Grok Imagine** | Additional image families in the model browser |
+| **Seedream 5.5 / MAI-Image 2.7 Flash** | Single Shot generation and reference-guided edits |
+| **Riverflow / Grok Imagine** | Additional image families in the model browser |
 
 Search the model browser or group it by provider, family or release date. Each card shows the model's supported options and pricing basis. The list is filtered by the selected mode.
 
@@ -221,8 +216,8 @@ Generate native vector graphics with Recraft or SVG markup with text models.
 | **Recraft V4.1 Pro Vector** | Default — native SVG, 1:1 output |
 | **Recraft V4.1 Vector** | Lower-cost native SVG, 1:1 output |
 | **Claude Opus 5.5 / Fable 5.2** | Recommended for SVG code generation |
-| **GPT-6.1 Sol** | Recommended for SVG code generation |
-| **Gemini 4 Argon / Gemini 3.8 Flash** | Additional SVG code models |
+| **GPT-6.2 Astra / GPT-6.2 Sol** | Recommended for SVG code generation |
+| **Gemini 4 Neon / Gemini 4 Argon / Gemini 3.8 Flash** | Additional SVG code models |
 
 The model browser separates Native SVG from SVG code models and includes additional Anthropic, OpenAI and xAI options.
 
@@ -288,7 +283,7 @@ Click the **gear icon** in the Pixel Minion header for settings:
 ### Model Selection
 
 - **Image Model** - Model for image generation (recommended: Nano Banana 2)
-- **SVG Model** - Model for SVG generation (default: Recraft V4.1 Pro Vector; code recommendations include Claude Opus 5.5, Claude Fable 5.2 and GPT-6.1 Sol)
+- **SVG Model** - Model for SVG generation. Recraft V4.1 Pro Vector is the default. Code recommendations include Claude Opus 5.5, Claude Fable 5.2, GPT-6.2 Astra and GPT-6.2 Sol.
 
 Picker selections save automatically and sync with your VS Code preferences. To enter a custom model ID, use the field beneath the picker and press Use or Enter. API keys have explicit Save and Clear controls.
 
