@@ -49,6 +49,8 @@ export class OpenRouterDynamicTextClient implements TextClient {
 
     // Use passed model if provided, otherwise fall back to this.currentModel
     const modelToUse = options?.model ?? this.currentModel;
+    // OpenAI's GPT-6.2 chat contract omits temperature, including on routed variants.
+    const acceptsTemperature = !/^openai\/gpt-6\.2-(?:astra|sol)(?:-pro)?(?:-\d{8})?$/i.test(modelToUse.split(':')[0]);
 
     this.logger.debug('Calling OpenRouter text completion', {
       model: modelToUse,
@@ -67,7 +69,7 @@ export class OpenRouterDynamicTextClient implements TextClient {
         model: modelToUse,
         // Content can be either string or multimodal array - pass as-is
         messages: messages.map(m => ({ role: m.role, content: m.content })),
-        temperature: options?.temperature ?? 0.7,
+        ...(acceptsTemperature ? { temperature: options?.temperature ?? 0.7 } : {}),
         max_tokens: options?.maxTokens ?? 16384,
         usage: { include: true },  // Request native token counts and cost
       }),

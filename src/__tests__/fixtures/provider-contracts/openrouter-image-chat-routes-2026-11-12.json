@@ -1,6 +1,6 @@
 {
  "capturedAt": "2026-11-12",
- "note": "Public chat endpoint metadata plus a free routing probe, not paid generation evidence. The probe sends POST /api/v1/chat/completions with modalities [\"audio\"]: OpenRouter checks chat routability before output modalities, so \"image-api-only\" models answer 404 \"is an image generation model and cannot be used with the chat/completions endpoint\" and routable ones answer 404 \"No endpoints found that support the requested output modalities: audio\". Nothing is generated or billed. meta/muse-image keeps an active chat endpoint record but the probe rejects it, so the record alone does not establish a route.",
+ "note": "Public chat endpoint metadata plus a free routing probe, not paid generation evidence. The probe sends POST /api/v1/chat/completions with modalities [\"audio\"]: OpenRouter checks chat routability before output modalities, so \"image-api-only\" models answer 404 \"is an image generation model and cannot be used with the chat/completions endpoint\" and routable ones answer 404 \"No endpoints found that support the requested output modalities: audio\". Nothing is generated or billed. meta/muse-image keeps an active chat endpoint record but the probe rejects it, so the record alone does not establish a route. The MAI-Image 2.7 Flash and Seedream 5.5 probe results were captured on 2026-11-19.",
  "probe": {
   "request": {
    "messages": [
@@ -31,6 +31,7 @@
    "openai/gpt-5-image-mini": "chat-routable",
    "openai/gpt-5-image": "chat-routable",
    "microsoft/mai-image-2.6": "chat-routable",
+   "microsoft/mai-image-2.7-flash": "chat-routable",
    "microsoft/mai-image-2.6-flash": "chat-routable",
    "microsoft/mai-image-2.5": "chat-routable",
    "microsoft/mai-image-2.5-pro": "chat-routable",
@@ -60,6 +61,7 @@
    "black-forest-labs/flux.2-pro": "chat-routable",
    "black-forest-labs/flux.2-flex": "chat-routable",
    "black-forest-labs/flux.2-max": "chat-routable",
+   "bytedance-seed/seedream-5-5": "chat-routable",
    "bytedance-seed/seedream-5-0-flash": "chat-routable",
    "bytedance-seed/seedream-5-0-lite": "chat-routable",
    "bytedance-seed/seedream-5-0-pro": "chat-routable",
