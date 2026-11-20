@@ -143,7 +143,7 @@ async function renderImageTab(model: string, mode?: 'conversation' | 'edit') {
   return view;
 }
 
-async function pickModel(name: string) {
+async function pickModel(name: string | RegExp) {
   fireEvent.click(screen.getByRole('button', { name: /Current model:/ }));
   const browser = await screen.findByRole('dialog', { name: /browser/ });
   fireEvent.click(within(browser).getByRole('button', { name }));
@@ -375,6 +375,25 @@ describe('Single Shot restart recovery', () => {
 });
 
 describe('controls follow the selected model', () => {
+  it('dispatches Seedream 5.5 and MAI-Image 2.7 Flash with their Single Shot controls', async () => {
+    await renderImageTab('bytedance-seed/seedream-5-5');
+    expect(selectedMode()).toBe('Single Shot');
+    fireEvent.change(screen.getByLabelText('Resolution'), { target: { value: '1.5K' } });
+    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '42' } });
+    await generate('A lighthouse');
+    expect(lastUrl()).toMatch(/\/images$/);
+    expect(lastBody()).toMatchObject({ model: 'bytedance-seed/seedream-5-5', resolution: '1.5K', seed: 42 });
+
+    await pickModel(/MAI-Image 2\.7 Flash/);
+    expect(screen.queryByLabelText('Resolution')).toBeNull();
+    expect(screen.queryByLabelText('Seed')).toBeNull();
+    await generate('A poster');
+    expect(lastUrl()).toMatch(/\/images$/);
+    expect(lastBody()).toMatchObject({ model: 'microsoft/mai-image-2.7-flash', prompt: 'A poster' });
+    expect(lastBody()).not.toHaveProperty('resolution');
+    expect(lastBody()).not.toHaveProperty('seed');
+  });
+
   it('shows seed, resolution and ratio controls only where the route takes them', async () => {
     await renderImageTab('google/gemini-3.1-flash-image');
     // Conversation route: chat lists seed; K tiers only (no 512).

@@ -1,7 +1,7 @@
 {
  "capturedAt": "2026-11-12",
  "source": "GET https://openrouter.ai/api/v1/images/models and GET /api/v1/images/models/<id>/endpoints (unauthenticated)",
- "note": "Image API capabilities per curated id. referenceImages, aspectRatios, resolutions and supportsSeed are intersected across endpoints (a capability counts only when every endpoint advertises it). Each endpoint keeps its provider slug, its own resolution enum and its pricing entries as published. meta/muse-image is listed by /images/models but has no endpoint.",
+ "note": "Image API capabilities per curated id. referenceImages, aspectRatios, resolutions and supportsSeed are intersected across endpoints (a capability counts only when every endpoint advertises it). Each endpoint keeps its provider slug, its own resolution enum and its pricing entries as published. meta/muse-image is listed by /images/models but has no endpoint. The MAI-Image 2.7 Flash and Seedream 5.5 records were captured on 2026-11-19.",
  "models": {
   "google/gemini-nano-banana-2.1": {
    "created": "2026-10-06",
@@ -786,6 +786,50 @@
        "billable": "output_image",
        "unit": "token",
        "cost_usd": 3.8e-05
+      }
+     ]
+    }
+   ]
+  },
+  "microsoft/mai-image-2.7-flash": {
+   "created": "2026-11-17",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 5
+   },
+   "aspectRatios": [
+    "16:9",
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "9:16",
+    "auto"
+   ],
+   "resolutions": null,
+   "supportsSeed": false,
+   "outputFormats": null,
+   "endpoints": [
+    {
+     "providerSlug": "azure",
+     "resolutions": null,
+     "pricing": [
+      {
+       "billable": "input_text",
+       "unit": "token",
+       "cost_usd": 0.00000175
+      },
+      {
+       "billable": "input_image",
+       "unit": "token",
+       "cost_usd": 0.0000025
+      },
+      {
+       "billable": "output_image",
+       "unit": "token",
+       "cost_usd": 0.00001
       }
      ]
     }
@@ -2150,6 +2194,72 @@
        "billable": "output_image",
        "unit": "megapixel",
        "cost_usd": 0.07
+      }
+     ]
+    }
+   ]
+  },
+  "bytedance-seed/seedream-5-5": {
+   "created": "2026-11-12",
+   "endpointCount": 1,
+   "referenceImages": {
+    "min": 0,
+    "max": 10
+   },
+   "aspectRatios": [
+    "16:9",
+    "19.5:9",
+    "1:1",
+    "1:2",
+    "20:9",
+    "21:9",
+    "2:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "9:19.5",
+    "9:20",
+    "9:21",
+    "auto"
+   ],
+   "resolutions": [
+    "1K",
+    "1.5K",
+    "2K"
+   ],
+   "supportsSeed": true,
+   "outputFormats": [
+    "jpeg",
+    "png"
+   ],
+   "endpoints": [
+    {
+     "providerSlug": "seed",
+     "resolutions": [
+      "1K",
+      "1.5K",
+      "2K"
+     ],
+     "pricing": [
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.02
+      },
+      {
+       "billable": "output_image",
+       "unit": "image",
+       "cost_usd": 0.035,
+       "variant": "high_resolution"
+      },
+      {
+       "billable": "input_image",
+       "unit": "image",
+       "cost_usd": 0.008
       }
      ]
     }

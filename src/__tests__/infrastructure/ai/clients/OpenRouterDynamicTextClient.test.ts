@@ -398,6 +398,16 @@ describe('OpenRouterDynamicTextClient', () => {
       expect(requestBody.max_tokens).toBe(8000);
     });
 
+    it.each(['openai/gpt-6.2-astra', 'openai/gpt-6.2-sol', 'openai/gpt-6.2-astra:nitro'])(
+      'omits temperature while preserving the model and SVG output budget for %s', async model => {
+        await client.createCompletion(testMessages, { model, temperature: 0.9, maxTokens: 32_000 });
+
+        const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+        expect(requestBody).toMatchObject({ model, max_tokens: 32_000 });
+        expect(requestBody).not.toHaveProperty('temperature');
+      },
+    );
+
     it('should include usage tracking in request', async () => {
       await client.createCompletion(testMessages);
 
