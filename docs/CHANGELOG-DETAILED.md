@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-20
+
+### Model catalog refresh
+
+- `SVGModels.ts` and the model browser add GPT-6.2 Astra, GPT-6.2 Sol, and Gemini 4 Neon as code SVG models with image-reference support and refinement. The browser recommends Astra and Sol, and GPT-6.1 Sol remains selectable.
+- `OpenRouterDynamicTextClient.ts` omits `temperature` for GPT-6.2 Astra and Sol, including routed variants. The SVG output budget stays at 32,000 tokens.
+- `ImageModels.ts` adds MAI-Image 2.7 Flash and Seedream 5.5 through the OpenRouter Image API. Models use the existing Single Shot route with their own reference limits, aspect ratios, and pricing. Seedream adds a seed control and 1K, 1.5K, and 2K output tiers.
+- Provider fixtures record public endpoint data and zero-spend routing probes. Integration tests drive both image models through the picker and confirm the request sent to the provider boundary.
+
+Catalog refresh [3132d09](https://github.com/okeylanders/pixel-minion-vscode/commit/3132d09). Existing settings, saved model IDs, and the minimum VS Code version are compatible with this release.
+
 ## [1.4.0] - 2026-11-12
 
 ### Overview

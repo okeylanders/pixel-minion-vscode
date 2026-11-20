@@ -8,6 +8,17 @@ For detailed technical documentation, see [docs/CHANGELOG-DETAILED.md](docs/CHAN
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-20
+
+### Added
+
+- **SVG models** — Generate editable SVG and refine it with GPT-6.2 Astra, GPT-6.2 Sol, or Gemini 4 Neon. All three accept image references.
+- **Single Shot image models** — MAI-Image 2.7 Flash accepts up to five reference images. Seedream 5.5 accepts up to ten and supports seeds and 1K, 1.5K, and 2K output.
+
+### Fixed
+
+- GPT-6.2 SVG requests now omit the unsupported temperature setting.
+
 ## [1.4.0] - 2026-11-12
 
 ### Added
